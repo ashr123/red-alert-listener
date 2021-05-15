@@ -64,7 +64,7 @@ public class RedAlert
 									if (settings.isAlertAll() || !importantAreas.isEmpty())
 									{
 										clip.setFramePosition(0);
-										clip.loop(15);
+										clip.loop(settings.loopCount());
 									}
 									if (!importantAreas.isEmpty())
 										System.out.println("ALERT: " + importantAreas);
@@ -84,7 +84,7 @@ public class RedAlert
 	{
 	}
 
-	public static final record Settings(boolean isAlertAll, List<String> areasOfInterest)
+	public static final record Settings(boolean isAlertAll, int loopCount, List<String> areasOfInterest)
 	{
 	}
 }
