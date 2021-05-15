@@ -6,7 +6,7 @@
 
 	<groupId>il.co</groupId>
 	<artifactId>red-alert</artifactId>
-	<version>1.0.2</version>
+	<version>1.0.3</version>
 
 	<properties>
 		<maven.compiler.source>16</maven.compiler.source>
