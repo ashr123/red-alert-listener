@@ -1,7 +1,7 @@
 {
   "isMakeSound": true,
   "isAlertAll": false,
-  "loopCount": 15,
+  "soundLoopCount": 15,
   "areasOfInterest": [
     "נהריה",
     "רמת גן - מערב",

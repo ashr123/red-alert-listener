@@ -64,7 +64,7 @@ public class RedAlert
 									if (settings.isMakeSound() && (settings.isAlertAll() || !importantAreas.isEmpty()))
 									{
 										clip.setFramePosition(0);
-										clip.loop(settings.loopCount());
+										clip.loop(settings.soundLoopCount());
 									}
 									if (!importantAreas.isEmpty())
 										System.out.println("ALERT: " + importantAreas);
@@ -84,7 +84,7 @@ public class RedAlert
 	{
 	}
 
-	public static final record Settings(boolean isMakeSound, boolean isAlertAll, int loopCount,
+	public static final record Settings(boolean isMakeSound, boolean isAlertAll, int soundLoopCount,
 	                                    List<String> areasOfInterest)
 	{
 	}
