@@ -23,7 +23,7 @@ public class RedAlert
 	private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 	private static final File FILE = new File("red-alert-settings.json");
 
-	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException, InterruptedException
+	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException
 	{
 		final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 		long currLastModified = 0;
