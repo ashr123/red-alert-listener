@@ -1,4 +1,5 @@
 {
+  "isMakeSound": true,
   "isAlertAll": false,
   "loopCount": 15,
   "areasOfInterest": [

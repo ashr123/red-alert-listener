@@ -61,7 +61,7 @@ public class RedAlert
 									final List<String> importantAreas = data.parallelStream()
 											.filter(settings.areasOfInterest()::contains)
 											.collect(Collectors.toList());
-									if (settings.isAlertAll() || !importantAreas.isEmpty())
+									if (settings.isMakeSound() && (settings.isAlertAll() || !importantAreas.isEmpty()))
 									{
 										clip.setFramePosition(0);
 										clip.loop(settings.loopCount());
@@ -84,7 +84,8 @@ public class RedAlert
 	{
 	}
 
-	public static final record Settings(boolean isAlertAll, int loopCount, List<String> areasOfInterest)
+	public static final record Settings(boolean isMakeSound, boolean isAlertAll, int loopCount,
+	                                    List<String> areasOfInterest)
 	{
 	}
 }
