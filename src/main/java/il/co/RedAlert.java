@@ -24,7 +24,6 @@ public class RedAlert
 		long currLastModified = 0;
 		System.out.println("Starting Red Alert listener...");
 		while (true)
-		{
 			try
 			{
 				if (url.openConnection() instanceof HttpURLConnection httpURLConnection)
@@ -43,12 +42,12 @@ public class RedAlert
 									.append("Current Date: ").append(new Date()).append(System.lineSeparator())
 									.append("Response: ").append(MAPPER.readValue(inputStream, RedAlertResponse.class).data));
 						}
-				}
+				} else
+					System.out.println("Not a HTTP connection!");
 			} catch (IOException | ParseException e)
 			{
 				e.printStackTrace();
 			}
-		}
 	}
 
 	public static final record RedAlertResponse(List<String> data, long id, String title)
