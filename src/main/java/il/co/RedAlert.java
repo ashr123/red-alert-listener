@@ -2,6 +2,7 @@ package il.co;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -12,11 +13,13 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 public class RedAlert
 {
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 	private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
+	private static final File FILE = new File("areas-of-interest.json");
 
 	public static void main(String... args) throws MalformedURLException
 	{
@@ -39,10 +42,21 @@ public class RedAlert
 						try (InputStream inputStream = httpURLConnection.getInputStream())
 						{
 							currLastModified = httpURLConnection.getLastModified();
+							final List<String> data = MAPPER.readValue(inputStream, RedAlertResponse.class).data;
 							System.out.println(new StringBuilder("Content Length: ").append(httpURLConnection.getContentLength()).append(" bytes").append(System.lineSeparator())
 									.append("Last Modified Date: ").append(lastModified).append(System.lineSeparator())
 									.append("Current Date: ").append(new Date()).append(System.lineSeparator())
-									.append("Response: ").append(MAPPER.readValue(inputStream, RedAlertResponse.class).data));
+									.append("Response: ").append(data));
+
+							if (FILE.exists())
+							{
+								final List<String> importantAreas = data.parallelStream()
+										.filter(MAPPER.readValue(FILE, List.class)::contains)
+										.collect(Collectors.toList());
+								if (!importantAreas.isEmpty())
+									System.out.println("ALERT: " + importantAreas);
+							} else
+								System.out.println("File doesn't exists");
 						}
 				} else
 					System.out.println("Not a HTTP connection!");
