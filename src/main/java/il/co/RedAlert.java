@@ -65,7 +65,6 @@ public class RedAlert
 									{
 										clip.setFramePosition(0);
 										clip.loop(15);
-										clip.start();
 									}
 									if (!importantAreas.isEmpty())
 										System.out.println("ALERT: " + importantAreas);
