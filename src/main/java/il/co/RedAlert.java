@@ -25,12 +25,11 @@ public class RedAlert
 
 	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException
 	{
-		final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-		long currLastModified = 0;
-
 		try (Clip clip = AudioSystem.getClip();
 		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(RedAlert.class.getResourceAsStream("/alarmSound.wav")))))
 		{
+			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
+			long currLastModified = 0;
 			clip.open(audioInputStream);
 			System.out.println("Starting Red Alert listener...");
 			while (true)
