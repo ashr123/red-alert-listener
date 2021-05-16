@@ -44,7 +44,7 @@ public class RedAlert
 						httpURLConnection.setReadTimeout(5000);
 						httpURLConnection.setUseCaches(false);
 
-						Date lastModified;
+						final Date lastModified;
 						final long contentLength = httpURLConnection.getContentLengthLong();
 						if (contentLength > 0 && (lastModified = SIMPLE_DATE_FORMAT.parse(httpURLConnection.getHeaderField("last-modified"))).getTime() > currLastModified)
 							try (InputStream inputStream = httpURLConnection.getInputStream())
