@@ -70,7 +70,7 @@ public class RedAlert
 									if (!importantAreas.isEmpty())
 										System.out.println("ALERT: " + importantAreas);
 								} else
-									System.out.println("Warning: File doesn't exists");
+									System.out.println("Warning: Settings file doesn't exists!");
 							}
 					} else
 						System.out.println("Error: Not a HTTP connection!");
