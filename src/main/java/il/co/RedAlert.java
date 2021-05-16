@@ -39,7 +39,7 @@ public class RedAlert
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			long currLastModified = 0;
 			clip.open(audioInputStream);
-			System.out.println("listening...");
+			System.out.println("Listening...");
 			while (true)
 				try
 				{
