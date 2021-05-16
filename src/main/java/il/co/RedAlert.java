@@ -1398,8 +1398,8 @@ public class RedAlert
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final ObjectMapper MAPPER = new ObjectMapper();
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
-			final File FILE = new File("red-alert-settings.json");
-			long currLastModified = 0, fileLastModified = 0;
+			final File settingsFile = new File("red-alert-settings.json");
+			long currServerLastModified = 0, fileLastModified = 0;
 			Settings settings = null;
 			List<String> districtsNotFound = null;
 			System.out.println("Listening...");
@@ -1416,20 +1416,20 @@ public class RedAlert
 
 						final Date lastModified;
 						final long contentLength = httpURLConnection.getContentLengthLong();
-						if (contentLength > 0 && (lastModified = SIMPLE_DATE_FORMAT.parse(httpURLConnection.getHeaderField("last-modified"))).getTime() > currLastModified)
+						if (contentLength > 0 && (lastModified = SIMPLE_DATE_FORMAT.parse(httpURLConnection.getHeaderField("last-modified"))).getTime() > currServerLastModified)
 						{
-							currLastModified = lastModified.getTime();
+							currServerLastModified = lastModified.getTime();
 							final List<String> data = MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
 							System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 									.append("Last Modified Date: ").append(lastModified).append(System.lineSeparator())
 									.append("Current Date: ").append(new Date()).append(System.lineSeparator())
 									.append("Response: ").append(data));
 
-							long fileLastModifiedTemp;
-							if ((fileLastModifiedTemp = FILE.lastModified()) > fileLastModified)
+							final long fileLastModifiedTemp = settingsFile.lastModified();
+							if (fileLastModifiedTemp > fileLastModified)
 							{
 								fileLastModified = fileLastModifiedTemp;
-								settings = MAPPER.readValue(FILE, Settings.class);
+								settings = MAPPER.readValue(settingsFile, Settings.class);
 								districtsNotFound = settings.areasOfInterest().stream()
 										.filter(district -> Arrays.binarySearch(DISTRICTS, district) < 0)
 										.toList();
