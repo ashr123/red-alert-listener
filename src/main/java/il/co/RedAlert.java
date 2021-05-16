@@ -6,7 +6,6 @@ import javax.sound.sampled.*;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.ParseException;
@@ -54,31 +53,30 @@ public class RedAlert
 						final Date lastModified;
 						final long contentLength = httpURLConnection.getContentLengthLong();
 						if (contentLength > 0 && (lastModified = SIMPLE_DATE_FORMAT.parse(httpURLConnection.getHeaderField("last-modified"))).getTime() > currLastModified)
-							try (InputStream inputStream = httpURLConnection.getInputStream())
-							{
-								currLastModified = httpURLConnection.getLastModified();
-								final List<String> data = MAPPER.readValue(inputStream, RedAlertResponse.class).data();
-								System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
-										.append("Last Modified Date: ").append(lastModified).append(System.lineSeparator())
-										.append("Current Date: ").append(new Date()).append(System.lineSeparator())
-										.append("Response: ").append(data));
+						{
+							currLastModified = httpURLConnection.getLastModified();
+							final List<String> data = MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
+							System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
+									.append("Last Modified Date: ").append(lastModified).append(System.lineSeparator())
+									.append("Current Date: ").append(new Date()).append(System.lineSeparator())
+									.append("Response: ").append(data));
 
-								if (FILE.exists())
+							if (FILE.exists())
+							{
+								final Settings settings = MAPPER.readValue(FILE, Settings.class);
+								final List<String> importantAreas = data.parallelStream()
+										.filter(settings.areasOfInterest()::contains)
+										.collect(Collectors.toList());
+								if (settings.isMakeSound() && (settings.isAlertAll() || !importantAreas.isEmpty()))
 								{
-									final Settings settings = MAPPER.readValue(FILE, Settings.class);
-									final List<String> importantAreas = data.parallelStream()
-											.filter(settings.areasOfInterest()::contains)
-											.collect(Collectors.toList());
-									if (settings.isMakeSound() && (settings.isAlertAll() || !importantAreas.isEmpty()))
-									{
-										clip.setFramePosition(0);
-										clip.loop(settings.soundLoopCount());
-									}
-									if (!importantAreas.isEmpty())
-										System.out.println("ALERT: " + importantAreas);
-								} else
-									System.out.println("Warning: Settings file doesn't exists!");
-							}
+									clip.setFramePosition(0);
+									clip.loop(settings.soundLoopCount());
+								}
+								if (!importantAreas.isEmpty())
+									System.out.println("ALERT: " + importantAreas);
+							} else
+								System.out.println("Warning: Settings file doesn't exists!");
+						}
 					} else
 						System.out.println("Error: Not a HTTP connection!");
 				} catch (IOException | ParseException e)
