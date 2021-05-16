@@ -19,9 +19,17 @@ import java.util.stream.Collectors;
 
 public class RedAlert
 {
-	private static final ObjectMapper MAPPER = new ObjectMapper();
-	private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
-	private static final File FILE = new File("red-alert-settings.json");
+	private static final ObjectMapper MAPPER;
+	private static final SimpleDateFormat SIMPLE_DATE_FORMAT;
+	private static final File FILE;
+
+	static
+	{
+		System.out.println("Preparing Red Alert listener...");
+		MAPPER = new ObjectMapper();
+		SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
+		FILE = new File("red-alert-settings.json");
+	}
 
 	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException
 	{
@@ -31,7 +39,7 @@ public class RedAlert
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			long currLastModified = 0;
 			clip.open(audioInputStream);
-			System.out.println("Starting Red Alert listener...");
+			System.out.println("listening...");
 			while (true)
 				try
 				{
