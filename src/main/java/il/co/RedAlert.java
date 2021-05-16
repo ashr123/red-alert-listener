@@ -64,9 +64,13 @@ public class RedAlert
 							if (FILE.exists())
 							{
 								final Settings settings = MAPPER.readValue(FILE, Settings.class);
-								final List<String> importantAreas = data.parallelStream()
-										.filter(settings.areasOfInterest()::contains)
-										.collect(Collectors.toList());
+								final List<String> importantAreas = data.size() > settings.areasOfInterest().size() ?
+										data.parallelStream()
+												.filter(settings.areasOfInterest()::contains)
+												.collect(Collectors.toList()) :
+										settings.areasOfInterest().parallelStream()
+												.filter(data::contains)
+												.collect(Collectors.toList());
 								if (settings.isMakeSound() && (settings.isAlertAll() || !importantAreas.isEmpty()))
 								{
 									clip.setFramePosition(0);
