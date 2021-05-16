@@ -54,7 +54,7 @@ public class RedAlert
 						final long contentLength = httpURLConnection.getContentLengthLong();
 						if (contentLength > 0 && (lastModified = SIMPLE_DATE_FORMAT.parse(httpURLConnection.getHeaderField("last-modified"))).getTime() > currLastModified)
 						{
-							currLastModified = httpURLConnection.getLastModified();
+							currLastModified = lastModified.getTime();
 							final List<String> data = MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
 							System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 									.append("Last Modified Date: ").append(lastModified).append(System.lineSeparator())
