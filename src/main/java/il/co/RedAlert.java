@@ -45,12 +45,13 @@ public class RedAlert
 						httpURLConnection.setUseCaches(false);
 
 						Date lastModified;
-						if (httpURLConnection.getContentLength() > 0 && (lastModified = SIMPLE_DATE_FORMAT.parse(httpURLConnection.getHeaderField("last-modified"))).getTime() > currLastModified)
+						final long contentLength = httpURLConnection.getContentLengthLong();
+						if (contentLength > 0 && (lastModified = SIMPLE_DATE_FORMAT.parse(httpURLConnection.getHeaderField("last-modified"))).getTime() > currLastModified)
 							try (InputStream inputStream = httpURLConnection.getInputStream())
 							{
 								currLastModified = httpURLConnection.getLastModified();
 								final List<String> data = MAPPER.readValue(inputStream, RedAlertResponse.class).data();
-								System.out.println(new StringBuilder("Content Length: ").append(httpURLConnection.getContentLength()).append(" bytes").append(System.lineSeparator())
+								System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 										.append("Last Modified Date: ").append(lastModified).append(System.lineSeparator())
 										.append("Current Date: ").append(new Date()).append(System.lineSeparator())
 										.append("Response: ").append(data));
