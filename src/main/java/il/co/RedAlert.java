@@ -16,7 +16,7 @@ public class RedAlert
 {
 	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException
 	{
-		System.out.println("Preparing Red Alert listener...");
+		System.err.println("Preparing Red Alert listener...");
 		try (Clip clip = AudioSystem.getClip();
 		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(RedAlert.class.getResourceAsStream("/alarmSound.wav")))))
 		{
@@ -1403,7 +1403,7 @@ public class RedAlert
 			long currAlertsLastModified = 0, settingsLastModified = 0;
 			Settings settings = null;
 			List<String> districtsNotFound = null;
-			System.out.println("Listening...");
+			System.err.println("Listening...");
 			while (true)
 				try
 				{
