@@ -1428,6 +1428,7 @@ public class RedAlert
 							final long settingsLastModifiedTemp = settingsFile.lastModified();
 							if (settingsLastModifiedTemp > settingsLastModified)
 							{
+								System.out.println("Info: (re)loading \"red-alert-settings.json\"");
 								settingsLastModified = settingsLastModifiedTemp;
 								settings = MAPPER.readValue(settingsFile, Settings.class);
 								districtsNotFound = settings.districtsOfInterest().stream()
