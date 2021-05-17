@@ -2,7 +2,7 @@
   "isMakeSound": true,
   "isAlertAll": false,
   "soundLoopCount": 15,
-  "areasOfInterest": [
+  "districtsOfInterest": [
     "נהריה",
     "רמת גן - מערב",
     "תל אביב - מרכז העיר",

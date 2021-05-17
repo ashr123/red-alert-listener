@@ -1399,7 +1399,7 @@ public class RedAlert
 			final ObjectMapper MAPPER = new ObjectMapper();
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			final File settingsFile = new File("red-alert-settings.json");
-			long currServerLastModified = 0, fileLastModified = 0;
+			long currAlertsLastModified = 0, settingsLastModified = 0;
 			Settings settings = null;
 			List<String> districtsNotFound = null;
 			System.out.println("Listening...");
@@ -1414,48 +1414,48 @@ public class RedAlert
 						httpURLConnection.setReadTimeout(5000);
 						httpURLConnection.setUseCaches(false);
 
-						final Date lastModified;
+						final Date alertsLastModified;
 						final long contentLength = httpURLConnection.getContentLengthLong();
-						if (contentLength > 0 && (lastModified = SIMPLE_DATE_FORMAT.parse(httpURLConnection.getHeaderField("last-modified"))).getTime() > currServerLastModified)
+						if (contentLength > 0 && (alertsLastModified = SIMPLE_DATE_FORMAT.parse(httpURLConnection.getHeaderField("last-modified"))).getTime() > currAlertsLastModified)
 						{
-							currServerLastModified = lastModified.getTime();
+							currAlertsLastModified = alertsLastModified.getTime();
 							final List<String> data = MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
 							System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
-									.append("Last Modified Date: ").append(lastModified).append(System.lineSeparator())
+									.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
 									.append("Current Date: ").append(new Date()).append(System.lineSeparator())
 									.append("Response: ").append(data));
 
-							final long fileLastModifiedTemp = settingsFile.lastModified();
-							if (fileLastModifiedTemp > fileLastModified)
+							final long settingsLastModifiedTemp = settingsFile.lastModified();
+							if (settingsLastModifiedTemp > settingsLastModified)
 							{
-								fileLastModified = fileLastModifiedTemp;
+								settingsLastModified = settingsLastModifiedTemp;
 								settings = MAPPER.readValue(settingsFile, Settings.class);
-								districtsNotFound = settings.areasOfInterest().stream()
+								districtsNotFound = settings.districtsOfInterest().stream()
 										.filter(district -> Arrays.binarySearch(DISTRICTS, district) < 0)
 										.toList();
-							} else if (fileLastModifiedTemp == 0)
+							} else if (settingsLastModifiedTemp == 0)
 							{
 								settings = null;
-								fileLastModified = 0;
+								settingsLastModified = 0;
 								districtsNotFound = null;
 							}
 							if (districtsNotFound != null && !districtsNotFound.isEmpty())
 								System.out.println("Warning: those districts don't exist: " + districtsNotFound);
 							if (settings != null)
 							{
-								final List<String> importantAreas = (data.size() > settings.areasOfInterest().size() ?
+								final List<String> importantDistricts = (data.size() > settings.districtsOfInterest().size() ?
 										data.parallelStream()
-												.filter(settings.areasOfInterest()::contains) :
-										settings.areasOfInterest().parallelStream()
+												.filter(settings.districtsOfInterest()::contains) :
+										settings.districtsOfInterest().parallelStream()
 												.filter(data::contains))
 										.toList();
-								if (settings.isMakeSound() && (settings.isAlertAll() || !importantAreas.isEmpty()))
+								if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
 								{
 									clip.setFramePosition(0);
 									clip.loop(settings.soundLoopCount());
 								}
-								if (!importantAreas.isEmpty())
-									System.out.println("ALERT: " + importantAreas);
+								if (!importantDistricts.isEmpty())
+									System.out.println("ALERT: " + importantDistricts);
 							} else
 								System.out.println("Warning: Settings file doesn't exists!");
 						}
@@ -1473,7 +1473,7 @@ public class RedAlert
 	}
 
 	public static final record Settings(boolean isMakeSound, boolean isAlertAll, int soundLoopCount,
-	                                    List<String> areasOfInterest)
+	                                    List<String> districtsOfInterest)
 	{
 	}
 }
