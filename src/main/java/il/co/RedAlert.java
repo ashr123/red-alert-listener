@@ -1420,7 +1420,8 @@ public class RedAlert
 						final String lastModifiedStr;
 						if (contentLength > 0 && ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null || (alertsLastModified = SIMPLE_DATE_FORMAT.parse(lastModifiedStr)).getTime() > currAlertsLastModified))
 						{
-							currAlertsLastModified = alertsLastModified == null ? 0 : alertsLastModified.getTime();
+							if (alertsLastModified != null)
+								currAlertsLastModified = alertsLastModified.getTime();
 							final List<String> data = MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
 							System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 									.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
