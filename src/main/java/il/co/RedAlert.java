@@ -20,6 +20,7 @@ public class RedAlert
 		try (Clip clip = AudioSystem.getClip();
 		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(RedAlert.class.getResourceAsStream("/alarmSound.wav")))))
 		{
+			// Updated as of 17.5.2021
 			final String[] DISTRICTS = new String[]{
 					"אזור תעשייה שחורת",
 					"אילות",
@@ -1428,7 +1429,7 @@ public class RedAlert
 							final long settingsLastModifiedTemp = settingsFile.lastModified();
 							if (settingsLastModifiedTemp > settingsLastModified)
 							{
-								System.out.println("Info: (re)loading \"red-alert-settings.json\"");
+								System.err.println("Info: (re)loading \"red-alert-settings.json\"");
 								settingsLastModified = settingsLastModifiedTemp;
 								settings = MAPPER.readValue(settingsFile, Settings.class);
 								districtsNotFound = settings.districtsOfInterest().stream()
@@ -1441,7 +1442,7 @@ public class RedAlert
 								districtsNotFound = null;
 							}
 							if (districtsNotFound != null && !districtsNotFound.isEmpty())
-								System.out.println("Warning: those districts don't exist: " + districtsNotFound);
+								System.err.println("Warning: those districts don't exist: " + districtsNotFound);
 							if (settings != null)
 							{
 								final List<String> importantDistricts = (data.size() > settings.districtsOfInterest().size() ?
@@ -1458,10 +1459,10 @@ public class RedAlert
 								if (!importantDistricts.isEmpty())
 									System.out.println("ALERT: " + importantDistricts);
 							} else
-								System.out.println("Warning: Settings file doesn't exists!");
+								System.err.println("Warning: Settings file doesn't exists!");
 						}
 					} else
-						System.out.println("Error: Not a HTTP connection!");
+						System.err.println("Error: Not a HTTP connection!");
 				} catch (IOException | ParseException e)
 				{
 					e.printStackTrace();
