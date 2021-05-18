@@ -1422,7 +1422,7 @@ public class RedAlert
 						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-he/Pakar.aspx");
 						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
 						httpURLConnection.setConnectTimeout(5000);
-						httpURLConnection.setReadTimeout(5000);
+						httpURLConnection.setReadTimeout(10000);
 						httpURLConnection.setUseCaches(false);
 
 						Date alertsLastModified = null;
