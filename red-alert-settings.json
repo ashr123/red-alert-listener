@@ -1,6 +1,7 @@
 {
   "isMakeSound": true,
   "isAlertAll": false,
+  "isDisplayAll": true,
   "soundLoopCount": 15,
   "districtsOfInterest": [
     "נהריה",

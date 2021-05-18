@@ -12,6 +12,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+@SuppressWarnings({"StringBufferReplaceableByString", "InfiniteLoopStatement"})
 public class RedAlert
 {
 	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException
@@ -1437,11 +1438,6 @@ public class RedAlert
 						{
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified.getTime();
-							final List<String> data = MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
-							System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
-									.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
-									.append("Current Date: ").append(new Date()).append(System.lineSeparator())
-									.append("Response: ").append(data));
 
 							final long settingsLastModifiedTemp = settingsFile.lastModified();
 							if (settingsLastModifiedTemp > settingsLastModified)
@@ -1458,6 +1454,17 @@ public class RedAlert
 								settingsLastModified = 0;
 								districtsNotFound = null;
 							}
+
+							final List<String> data = MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
+
+							if (settings == null || settings.isDisplayAll())
+							{
+								System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
+										.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
+										.append("Current Date: ").append(new Date()).append(System.lineSeparator())
+										.append("Response: ").append(data));
+							}
+
 							if (districtsNotFound != null && !districtsNotFound.isEmpty())
 								System.err.println("Warning: those districts don't exist: " + districtsNotFound);
 							if (settings != null)
@@ -1491,7 +1498,10 @@ public class RedAlert
 	{
 	}
 
-	public static final record Settings(boolean isMakeSound, boolean isAlertAll, int soundLoopCount,
+	public static final record Settings(boolean isMakeSound,
+	                                    boolean isAlertAll,
+	                                    boolean isDisplayAll,
+	                                    int soundLoopCount,
 	                                    List<String> districtsOfInterest)
 	{
 	}
