@@ -1426,12 +1426,12 @@ public class RedAlert
 						httpURLConnection.setUseCaches(false);
 
 						Date alertsLastModified = null;
-						final long contentLength = httpURLConnection.getContentLengthLong();
 						if (httpURLConnection.getResponseCode() != 200)
 						{
 							System.err.println("Error: connection " + httpURLConnection.getResponseMessage());
 							continue;
 						}
+						final long contentLength = httpURLConnection.getContentLengthLong();
 						final String lastModifiedStr;
 						if (contentLength > 0 && ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null || (alertsLastModified = SIMPLE_DATE_FORMAT.parse(lastModifiedStr)).getTime() > currAlertsLastModified))
 						{
