@@ -16,7 +16,17 @@ public class RedAlert
 {
 	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException
 	{
-		System.err.println("Preparing Red Alert listener...");
+		System.err.println("Preparing Red Alert listener, press \"q\" to quit...");
+		new Thread(() ->
+		{
+			final Scanner scanner = new Scanner(System.in);
+			while (true)
+				if (scanner.nextLine().equals("q"))
+				{
+					System.err.println("Bye Bye!");
+					System.exit(0);
+				}
+		}).start();
 		try (Clip clip = AudioSystem.getClip();
 		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(RedAlert.class.getResourceAsStream("/alarmSound.wav")))))
 		{
@@ -1417,6 +1427,11 @@ public class RedAlert
 
 						Date alertsLastModified = null;
 						final long contentLength = httpURLConnection.getContentLengthLong();
+						if (httpURLConnection.getResponseCode() != 200)
+						{
+							System.err.println("Error: connection " + httpURLConnection.getResponseMessage());
+							continue;
+						}
 						final String lastModifiedStr;
 						if (contentLength > 0 && ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null || (alertsLastModified = SIMPLE_DATE_FORMAT.parse(lastModifiedStr)).getTime() > currAlertsLastModified))
 						{
