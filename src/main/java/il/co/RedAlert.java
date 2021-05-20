@@ -15,24 +15,19 @@ import java.util.*;
 @SuppressWarnings({"StringBufferReplaceableByString", "InfiniteLoopStatement"})
 public class RedAlert
 {
+
+	private static Settings settings = null;
+	private static long settingsLastModified = 0;
+	private static List<String> districtsNotFound = null;
+
 	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException
 	{
-		System.err.println("Preparing Red Alert listener, press \"q\" to quit...");
-		new Thread(() ->
-		{
-			final Scanner scanner = new Scanner(System.in);
-			while (true)
-				if (scanner.nextLine().equals("q"))
-				{
-					System.err.println("Bye Bye!");
-					System.exit(0);
-				}
-		}).start();
+		System.err.println("Preparing Red Alert listener, enter \"t\" for sound test or \"q\" to quit...");
 		try (Clip clip = AudioSystem.getClip();
 		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(RedAlert.class.getResourceAsStream("/alarmSound.wav")))))
 		{
 			// Updated as of 17.5.2021
-			final String[] DISTRICTS = new String[]{
+			final String[] districts = new String[]{
 					"אזור תעשייה שחורת",
 					"אילות",
 					"אילת",
@@ -1405,15 +1400,31 @@ public class RedAlert
 					"תל יוסף",
 					"תל עדשים",
 			};
-			Arrays.parallelSort(DISTRICTS);
+			Arrays.parallelSort(districts);
 			clip.open(audioInputStream);
+			new Thread(() ->
+			{
+				final Scanner scanner = new Scanner(System.in);
+				while (true)
+					switch (scanner.nextLine())
+					{
+						case "q", "exit", "quit" -> {
+							System.err.println("Bye Bye!");
+							System.exit(0);
+						}
+						case "t", "test", "test sound", "test-sound" -> {
+							System.err.println("Testing sound...");
+							clip.setFramePosition(0);
+							clip.start();
+						}
+					}
+			}).start();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-			final ObjectMapper MAPPER = new ObjectMapper();
+			final ObjectMapper objectMapper = new ObjectMapper();
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			final File settingsFile = new File("red-alert-settings.json");
-			long currAlertsLastModified = 0, settingsLastModified = 0;
-			Settings settings = null;
-			List<String> districtsNotFound = null;
+			loadSettings(districts, objectMapper, settingsFile);
+			long currAlertsLastModified = 0;
 			System.err.println("Listening...");
 			while (true)
 				try
@@ -1439,23 +1450,9 @@ public class RedAlert
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified.getTime();
 
-							final long settingsLastModifiedTemp = settingsFile.lastModified();
-							if (settingsLastModifiedTemp > settingsLastModified)
-							{
-								System.err.println("Info: (re)loading \"red-alert-settings.json\"");
-								settingsLastModified = settingsLastModifiedTemp;
-								settings = MAPPER.readValue(settingsFile, Settings.class);
-								districtsNotFound = settings.districtsOfInterest().stream()
-										.filter(district -> Arrays.binarySearch(DISTRICTS, district) < 0)
-										.toList();
-							} else if (settingsLastModifiedTemp == 0)
-							{
-								settings = null;
-								settingsLastModified = 0;
-								districtsNotFound = null;
-							}
+							loadSettings(districts, objectMapper, settingsFile);
 
-							final List<String> data = MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
+							final List<String> data = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
 
 							if (settings == null || settings.isDisplayAll())
 							{
@@ -1491,6 +1488,25 @@ public class RedAlert
 				{
 					e.printStackTrace();
 				}
+		}
+	}
+
+	private static void loadSettings(String[] districts, ObjectMapper objectMapper, File settingsFile) throws IOException
+	{
+		final long settingsLastModifiedTemp = settingsFile.lastModified();
+		if (settingsLastModifiedTemp > settingsLastModified)
+		{
+			System.err.println("Info: (re)loading settings from file \"red-alert-settings.json\"");
+			settings = objectMapper.readValue(settingsFile, Settings.class);
+			settingsLastModified = settingsLastModifiedTemp;
+			districtsNotFound = settings.districtsOfInterest().parallelStream()
+					.filter(district -> Arrays.binarySearch(districts, district) < 0)
+					.toList();
+		} else if (settingsLastModifiedTemp == 0)
+		{
+			settings = null;
+			settingsLastModified = 0;
+			districtsNotFound = null;
 		}
 	}
 
