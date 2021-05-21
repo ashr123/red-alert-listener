@@ -11,6 +11,8 @@ import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @SuppressWarnings({"StringBufferReplaceableByString", "InfiniteLoopStatement"})
 public class RedAlert
@@ -18,7 +20,7 @@ public class RedAlert
 
 	private static Settings settings = null;
 	private static long settingsLastModified = 0;
-	private static List<String> districtsNotFound = null;
+	private static Set<String> districtsNotFound = Collections.emptySet();
 
 	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException
 	{
@@ -1423,6 +1425,7 @@ public class RedAlert
 			final ObjectMapper objectMapper = new ObjectMapper();
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			final File settingsFile = new File("red-alert-settings.json");
+			Set<String> prevData = Collections.emptySet();
 			loadSettings(districts, objectMapper, settingsFile);
 			long currAlertsLastModified = 0;
 			System.err.println("Listening...");
@@ -1445,14 +1448,16 @@ public class RedAlert
 						}
 						final long contentLength = httpURLConnection.getContentLengthLong();
 						final String lastModifiedStr;
-						if (contentLength > 0 && ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null || (alertsLastModified = SIMPLE_DATE_FORMAT.parse(lastModifiedStr)).getTime() > currAlertsLastModified))
+						if (contentLength == 0)
+							prevData = Collections.emptySet();
+						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null || (alertsLastModified = SIMPLE_DATE_FORMAT.parse(lastModifiedStr)).getTime() > currAlertsLastModified)
 						{
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified.getTime();
 
 							loadSettings(districts, objectMapper, settingsFile);
 
-							final List<String> data = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
+							final Set<String> data = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
 
 							if (settings == null || settings.isDisplayAll())
 							{
@@ -1462,16 +1467,17 @@ public class RedAlert
 										.append("Response: ").append(data));
 							}
 
-							if (districtsNotFound != null && !districtsNotFound.isEmpty())
+							if (!districtsNotFound.isEmpty())
 								System.err.println("Warning: those districts don't exist: " + districtsNotFound);
 							if (settings != null)
 							{
-								final List<String> importantDistricts = (data.size() > settings.districtsOfInterest().size() ?
+								@SuppressWarnings("SuspiciousMethodCalls") final Set<String> importantDistricts = (data.size() > settings.districtsOfInterest().size() ?
 										data.parallelStream()
-												.filter(settings.districtsOfInterest()::contains) :
+												.filter(Predicate.not(prevData::contains).and(settings.districtsOfInterest()::contains)) :
 										settings.districtsOfInterest().parallelStream()
-												.filter(data::contains))
-										.toList();
+												.filter(Predicate.not(prevData::contains).and(data::contains)))
+										.collect(Collectors.toSet());
+								prevData = data;
 								if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
 								{
 									clip.setFramePosition(0);
@@ -1501,16 +1507,16 @@ public class RedAlert
 			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
 					.filter(district -> Arrays.binarySearch(districts, district) < 0)
-					.toList();
+					.collect(Collectors.toSet());
 		} else if (settingsLastModifiedTemp == 0)
 		{
 			settings = null;
 			settingsLastModified = 0;
-			districtsNotFound = null;
+			districtsNotFound = Collections.emptySet();
 		}
 	}
 
-	public static final record RedAlertResponse(List<String> data, long id, String title)
+	public static final record RedAlertResponse(Set<String> data, long id, String title)
 	{
 	}
 
@@ -1518,7 +1524,7 @@ public class RedAlert
 	                                    boolean isAlertAll,
 	                                    boolean isDisplayAll,
 	                                    int soundLoopCount,
-	                                    List<String> districtsOfInterest)
+	                                    Set<String> districtsOfInterest)
 	{
 	}
 }
