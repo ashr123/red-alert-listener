@@ -29,7 +29,7 @@ public class RedAlert
 		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(RedAlert.class.getResourceAsStream("/alarmSound.wav")))))
 		{
 			// Updated as of 17.5.2021
-			final String[] districts = new String[]{
+			final Set<String> districts = new HashSet<>(Arrays.asList(
 					"אזור תעשייה שחורת",
 					"אילות",
 					"אילת",
@@ -1401,8 +1401,8 @@ public class RedAlert
 					"שריד",
 					"תל יוסף",
 					"תל עדשים",
-			};
-			Arrays.parallelSort(districts);
+					"תמרת"
+			));
 			clip.open(audioInputStream);
 			new Thread(() ->
 			{
@@ -1497,7 +1497,7 @@ public class RedAlert
 		}
 	}
 
-	private static void loadSettings(String[] districts, ObjectMapper objectMapper, File settingsFile) throws IOException
+	private static void loadSettings(Set<String> districts, ObjectMapper objectMapper, File settingsFile) throws IOException
 	{
 		final long settingsLastModifiedTemp = settingsFile.lastModified();
 		if (settingsLastModifiedTemp > settingsLastModified)
@@ -1506,7 +1506,7 @@ public class RedAlert
 			settings = objectMapper.readValue(settingsFile, Settings.class);
 			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
-					.filter(district -> Arrays.binarySearch(districts, district) < 0)
+					.filter(districts::contains)
 					.collect(Collectors.toSet());
 		} else if (settingsLastModifiedTemp == 0)
 		{
