@@ -1436,8 +1436,8 @@ public class RedAlert
 					{
 						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-he/Pakar.aspx");
 						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
-						httpURLConnection.setConnectTimeout(5000);
-						httpURLConnection.setReadTimeout(10000);
+						httpURLConnection.setConnectTimeout(settings.connectTimeout());
+						httpURLConnection.setReadTimeout(settings.readTimeout());
 						httpURLConnection.setUseCaches(false);
 
 						Date alertsLastModified = null;
@@ -1523,6 +1523,8 @@ public class RedAlert
 	public static final record Settings(boolean isMakeSound,
 	                                    boolean isAlertAll,
 	                                    boolean isDisplayAll,
+	                                    int connectTimeout,
+	                                    int readTimeout,
 	                                    int soundLoopCount,
 	                                    Set<String> districtsOfInterest)
 	{
