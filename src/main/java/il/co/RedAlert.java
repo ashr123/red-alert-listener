@@ -1492,7 +1492,7 @@ public class RedAlert
 						System.err.println("Error: Not a HTTP connection!");
 				} catch (IOException | ParseException e)
 				{
-					e.printStackTrace();
+					System.err.println("Exception at " + new Date() + ": " + e);
 				}
 		}
 	}
