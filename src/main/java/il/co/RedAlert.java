@@ -21,6 +21,7 @@ public class RedAlert
 	private static Settings settings = null;
 	private static long settingsLastModified = 0;
 	private static Set<String> districtsNotFound = Collections.emptySet();
+	private static HttpURLConnection httpURLConnectionField;
 
 	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException
 	{
@@ -1412,6 +1413,13 @@ public class RedAlert
 					{
 						case "q", "exit", "quit" -> {
 							System.err.println("Bye Bye!");
+							try (clip; audioInputStream)
+							{
+								httpURLConnectionField.disconnect();
+							} catch (IOException e)
+							{
+								e.printStackTrace();
+							}
 							System.exit(0);
 						}
 						case "t", "test", "test sound", "test-sound" -> {
@@ -1434,6 +1442,7 @@ public class RedAlert
 				{
 					if (url.openConnection() instanceof HttpURLConnection httpURLConnection)
 					{
+						httpURLConnectionField = httpURLConnection;
 						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-he/Pakar.aspx");
 						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
 						httpURLConnection.setConnectTimeout(settings.connectTimeout());
