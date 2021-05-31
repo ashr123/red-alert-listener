@@ -1440,12 +1440,13 @@ public class RedAlert
 						httpURLConnection.setReadTimeout(settings.readTimeout());
 						httpURLConnection.setUseCaches(false);
 
-						Date alertsLastModified = null;
 						if (httpURLConnection.getResponseCode() != 200)
 						{
-							System.err.println("Error: connection " + httpURLConnection.getResponseMessage());
+							System.err.println("Error at " + new Date() + ": connection " + httpURLConnection.getResponseMessage());
+							sleep();
 							continue;
 						}
+						Date alertsLastModified = null;
 						final long contentLength = httpURLConnection.getContentLengthLong();
 						final String lastModifiedStr;
 						if (contentLength == 0)
@@ -1489,11 +1490,24 @@ public class RedAlert
 								System.err.println("Warning: Settings file doesn't exists!");
 						}
 					} else
-						System.err.println("Error: Not a HTTP connection!");
+						System.err.println("Error at " + new Date() + ": Not a HTTP connection!");
 				} catch (IOException | ParseException e)
 				{
 					System.err.println("Exception at " + new Date() + ": " + e);
+					if (e instanceof IOException)
+						sleep();
 				}
+		}
+	}
+
+	private static void sleep()
+	{
+		try
+		{
+			Thread.sleep(1000);
+		} catch (InterruptedException interruptedException)
+		{
+			interruptedException.printStackTrace();
 		}
 	}
 
