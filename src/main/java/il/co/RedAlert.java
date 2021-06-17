@@ -1477,8 +1477,7 @@ public class RedAlert
 										.append("Response: ").append(data));
 							}
 
-							if (!districtsNotFound.isEmpty())
-								System.err.println("Warning: those districts don't exist: " + districtsNotFound);
+							printDistrictsNotFoundWarning();
 							if (settings != null)
 							{
 								@SuppressWarnings("SuspiciousMethodCalls") final Set<String> importantDistricts = (data.size() > settings.districtsOfInterest().size() ?
@@ -1509,6 +1508,12 @@ public class RedAlert
 		}
 	}
 
+	private static void printDistrictsNotFoundWarning()
+	{
+		if (!districtsNotFound.isEmpty())
+			System.err.println("Warning: those districts don't exist: " + districtsNotFound);
+	}
+
 	private static void sleep()
 	{
 		try
@@ -1529,8 +1534,9 @@ public class RedAlert
 			settings = objectMapper.readValue(settingsFile, Settings.class);
 			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
-					.filter(districts::contains)
+					.filter(Predicate.not(districts::contains))
 					.collect(Collectors.toSet());
+			printDistrictsNotFoundWarning();
 		} else if (settingsLastModifiedTemp == 0)
 		{
 			settings = null;
