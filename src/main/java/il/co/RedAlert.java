@@ -1481,7 +1481,8 @@ public class RedAlert
 							printDistrictsNotFoundWarning();
 							if (settings != null)
 							{
-								@SuppressWarnings("SuspiciousMethodCalls") final Set<String> importantDistricts = (data.size() > settings.districtsOfInterest().size() ?
+								@SuppressWarnings("SuspiciousMethodCalls")
+								final Set<String> importantDistricts = (data.size() > settings.districtsOfInterest().size() ?
 										data.parallelStream()
 												.filter(Predicate.not(prevData::contains).and(settings.districtsOfInterest()::contains)) :
 										settings.districtsOfInterest().parallelStream()
