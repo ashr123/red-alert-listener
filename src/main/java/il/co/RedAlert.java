@@ -1449,7 +1449,7 @@ public class RedAlert
 						httpURLConnection.setReadTimeout(settings.readTimeout());
 						httpURLConnection.setUseCaches(false);
 
-						if (httpURLConnection.getResponseCode() != 200)
+						if (httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_OK)
 						{
 							System.err.println("Error at " + new Date() + ": connection " + httpURLConnection.getResponseMessage());
 							sleep();
@@ -1460,7 +1460,8 @@ public class RedAlert
 						final String lastModifiedStr;
 						if (contentLength == 0)
 							prevData = Collections.emptySet();
-						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null || (alertsLastModified = SIMPLE_DATE_FORMAT.parse(lastModifiedStr)).getTime() > currAlertsLastModified)
+						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null ||
+								(alertsLastModified = SIMPLE_DATE_FORMAT.parse(lastModifiedStr)).getTime() > currAlertsLastModified)
 						{
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified.getTime();
