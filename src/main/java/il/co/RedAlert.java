@@ -1483,9 +1483,10 @@ public class RedAlert
 							{
 								final Set<String> importantDistricts = (data.size() > settings.districtsOfInterest().size() ?
 										data.parallelStream()
-												.filter(Predicate.not(prevData::contains).and(settings.districtsOfInterest()::contains)) :
+												.filter(settings.districtsOfInterest()::contains) :
 										settings.districtsOfInterest().parallelStream()
-												.filter(Predicate.not(prevData::contains).and(data::contains)))
+												.filter(data::contains))
+										.filter(Predicate.not(prevData::contains))
 										.collect(Collectors.toSet());
 								prevData = data;
 								if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
