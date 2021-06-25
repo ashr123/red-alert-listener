@@ -5,6 +5,7 @@
   "connectTimeout": 5000,
   "readTimeout": 10000,
   "soundLoopCount": 15,
+  "language": "HE",
   "districtsOfInterest": [
     "נהריה",
     "רמת גן - מערב",

@@ -6,7 +6,7 @@
 
 	<groupId>il.co</groupId>
 	<artifactId>red-alert</artifactId>
-	<version>2.5.3</version>
+	<version>3.0.0</version>
 
 	<properties>
 		<maven.compiler.source>16</maven.compiler.source>
@@ -40,7 +40,7 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
-			<version>2.12.3</version>
+			<version>[2.12.3,]</version>
 		</dependency>
 	</dependencies>
 
@@ -69,23 +69,5 @@
 				</configuration>
 			</plugin>
 		</plugins>
-		<!--		<resources>-->
-		<!--			<resource>-->
-		<!--				<filtering>true</filtering>&lt;!&ndash; if it is neccessary &ndash;&gt;-->
-		<!--				<directory>${project.basedir}</directory>&lt;!&ndash; from &ndash;&gt;-->
-		<!--				<targetPath>${project.build.directory}</targetPath>&lt;!&ndash; to &ndash;&gt;-->
-		<!--				<includes>&lt;!&ndash; what &ndash;&gt;-->
-		<!--					<include>red-alert-settings.json</include>-->
-		<!--				</includes>-->
-		<!--			</resource>-->
-		<!--			<resource>-->
-		<!--				<filtering>true</filtering>&lt;!&ndash; if it is neccessary &ndash;&gt;-->
-		<!--				<directory>${project.basedir}/src/main/resources</directory>&lt;!&ndash; from &ndash;&gt;-->
-		<!--				<targetPath>${project.build.directory}/classes</targetPath>&lt;!&ndash; to &ndash;&gt;-->
-		<!--				<includes>&lt;!&ndash; what &ndash;&gt;-->
-		<!--					<include>alarmSound.wav</include>-->
-		<!--				</includes>-->
-		<!--			</resource>-->
-		<!--		</resources>-->
 	</build>
 </project>
