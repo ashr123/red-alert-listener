@@ -67,6 +67,7 @@ public class RedAlert
 				{
 					if (url.openConnection() instanceof HttpURLConnection httpURLConnection)
 					{
+						loadSettings(objectMapper, settingsFile);
 						httpURLConnectionField = httpURLConnection;
 						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-" + settings.language().name().toLowerCase() + "/Pakar.aspx");
 						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
@@ -90,8 +91,6 @@ public class RedAlert
 						{
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified.getTime();
-
-							loadSettings(objectMapper, settingsFile);
 
 							final Set<String> data = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
 
