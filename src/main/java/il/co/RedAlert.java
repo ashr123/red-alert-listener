@@ -19,13 +19,13 @@ public class RedAlert
 {
 
 	private static final Settings DEFAULT_SETTINGS = new Settings(
-			true,
+			false,
 			false,
 			true,
 			5000,
 			10000,
 			15,
-			LanguageUtil.HE,
+			Language.HE,
 			Collections.emptySet()
 	);
 	private static Settings settings;
@@ -69,7 +69,8 @@ public class RedAlert
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			final File settingsFile = new File("red-alert-settings.json");
 			Set<String> prevData = Collections.emptySet();
-			loadSettings(objectMapper, settingsFile);
+			final Districts districts = objectMapper.readValue(RedAlert.class.getResourceAsStream("/districts.json"), Districts.class);
+			loadSettings(objectMapper, districts, settingsFile);
 			long currAlertsLastModified = 0;
 			System.err.println("Listening...");
 			while (true)
@@ -77,7 +78,7 @@ public class RedAlert
 				{
 					if (url.openConnection() instanceof HttpURLConnection httpURLConnection)
 					{
-						loadSettings(objectMapper, settingsFile);
+						loadSettings(objectMapper, districts, settingsFile);
 						httpURLConnectionField = httpURLConnection;
 						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-" + settings.language().name().toLowerCase() + "/Pakar.aspx");
 						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
@@ -102,25 +103,25 @@ public class RedAlert
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified.getTime();
 
-							final Set<String> data = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
+							final Set<String> translatedData = districts.getTranslation(objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data());
 
 							if (settings.isDisplayAll())
 							{
 								System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 										.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
 										.append("Current Date: ").append(new Date()).append(System.lineSeparator())
-										.append("Response: ").append(data));
+										.append("Response: ").append(translatedData));
 							}
 
 							printDistrictsNotFoundWarning();
-							final Set<String> importantDistricts = (data.size() > settings.districtsOfInterest().size() ?
-									data.parallelStream()
+							final Set<String> importantDistricts = (translatedData.size() > settings.districtsOfInterest().size() ?
+									translatedData.parallelStream()
 											.filter(settings.districtsOfInterest()::contains) :
 									settings.districtsOfInterest().parallelStream()
-											.filter(data::contains))
+											.filter(translatedData::contains))
 									.filter(Predicate.not(prevData::contains))
 									.collect(Collectors.toSet());
-							prevData = data;
+							prevData = translatedData;
 							if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
 							{
 								clip.setFramePosition(0);
@@ -157,7 +158,7 @@ public class RedAlert
 		}
 	}
 
-	private static void loadSettings(ObjectMapper objectMapper, File settingsFile) throws IOException
+	private static void loadSettings(ObjectMapper objectMapper, Districts districts, File settingsFile) throws IOException
 	{
 		final long settingsLastModifiedTemp = settingsFile.lastModified();
 		if (settingsLastModifiedTemp > settingsLastModified)
@@ -166,7 +167,7 @@ public class RedAlert
 			settings = objectMapper.readValue(settingsFile, Settings.class);
 			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
-					.filter(Predicate.not(settings.language().getDistricts()::contains))
+					.filter(Predicate.not(districts.getTranslatedDistricts()::contains))
 					.collect(Collectors.toSet());
 			printDistrictsNotFoundWarning();
 		} else if (settingsLastModifiedTemp == 0)
@@ -188,8 +189,38 @@ public class RedAlert
 	                                    int connectTimeout,
 	                                    int readTimeout,
 	                                    int soundLoopCount,
-	                                    LanguageUtil language,
+	                                    Language language,
 	                                    Set<String> districtsOfInterest)
 	{
+	}
+
+	private static record Districts(Map<String, String> HE,
+	                                Map<String, String> EN,
+	                                Map<String, String> AR,
+	                                Map<String, String> RU)
+	{
+		public Set<String> getTranslatedDistricts()
+		{
+			return new HashSet<>((switch (settings.language())
+					{
+						case HE -> HE();
+						case EN -> EN();
+						case AR -> AR();
+						case RU -> RU();
+					}).values());
+		}
+
+		public Set<String> getTranslation(Collection<String> labelHe)
+		{
+			return labelHe.parallelStream()
+					.map((switch (settings.language())
+							{
+								case HE -> HE();
+								case EN -> EN();
+								case AR -> AR();
+								case RU -> RU();
+							})::get)
+					.collect(Collectors.toSet());
+		}
 	}
 }
