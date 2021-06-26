@@ -210,9 +210,9 @@ public class RedAlert
 					}).values());
 		}
 
-		public Set<String> getTranslation(Collection<String> labelHe)
+		public Set<String> getTranslation(Collection<String> hebDistricts)
 		{
-			return labelHe.parallelStream()
+			return hebDistricts.parallelStream()
 					.map((switch (settings.language())
 							{
 								case HE -> HE();
