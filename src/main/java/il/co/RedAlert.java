@@ -18,7 +18,17 @@ import java.util.stream.Collectors;
 public class RedAlert
 {
 
-	private static Settings settings = null;
+	private static final Settings DEFAULT_SETTINGS = new Settings(
+			true,
+			false,
+			true,
+			5000,
+			10000,
+			15,
+			LanguageUtil.HE,
+			Collections.emptySet()
+	);
+	private static Settings settings;
 	private static long settingsLastModified = 0;
 	private static Set<String> districtsNotFound = Collections.emptySet();
 	private static HttpURLConnection httpURLConnectionField;
@@ -94,7 +104,7 @@ public class RedAlert
 
 							final Set<String> data = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data();
 
-							if (settings == null || settings.isDisplayAll())
+							if (settings.isDisplayAll())
 							{
 								System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 										.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
@@ -103,25 +113,21 @@ public class RedAlert
 							}
 
 							printDistrictsNotFoundWarning();
-							if (settings != null)
+							final Set<String> importantDistricts = (data.size() > settings.districtsOfInterest().size() ?
+									data.parallelStream()
+											.filter(settings.districtsOfInterest()::contains) :
+									settings.districtsOfInterest().parallelStream()
+											.filter(data::contains))
+									.filter(Predicate.not(prevData::contains))
+									.collect(Collectors.toSet());
+							prevData = data;
+							if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
 							{
-								final Set<String> importantDistricts = (data.size() > settings.districtsOfInterest().size() ?
-										data.parallelStream()
-												.filter(settings.districtsOfInterest()::contains) :
-										settings.districtsOfInterest().parallelStream()
-												.filter(data::contains))
-										.filter(Predicate.not(prevData::contains))
-										.collect(Collectors.toSet());
-								prevData = data;
-								if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
-								{
-									clip.setFramePosition(0);
-									clip.loop(settings.soundLoopCount());
-								}
-								if (!importantDistricts.isEmpty())
-									System.out.println("ALERT: " + importantDistricts);
-							} else
-								System.err.println("Warning: Settings file doesn't exists!");
+								clip.setFramePosition(0);
+								clip.loop(settings.soundLoopCount());
+							}
+							if (!importantDistricts.isEmpty())
+								System.out.println("ALERT: " + importantDistricts);
 						}
 					} else
 						System.err.println("Error at " + new Date() + ": Not a HTTP connection!");
@@ -165,7 +171,8 @@ public class RedAlert
 			printDistrictsNotFoundWarning();
 		} else if (settingsLastModifiedTemp == 0)
 		{
-			settings = null;
+			System.err.println("Couldn't find \"red-alert-settings.json\", using default settings");
+			settings = DEFAULT_SETTINGS;
 			settingsLastModified = 0;
 			districtsNotFound = Collections.emptySet();
 		}
