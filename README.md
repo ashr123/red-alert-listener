@@ -23,10 +23,7 @@
 
    Got it by running the following code on the DevTools console window on chrome
    ```javascript
-   console.log(JSON.stringify(districts.reduce((previousValue, {label_he, label}) => ({
-   	...previousValue,
-   	[label_he]: label
-   }), {})));
+   console.log(JSON.stringify(districts.reduce((result, {label_he, label}) => (result[label_he] = label, result), {})))
    ```
 
    Legal districts (and their translation) can be found in [districts.json](src/main/resources/districts.json) by

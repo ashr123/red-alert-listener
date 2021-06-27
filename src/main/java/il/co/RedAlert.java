@@ -68,9 +68,9 @@ public class RedAlert
 			final ObjectMapper objectMapper = new ObjectMapper();
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			final File settingsFile = new File("red-alert-settings.json");
-			Set<String> prevData = Collections.emptySet();
 			final Districts districts = objectMapper.readValue(RedAlert.class.getResourceAsStream("/districts.json"), Districts.class);
 			loadSettings(objectMapper, districts, settingsFile);
+			Set<String> prevData = Collections.emptySet();
 			long currAlertsLastModified = 0;
 			System.err.println("Listening...");
 			while (true)
