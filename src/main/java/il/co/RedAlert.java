@@ -35,7 +35,7 @@ public class RedAlert
 
 	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException
 	{
-		System.err.println("Preparing Red Alert listener, enter \"t\" for sound test or \"q\" to quit...");
+		System.err.println("Preparing Red Alert listener, enter \"t\" for sound test, \"c\" for clearing the screen or \"q\" to quit...");
 		try (Clip clip = AudioSystem.getClip();
 		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(RedAlert.class.getResourceAsStream("/alarmSound.wav")))))
 		{
@@ -62,6 +62,7 @@ public class RedAlert
 							clip.setFramePosition(0);
 							clip.start();
 						}
+						case "c", "clear" -> System.err.print("\033[H\033[2J");
 					}
 			}).start();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
