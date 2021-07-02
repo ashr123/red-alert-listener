@@ -103,7 +103,10 @@ public class RedAlert
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified.getTime();
 
-							final Set<String> translatedData = districts.getTranslation(objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data());
+							final Set<String> translatedData = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class)
+									.data().parallelStream()
+									.map(districts.getLanguage()::get)
+									.collect(Collectors.toSet());
 
 							if (settings.isDisplayAll())
 							{
@@ -167,7 +170,7 @@ public class RedAlert
 			settings = objectMapper.readValue(settingsFile, Settings.class);
 			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
-					.filter(Predicate.not(districts.getTranslatedDistricts()::contains))
+					.filter(Predicate.not(new HashSet<>(districts.getLanguage().values())::contains))
 					.collect(Collectors.toSet());
 			printDistrictsNotFoundWarning();
 		} else if (settingsLastModifiedTemp == 0)
@@ -179,48 +182,43 @@ public class RedAlert
 		}
 	}
 
-	public static final record RedAlertResponse(Set<String> data, long id, String title)
+	public static final record RedAlertResponse(
+			Set<String> data,
+			long id,
+			String title
+	)
 	{
 	}
 
-	public static final record Settings(boolean isMakeSound,
-	                                    boolean isAlertAll,
-	                                    boolean isDisplayAll,
-	                                    int connectTimeout,
-	                                    int readTimeout,
-	                                    int soundLoopCount,
-	                                    Language language,
-	                                    Set<String> districtsOfInterest)
+	public static final record Settings(
+			boolean isMakeSound,
+			boolean isAlertAll,
+			boolean isDisplayAll,
+			int connectTimeout,
+			int readTimeout,
+			int soundLoopCount,
+			Language language,
+			Set<String> districtsOfInterest
+	)
 	{
 	}
 
-	private static record Districts(Map<String, String> HE,
-	                                Map<String, String> EN,
-	                                Map<String, String> AR,
-	                                Map<String, String> RU)
+	private static record Districts(
+			Map<String, String> HE,
+			Map<String, String> EN,
+			Map<String, String> AR,
+			Map<String, String> RU
+	)
 	{
-		public Set<String> getTranslatedDistricts()
+		private Map<String, String> getLanguage()
 		{
-			return new HashSet<>((switch (settings.language())
+			return switch (settings.language())
 					{
 						case HE -> HE();
 						case EN -> EN();
 						case AR -> AR();
 						case RU -> RU();
-					}).values());
-		}
-
-		public Set<String> getTranslation(Collection<String> hebDistricts)
-		{
-			return hebDistricts.parallelStream()
-					.map((switch (settings.language())
-							{
-								case HE -> HE();
-								case EN -> EN();
-								case AR -> AR();
-								case RU -> RU();
-							})::get)
-					.collect(Collectors.toSet());
+					};
 		}
 	}
 }
