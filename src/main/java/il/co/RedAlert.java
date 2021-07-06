@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 @SuppressWarnings({"StringBufferReplaceableByString", "InfiniteLoopStatement"})
 public class RedAlert
 {
-
 	private static final Settings DEFAULT_SETTINGS = new Settings(
 			false,
 			false,
