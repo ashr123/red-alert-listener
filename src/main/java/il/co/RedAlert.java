@@ -141,6 +141,10 @@ public class RedAlert
 					if (e instanceof IOException)
 						sleep();
 				}
+		} finally
+		{
+			System.err.println("Fatal error at " + new Date() + ": Closing connection end exiting...");
+			httpURLConnectionField.disconnect();
 		}
 	}
 
