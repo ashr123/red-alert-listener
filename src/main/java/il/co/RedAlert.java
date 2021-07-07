@@ -49,7 +49,8 @@ public class RedAlert
 							System.err.println("Bye Bye!");
 							try (clip; audioInputStream)
 							{
-								httpURLConnectionField.disconnect();
+								if (httpURLConnectionField != null)
+									httpURLConnectionField.disconnect();
 							} catch (IOException e)
 							{
 								e.printStackTrace();
@@ -144,7 +145,9 @@ public class RedAlert
 		} finally
 		{
 			System.err.println("Fatal error at " + new Date() + ": Closing connection end exiting...");
-			httpURLConnectionField.disconnect();
+			if (httpURLConnectionField != null)
+				httpURLConnectionField.disconnect();
+			System.exit(1);
 		}
 	}
 
