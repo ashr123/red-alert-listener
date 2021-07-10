@@ -10,6 +10,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -72,7 +73,7 @@ public class RedAlert
 			final Districts districts = objectMapper.readValue(RedAlert.class.getResourceAsStream("/districts.json"), Districts.class);
 			loadSettings(objectMapper, districts, settingsFile);
 			Set<String> prevData = Collections.emptySet();
-			long currAlertsLastModified = 0;
+			Date currAlertsLastModified = Date.from(Instant.EPOCH);
 			System.err.println("Listening...");
 			while (true)
 				try
@@ -99,10 +100,10 @@ public class RedAlert
 						if (contentLength == 0)
 							prevData = Collections.emptySet();
 						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null ||
-								(alertsLastModified = SIMPLE_DATE_FORMAT.parse(lastModifiedStr)).getTime() > currAlertsLastModified)
+								(alertsLastModified = SIMPLE_DATE_FORMAT.parse(lastModifiedStr)).after(currAlertsLastModified))
 						{
 							if (alertsLastModified != null)
-								currAlertsLastModified = alertsLastModified.getTime();
+								currAlertsLastModified = alertsLastModified;
 
 							final Set<String> translatedData = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class)
 									.data().parallelStream()
