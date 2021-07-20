@@ -17,9 +17,9 @@
    in [red-alert-settings.json](red-alert-settings.json).
 3. Supports all official language:
 	- Hebrew (code `HE`)
-	- English (code `EN`) (Need to be tested)
-	- Russian (code `RU`) (Need to be tested)
-	- Arabic (code `AR`) (Need to be tested)
+	- English (code `EN`)
+	- Russian (code `RU`)
+	- Arabic (code `AR`)
 
    Got it by running the following code on the DevTools console window on chrome
    ```javascript
@@ -32,3 +32,4 @@
 ## Demonstration
 
 ![demo](pic.png "Demo")
+![demo](pic2.png "Demo")
