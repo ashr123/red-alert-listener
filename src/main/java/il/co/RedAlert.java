@@ -15,12 +15,13 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-@SuppressWarnings({"StringBufferReplaceableByString", "InfiniteLoopStatement"})
+@SuppressWarnings({"InfiniteLoopStatement"})
 public class RedAlert
 {
 	private static final Settings DEFAULT_SETTINGS = new Settings(
 			false,
 			false,
+			true,
 			true,
 			5000,
 			10000,
@@ -105,17 +106,21 @@ public class RedAlert
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified;
 
-							final Set<String> translatedData = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class)
-									.data().parallelStream()
-									.map(districts.getLanguage()::get)
-									.collect(Collectors.toSet());
+							final Set<String>
+									data = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data(),
+									translatedData = data.parallelStream()
+											.map(districts.getLanguage()::get)
+											.collect(Collectors.toSet());
 
 							if (settings.isDisplayAll())
 							{
-								System.out.println(new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
+								final StringBuilder output = new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 										.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
-										.append("Current Date: ").append(new Date()).append(System.lineSeparator())
-										.append("Response: ").append(translatedData));
+										.append("Current Date: ").append(new Date()).append(System.lineSeparator());
+								System.out.println((settings.isDisplayOriginalDistrictsNames() ?
+										output.append("Districts: ").append(data).append(System.lineSeparator()) :
+										output)
+										.append("Translated districts: ").append(translatedData));
 							}
 
 							printDistrictsNotFoundWarning();
@@ -202,6 +207,7 @@ public class RedAlert
 			boolean isMakeSound,
 			boolean isAlertAll,
 			boolean isDisplayAll,
+			boolean isDisplayOriginalDistrictsNames,
 			int connectTimeout,
 			int readTimeout,
 			int soundLoopCount,
