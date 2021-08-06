@@ -114,7 +114,8 @@ public class RedAlert
 
 							if (settings.isDisplayAll())
 							{
-								final StringBuilder output = new StringBuilder("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
+								final StringBuilder output = new StringBuilder("Content Length: ").append(contentLength)
+										.append(" bytes").append(System.lineSeparator())
 										.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
 										.append("Current Date: ").append(new Date()).append(System.lineSeparator());
 								System.out.println((settings.isDisplayOriginalDistrictsNames() ?
