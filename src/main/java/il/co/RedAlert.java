@@ -22,7 +22,7 @@ public class RedAlert
 			false,
 			false,
 			true,
-			true,
+			false,
 			5000,
 			10000,
 			15,
@@ -106,22 +106,21 @@ public class RedAlert
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified;
 
-							final Set<String>
-									data = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class).data(),
-									translatedData = data.parallelStream()
-											.map(districts.getLanguage()::get)
-											.collect(Collectors.toSet());
+							final RedAlertResponse redAlertResponse = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class);
+							final Set<String> translatedData = redAlertResponse.data().parallelStream()
+									.map(districts.getLanguage()::get)
+									.collect(Collectors.toSet());
 
 							if (settings.isDisplayAll())
 							{
 								final StringBuilder output = new StringBuilder("Content Length: ").append(contentLength)
 										.append(" bytes").append(System.lineSeparator())
 										.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
-										.append("Current Date: ").append(new Date()).append(System.lineSeparator());
-								System.out.println((settings.isDisplayOriginalDistrictsNames() ?
-										output.append("Districts: ").append(data).append(System.lineSeparator()) :
-										output)
-										.append("Translated districts: ").append(translatedData));
+										.append("Current Date: ").append(new Date()).append(System.lineSeparator())
+										.append("Translated districts: ").append(translatedData);
+								System.out.println(settings.isDisplayOriginalResponseContent() ?
+										output.append(System.lineSeparator()).append("Original response content: ").append(redAlertResponse) :
+										output);
 							}
 
 							printDistrictsNotFoundWarning();
@@ -208,7 +207,7 @@ public class RedAlert
 			boolean isMakeSound,
 			boolean isAlertAll,
 			boolean isDisplayAll,
-			boolean isDisplayOriginalDistrictsNames,
+			boolean isDisplayOriginalResponseContent,
 			int connectTimeout,
 			int readTimeout,
 			int soundLoopCount,
