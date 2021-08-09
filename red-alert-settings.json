@@ -2,7 +2,7 @@
   "isMakeSound": true,
   "isAlertAll": false,
   "isDisplayAll": true,
-  "isDisplayOriginalResponseContent": true,
+  "isDisplayOriginalResponseContent": false,
   "connectTimeout": 5000,
   "readTimeout": 10000,
   "soundLoopCount": 15,
