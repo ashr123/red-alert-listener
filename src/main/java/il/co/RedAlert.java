@@ -111,17 +111,15 @@ public class RedAlert
 									.map(districts.getLanguage()::get)
 									.collect(Collectors.toSet());
 
+							final StringBuilder output = new StringBuilder();
 							if (settings.isDisplayAll())
-							{
-								final StringBuilder output = new StringBuilder("Content Length: ").append(contentLength)
+								output.append("Content Length: ").append(contentLength)
 										.append(" bytes").append(System.lineSeparator())
 										.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
 										.append("Current Date: ").append(new Date()).append(System.lineSeparator())
-										.append("Translated districts: ").append(translatedData);
-								System.out.println(settings.isDisplayOriginalResponseContent() ?
-										output.append(System.lineSeparator()).append("Original response content: ").append(redAlertResponse) :
-										output);
-							}
+										.append("Translated districts: ").append(translatedData).append(System.lineSeparator());
+							if (settings.isDisplayOriginalResponseContent())
+								output.append("Original response content: ").append(redAlertResponse).append(System.lineSeparator());
 
 							printDistrictsNotFoundWarning();
 							final Set<String> importantDistricts = (translatedData.size() > settings.districtsOfInterest().size() ?
@@ -138,7 +136,8 @@ public class RedAlert
 								clip.loop(settings.soundLoopCount());
 							}
 							if (!importantDistricts.isEmpty())
-								System.out.println("ALERT: " + importantDistricts);
+								output.append("ALERT: ").append(importantDistricts).append(System.lineSeparator());
+							System.out.println(output);
 						}
 					} else
 						System.err.println("Error at " + new Date() + ": Not a HTTP connection!");
