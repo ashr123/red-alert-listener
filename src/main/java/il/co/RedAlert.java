@@ -30,7 +30,7 @@ public class RedAlert
 			Collections.emptySet()
 	);
 	private static Settings settings;
-	private static long settingsLastModified = 0;
+	private static long settingsLastModified;
 	private static Set<String> districtsNotFound = Collections.emptySet();
 	private static HttpURLConnection httpURLConnectionField;
 
@@ -137,7 +137,8 @@ public class RedAlert
 							}
 							if (!importantDistricts.isEmpty())
 								output.append("ALERT: ").append(importantDistricts).append(System.lineSeparator());
-							System.out.println(output);
+							if (!output.isEmpty())
+								System.out.println(output);
 						}
 					} else
 						System.err.println("Error at " + new Date() + ": Not a HTTP connection!");
