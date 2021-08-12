@@ -64,7 +64,7 @@ public class RedAlert
 							clip.setFramePosition(0);
 							clip.start();
 						}
-						case "c", "clear" -> System.err.print("\033[H\033[2J");
+						case "c", "clear" -> System.err.print("\033[H\033[2J" + System.lineSeparator() + "Listening...");
 					}
 			}).start();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
