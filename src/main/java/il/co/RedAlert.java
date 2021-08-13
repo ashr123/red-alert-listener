@@ -15,28 +15,34 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-@SuppressWarnings({"InfiniteLoopStatement"})
 public class RedAlert
 {
-	private static final Settings DEFAULT_SETTINGS = new Settings(
-			false,
-			false,
-			true,
-			false,
-			5000,
-			10000,
-			15,
-			Language.HE,
-			Collections.emptySet()
-	);
+	private static final Settings DEFAULT_SETTINGS;
 	private static Settings settings;
 	private static long settingsLastModified;
-	private static Set<String> districtsNotFound = Collections.emptySet();
+	private static Set<String> districtsNotFound;
 	private static HttpURLConnection httpURLConnectionField;
+	private static boolean isContinue = true;
 
-	public static void main(String... args) throws IOException, UnsupportedAudioFileException, LineUnavailableException
+	static
 	{
-		System.err.println("Preparing Red Alert listener, enter \"t\" for sound test, \"c\" for clearing the screen or \"q\" to quit...");
+		System.err.println("Preparing Red Alert Listener...");
+		DEFAULT_SETTINGS = new Settings(
+				false,
+				false,
+				true,
+				false,
+				5000,
+				10000,
+				15,
+				Language.HE,
+				Collections.emptySet()
+		);
+		districtsNotFound = Collections.emptySet();
+	}
+
+	public static void main(String... args)
+	{
 		try (Clip clip = AudioSystem.getClip();
 		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(RedAlert.class.getResourceAsStream("/alarmSound.wav")))))
 		{
@@ -44,27 +50,21 @@ public class RedAlert
 			new Thread(() ->
 			{
 				final Scanner scanner = new Scanner(System.in);
+				System.err.println("Enter \"t\" for sound test, \"c\" for clearing the screen or \"q\" to quit.");
 				while (true)
 					switch (scanner.nextLine())
 					{
-						case "q", "exit", "quit" -> {
+						case "q" -> {
 							System.err.println("Bye Bye!");
-							try (clip; audioInputStream)
-							{
-								if (httpURLConnectionField != null)
-									httpURLConnectionField.disconnect();
-							} catch (IOException e)
-							{
-								e.printStackTrace();
-							}
-							System.exit(0);
+							isContinue = false;
+							return;
 						}
-						case "t", "test", "test sound", "test-sound" -> {
+						case "t" -> {
 							System.err.println("Testing sound...");
 							clip.setFramePosition(0);
 							clip.start();
 						}
-						case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
+						case "c" -> System.err.println("\033[H\033[2JListening...");
 					}
 			}).start();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
@@ -76,7 +76,7 @@ public class RedAlert
 			Set<String> prevData = Collections.emptySet();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
 			System.err.println("Listening...");
-			while (true)
+			while (isContinue)
 				try
 				{
 					if (url.openConnection() instanceof HttpURLConnection httpURLConnection)
@@ -148,13 +148,16 @@ public class RedAlert
 					if (e instanceof IOException)
 						sleep();
 				}
-		} finally
+		} catch (UnsupportedAudioFileException | LineUnavailableException | IOException e)
 		{
-			System.err.println("Fatal error at " + new Date() + ": Closing connection end exiting...");
+			System.err.println("Fatal error at " + new Date() + ": " + e + System.lineSeparator() +
+					"Closing connection end exiting...");
 			if (httpURLConnectionField != null)
 				httpURLConnectionField.disconnect();
 			System.exit(1);
 		}
+		if (httpURLConnectionField != null)
+			httpURLConnectionField.disconnect();
 	}
 
 	private static void printDistrictsNotFoundWarning()
@@ -179,7 +182,7 @@ public class RedAlert
 		final long settingsLastModifiedTemp = settingsFile.lastModified();
 		if (settingsLastModifiedTemp > settingsLastModified)
 		{
-			System.err.println("Info: (re)loading settings from file \"red-alert-settings.json\"");
+			System.err.println("Info: (re)loading settings from file \"red-alert-settings.json\".");
 			settings = objectMapper.readValue(settingsFile, Settings.class);
 			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
