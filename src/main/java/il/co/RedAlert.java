@@ -47,7 +47,7 @@ public class RedAlert
 								--help: displays this help text and exits.
 								--settings-file-path <path/to/settings/file.json>: provide a path for a valid settings file, default path is "./red-alert-settings.json" (i.e. from current working directory).%n""", RedAlert.class.getPackage().getImplementationVersion());
 					return;
-				}
+				} // TODO
 				case "--settings-file-path" -> {
 					if (args.length > 1)
 						settingsPath = args[1];
