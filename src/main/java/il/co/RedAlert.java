@@ -55,7 +55,7 @@ public class RedAlert
 						throw new IllegalStateException("Flag \"--settings-file-path\" must be followed by path to a legal settings file!");
 				}
 				default -> throw new IllegalStateException("Unexpected value: " + args[0]);
-			}
+			} // blabla
 		System.err.println("Preparing Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion() + "...");
 		try (Clip clip = AudioSystem.getClip();
 		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(RedAlert.class.getResourceAsStream("/alarmSound.wav")))))
