@@ -40,12 +40,12 @@ public class RedAlert
 		if (args.length > 0)
 			switch (args[0])
 			{
-				case "--help" -> {
+				case "-h", "--help" -> {
 					System.out.printf("""
 							Red Alert Listener v%s
 							Options:
-								--help: displays this help text and exits.
-								--settings-file-path <path/to/settings/file.json>: provide a path for a valid settings file, default path is "./red-alert-settings.json" (i.e. from current working directory).%n""", RedAlert.class.getPackage().getImplementationVersion());
+							  --help:                                            displays this help text and exits.
+							  --settings-file-path <path/to/settings/file.json>: provide a path for a valid settings file, default path is "./red-alert-settings.json" (i.e. from current working directory).%n""", RedAlert.class.getPackage().getImplementationVersion());
 					return;
 				}
 				case "--settings-file-path" -> {
