@@ -1,7 +1,17 @@
 package il.co;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import org.jsoup.Jsoup;
+import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.IVersionProvider;
+import picocli.CommandLine.Option;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import javax.sound.sampled.*;
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -12,12 +22,22 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public class RedAlert
+@Command(name = "red-alert",
+		mixinStandardHelpOptions = true,
+		versionProvider = RedAlert.class,
+		description = "An App that can get \"red alert\"s from IDF's Home Front Command.")
+public class RedAlert implements Callable<Integer>, IVersionProvider
 {
-	private static final Settings DEFAULT_SETTINGS = new Settings(
+	final ObjectMapper objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+	private final Settings DEFAULT_SETTINGS = new Settings(
 			false,
 			false,
 			true,
@@ -28,34 +48,106 @@ public class RedAlert
 			Language.HE,
 			Collections.emptySet()
 	);
-	private static String settingsPath = "red-alert-settings.json";
-	private static Settings settings;
-	private static long settingsLastModified = 1;
-	private static Set<String> districtsNotFound = Collections.emptySet();
-	private static HttpURLConnection httpURLConnectionField;
-	private static boolean isContinue = true;
+	@Option(names = {"-s", "--settings"},
+			description = "Enter custom path to settings file.",
+			defaultValue = "red-alert-settings.json")
+	private final File settingsFile = new File("red-alert-settings.json");
+	private Settings settings;
+	private long settingsLastModified = 1;
+	private Set<String> districtsNotFound = Collections.emptySet();
+	private HttpURLConnection httpURLConnectionField;
+	private boolean isContinue = true;
 
 	public static void main(String... args)
 	{
-		if (args.length > 0)
-			switch (args[0])
-			{
-				case "-h", "--help" -> {
-					System.out.printf("""
-							Red Alert Listener v%s
-							Options:
-							  --help:                                            displays this help text and exits.
-							  --settings-file-path <path/to/settings/file.json>: provide a path for a valid settings file, default path is "./red-alert-settings.json" (i.e. from current working directory).%n""", RedAlert.class.getPackage().getImplementationVersion());
-					return;
-				}//
-				case "--settings-file-path" -> {
-					if (args.length > 1)
-						settingsPath = args[1];
-					else
-						throw new IllegalStateException("Flag \"--settings-file-path\" must be followed by path to a legal settings file!");
-				}
-				default -> throw new IllegalStateException("Unexpected value: " + args[0]);
-			}
+		new CommandLine(new RedAlert()).execute(args);
+	}
+
+	private static void printHelpMsg()
+	{
+		System.err.println("Enter \"t\" for sound test, \"c\" for clearing the screen, \"q\" to quit or \"h\" for displaying this help massage.");
+	}
+
+	private static void sleep()
+	{
+		try
+		{
+			Thread.sleep(1000);
+		} catch (InterruptedException interruptedException)
+		{
+			interruptedException.printStackTrace();
+		}
+	}
+
+	private static Districts loadRemoteDistricts()
+	{
+		System.err.println("Getting remote districts from IDF's Home Front Command's server...");
+		@SuppressWarnings("RegExpRedundantEscape")
+		final Pattern COMPILE = Pattern.compile("var districts =\\s*(\\[.*\\}\\])", Pattern.DOTALL);
+		final ScriptEngine js = new ScriptEngineManager().getEngineByName("javascript");
+
+		final Map<Language, Map<String, String>> map = Stream.of(Language.values()).parallel()
+				.collect(Collectors.toMap(Function.identity(), language ->
+				{
+					try
+					{
+						return generateDict(js, COMPILE.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
+								.get()
+								.select("script")
+								.html()));
+					} catch (ScriptException | IOException e)
+					{
+						e.printStackTrace();
+						return Map.of();
+					}
+				}));
+		return new Districts(map.get(Language.HE), map.get(Language.EN), map.get(Language.AR), map.get(Language.RU));
+	}
+
+	private static Map<String, String> generateDict(ScriptEngine js, Matcher script) throws ScriptException
+	{
+		//noinspection ResultOfMethodCallIgnored
+		script.find();
+		return ((ScriptObjectMirror) js.eval(script.group(1)))
+				.values().parallelStream()
+				.map(ScriptObjectMirror.class::cast)
+				.collect(Collectors.toMap(scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(), scriptObjectMirror -> scriptObjectMirror.get("label").toString(), (a, b) ->
+				{
+//					System.err.println("a: " + a + ", b: " + b);
+					return b;
+				}));
+	}
+
+	private void printDistrictsNotFoundWarning()
+	{
+		if (!districtsNotFound.isEmpty())
+			System.err.println("Warning: those districts don't exist: " + districtsNotFound);
+	}
+
+	private void loadSettings(ObjectMapper objectMapper, Districts districts, File settingsFile) throws IOException
+	{
+		final long settingsLastModifiedTemp = settingsFile.lastModified();
+		if (settingsLastModifiedTemp > settingsLastModified)
+		{
+			System.err.println("Info: (re)loading settings from file \"" + settingsFile + "\".");
+			settings = objectMapper.readValue(settingsFile, Settings.class);
+			settingsLastModified = settingsLastModifiedTemp;
+			districtsNotFound = settings.districtsOfInterest().parallelStream()
+					.filter(Predicate.not(new HashSet<>(districts.getLanguage(settings).values())::contains))
+					.collect(Collectors.toSet());
+			printDistrictsNotFoundWarning();
+		} else if (settingsLastModifiedTemp == 0 && settingsLastModified != 0)
+		{
+			System.err.println("Warning: couldn't find \"" + settingsFile + "\", using default settings");
+			settings = DEFAULT_SETTINGS;
+			settingsLastModified = 0;
+			districtsNotFound = Collections.emptySet();
+		}
+	}
+
+	@Override
+	public Integer call()
+	{
 		System.err.println("Preparing Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion() + "...");
 		try (Clip clip = AudioSystem.getClip();
 		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(RedAlert.class.getResourceAsStream("/alarmSound.wav")))))
@@ -83,10 +175,9 @@ public class RedAlert
 					}
 			}).start();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-			final ObjectMapper objectMapper = new ObjectMapper();
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
-			final File settingsFile = new File(settingsPath);
-			final Districts districts = objectMapper.readValue(RedAlert.class.getResourceAsStream("/districts.json"), Districts.class);
+			final Districts districts = loadRemoteDistricts();
+//			final Districts districts = objectMapper.readValue(RedAlert.class.getResourceAsStream("/districts.json"), Districts.class);
 			loadSettings(objectMapper, districts, settingsFile);
 			Set<String> prevData = Collections.emptySet();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
@@ -123,7 +214,7 @@ public class RedAlert
 
 							final RedAlertResponse redAlertResponse = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class);
 							final Set<String> translatedData = redAlertResponse.data().parallelStream()
-									.map(districts.getLanguage()::get)
+									.map(districts.getLanguage(settings)::get)
 									.collect(Collectors.toSet());
 
 							final StringBuilder output = new StringBuilder();
@@ -173,49 +264,31 @@ public class RedAlert
 		}
 		if (httpURLConnectionField != null)
 			httpURLConnectionField.disconnect();
+		return 0;
 	}
 
-	private static void printHelpMsg()
+	@Override
+	public String[] getVersion()
 	{
-		System.err.println("Enter \"t\" for sound test, \"c\" for clearing the screen, \"q\" to quit or \"h\" for displaying this help massage.");
+		return new String[]{RedAlert.class.getPackage().getImplementationVersion()};
 	}
 
-	private static void printDistrictsNotFoundWarning()
+	@Command(mixinStandardHelpOptions = true,
+			versionProvider = RedAlert.class,
+			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout.")
+	private void getRemoteDistrictsAsJSON() throws IOException
 	{
-		if (!districtsNotFound.isEmpty())
-			System.err.println("Warning: those districts don't exist: " + districtsNotFound);
+		System.out.println(objectMapper.writeValueAsString(loadRemoteDistricts()));
 	}
 
-	private static void sleep()
+	@Command(mixinStandardHelpOptions = true,
+			versionProvider = RedAlert.class,
+			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file.")
+	private void getRemoteDistrictsAsJSONToFile(
+			@Option(names = {"-o", "--output"}, paramLabel = "file", defaultValue = "districts.json")
+					File file) throws IOException
 	{
-		try
-		{
-			Thread.sleep(1000);
-		} catch (InterruptedException interruptedException)
-		{
-			interruptedException.printStackTrace();
-		}
-	}
-
-	private static void loadSettings(ObjectMapper objectMapper, Districts districts, File settingsFile) throws IOException
-	{
-		final long settingsLastModifiedTemp = settingsFile.lastModified();
-		if (settingsLastModifiedTemp > settingsLastModified)
-		{
-			System.err.println("Info: (re)loading settings from file \"" + settingsPath + "\".");
-			settings = objectMapper.readValue(settingsFile, Settings.class);
-			settingsLastModified = settingsLastModifiedTemp;
-			districtsNotFound = settings.districtsOfInterest().parallelStream()
-					.filter(Predicate.not(new HashSet<>(districts.getLanguage().values())::contains))
-					.collect(Collectors.toSet());
-			printDistrictsNotFoundWarning();
-		} else if (settingsLastModifiedTemp == 0 && settingsLastModified != 0)
-		{
-			System.err.println("Warning: couldn't find \"" + settingsPath + "\", using default settings");
-			settings = DEFAULT_SETTINGS;
-			settingsLastModified = 0;
-			districtsNotFound = Collections.emptySet();
-		}
+		objectMapper.writeValue(file, loadRemoteDistricts());
 	}
 
 	public static final record RedAlertResponse(
@@ -240,14 +313,14 @@ public class RedAlert
 	{
 	}
 
-	private static record Districts(
+	private record Districts(
 			Map<String, String> HE,
 			Map<String, String> EN,
 			Map<String, String> AR,
 			Map<String, String> RU
 	)
 	{
-		private Map<String, String> getLanguage()
+		private Map<String, String> getLanguage(Settings settings)
 		{
 			return switch (settings.language())
 					{

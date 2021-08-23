@@ -16,18 +16,22 @@
 2. Make alert sound if the alert contains areas of interest defined
    in [red-alert-settings.json](red-alert-settings.json).
 3. Supports all official language:
-	- Hebrew (code `HE`)
-	- English (code `EN`)
-	- Russian (code `RU`)
-	- Arabic (code `AR`)
+   - Hebrew (code `HE`)
+   - English (code `EN`)
+   - Russian (code `RU`)
+   - Arabic (code `AR`)
 
    Got it by running the following code on the DevTools console window on chrome
    ```javascript
    console.log(JSON.stringify(districts.reduce((result, {label_he, label}) => (result[label_he] = label, result), {})))
    ```
 
-   Legal districts (and their translation) can be found in [districts.json](src/main/resources/districts.json) by
-   language code
+Legal districts (and their translation) can be found by:
+
+1. Running `java -jar <downloaded-jar-file>.jar getRemoteDistrictsAsJSON | egrep "<district1>|<district2>[|...]"`
+2. Saving those districts to file like
+   this: `java -jar <downloaded-jar-file>.jar getRemoteDistrictsAsJSONToFile -o <your-file-name>.json` (the default file
+   name is `districts.json`) and search in it as you may like.
 
 ## Demonstration
 
