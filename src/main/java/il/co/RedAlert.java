@@ -56,6 +56,10 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	private long settingsLastModified = 1;
 	private Set<String> districtsNotFound = Collections.emptySet();
 	private HttpURLConnection httpURLConnectionField;
+	/**
+	 * Will be updated once a day from IDF's Home Front Command's server.
+	 */
+	private Districts districts;
 	private boolean isContinue = true;
 
 	public static void main(String... args)
@@ -124,7 +128,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			System.err.println("Warning: those districts don't exist: " + districtsNotFound);
 	}
 
-	private void loadSettings(ObjectMapper objectMapper, Districts districts, File settingsFile) throws IOException
+	private void loadSettings(ObjectMapper objectMapper, File settingsFile) throws IOException
 	{
 		final long settingsLastModifiedTemp = settingsFile.lastModified();
 		if (settingsLastModifiedTemp > settingsLastModified)
@@ -176,9 +180,17 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			}).start();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
-			final Districts districts = loadRemoteDistricts();
+			districts = loadRemoteDistricts();
+			new Timer().scheduleAtFixedRate(new TimerTask()
+			{
+				@Override
+				public void run()
+				{
+					districts = loadRemoteDistricts();
+				}
+			}, 1000 * 60 * 60 * 24, 1000 * 60 * 60 * 24);
 //			final Districts districts = objectMapper.readValue(RedAlert.class.getResourceAsStream("/districts.json"), Districts.class);
-			loadSettings(objectMapper, districts, settingsFile);
+			loadSettings(objectMapper, settingsFile);
 			Set<String> prevData = Collections.emptySet();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
 			System.err.println("Listening...");
@@ -187,7 +199,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				{
 					if (url.openConnection() instanceof HttpURLConnection httpURLConnection)
 					{
-						loadSettings(objectMapper, districts, settingsFile);
+						loadSettings(objectMapper, settingsFile);
 						httpURLConnectionField = httpURLConnection;
 						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-" + settings.language().name().toLowerCase() + "/Pakar.aspx");
 						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
