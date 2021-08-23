@@ -22,7 +22,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -34,7 +33,7 @@ import java.util.stream.Stream;
 		mixinStandardHelpOptions = true,
 		versionProvider = RedAlert.class,
 		description = "An App that can get \"red alert\"s from IDF's Home Front Command.")
-public class RedAlert implements Callable<Integer>, IVersionProvider
+public class RedAlert implements Runnable, IVersionProvider
 {
 	final ObjectMapper objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 	private final Settings DEFAULT_SETTINGS = new Settings(
@@ -61,6 +60,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	 */
 	private Districts districts;
 	private boolean isContinue = true;
+	private final Timer timer = new Timer();
 
 	public static void main(String... args)
 	{
@@ -150,7 +150,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	}
 
 	@Override
-	public Integer call()
+	public void run()
 	{
 		System.err.println("Preparing Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion() + "...");
 		try (Clip clip = AudioSystem.getClip();
@@ -181,7 +181,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			districts = loadRemoteDistricts();
-			new Timer().scheduleAtFixedRate(new TimerTask()
+			timer.scheduleAtFixedRate(new TimerTask()
 			{
 				@Override
 				public void run()
@@ -270,13 +270,15 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		{
 			System.err.println("Fatal error at " + new Date() + ": " + e + System.lineSeparator() +
 					"Closing connection end exiting...");
+			timer.cancel();
 			if (httpURLConnectionField != null)
 				httpURLConnectionField.disconnect();
 			System.exit(1);
 		}
+		timer.cancel();
 		if (httpURLConnectionField != null)
 			httpURLConnectionField.disconnect();
-		return 0;
+		System.exit(0);
 	}
 
 	@Override
