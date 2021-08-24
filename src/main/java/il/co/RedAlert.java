@@ -22,6 +22,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -33,7 +34,7 @@ import java.util.stream.Stream;
 		mixinStandardHelpOptions = true,
 		versionProvider = RedAlert.class,
 		description = "An App that can get \"red alert\"s from IDF's Home Front Command.")
-public class RedAlert implements Runnable, IVersionProvider
+public class RedAlert implements Callable<Integer>, IVersionProvider
 {
 	final ObjectMapper objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 	private final Settings DEFAULT_SETTINGS = new Settings(
@@ -58,13 +59,21 @@ public class RedAlert implements Runnable, IVersionProvider
 	/**
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
-	private Districts districts;
+	private Map<Language, Map<String, String>> districts;
 	private boolean isContinue = true;
 	private final Timer timer = new Timer();
+	private final TimerTask task = new TimerTask()
+	{
+		@Override
+		public void run()
+		{
+			districts = loadRemoteDistricts();
+		}
+	};
 
 	public static void main(String... args)
 	{
-		new CommandLine(new RedAlert()).execute(args);
+		System.exit(new CommandLine(new RedAlert()).execute(args));
 	}
 
 	private static void printHelpMsg()
@@ -83,14 +92,14 @@ public class RedAlert implements Runnable, IVersionProvider
 		}
 	}
 
-	private static Districts loadRemoteDistricts()
+	private static Map<Language, Map<String, String>> loadRemoteDistricts()
 	{
 		System.err.println("Getting remote districts from IDF's Home Front Command's server...");
 		@SuppressWarnings("RegExpRedundantEscape")
 		final Pattern COMPILE = Pattern.compile("var districts =\\s*(\\[.*\\}\\])", Pattern.DOTALL);
 		final ScriptEngine js = new ScriptEngineManager().getEngineByName("javascript");
 
-		final Map<Language, Map<String, String>> map = Stream.of(Language.values()).parallel()
+		return Stream.of(Language.values()).parallel()
 				.collect(Collectors.toMap(Function.identity(), language ->
 				{
 					try
@@ -101,11 +110,9 @@ public class RedAlert implements Runnable, IVersionProvider
 								.html()));
 					} catch (ScriptException | IOException e)
 					{
-						e.printStackTrace();
-						return Map.of();
+						throw new RuntimeException(e);
 					}
 				}));
-		return new Districts(map.get(Language.HE), map.get(Language.EN), map.get(Language.AR), map.get(Language.RU));
 	}
 
 	private static Map<String, String> generateDict(ScriptEngine js, Matcher script) throws ScriptException
@@ -137,7 +144,7 @@ public class RedAlert implements Runnable, IVersionProvider
 			settings = objectMapper.readValue(settingsFile, Settings.class);
 			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
-					.filter(Predicate.not(new HashSet<>(districts.getLanguage(settings).values())::contains))
+					.filter(Predicate.not(new HashSet<>(districts.get(settings.language()).values())::contains))
 					.collect(Collectors.toSet());
 			printDistrictsNotFoundWarning();
 		} else if (settingsLastModifiedTemp == 0 && settingsLastModified != 0)
@@ -150,7 +157,7 @@ public class RedAlert implements Runnable, IVersionProvider
 	}
 
 	@Override
-	public void run()
+	public Integer call()
 	{
 		System.err.println("Preparing Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion() + "...");
 		try (Clip clip = AudioSystem.getClip();
@@ -181,15 +188,7 @@ public class RedAlert implements Runnable, IVersionProvider
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			districts = loadRemoteDistricts();
-			timer.scheduleAtFixedRate(new TimerTask()
-			{
-				@Override
-				public void run()
-				{
-					districts = loadRemoteDistricts();
-				}
-			}, 1000 * 60 * 60 * 24, 1000 * 60 * 60 * 24);
-//			final Districts districts = objectMapper.readValue(RedAlert.class.getResourceAsStream("/districts.json"), Districts.class);
+			timer.scheduleAtFixedRate(task, 1000 * 60 * 60 * 24, 1000 * 60 * 60 * 24);
 			loadSettings(objectMapper, settingsFile);
 			Set<String> prevData = Collections.emptySet();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
@@ -226,7 +225,7 @@ public class RedAlert implements Runnable, IVersionProvider
 
 							final RedAlertResponse redAlertResponse = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class);
 							final Set<String> translatedData = redAlertResponse.data().parallelStream()
-									.map(districts.getLanguage(settings)::get)
+									.map(districts.get(settings.language())::get)
 									.collect(Collectors.toSet());
 
 							final StringBuilder output = new StringBuilder();
@@ -270,15 +269,19 @@ public class RedAlert implements Runnable, IVersionProvider
 		{
 			System.err.println("Fatal error at " + new Date() + ": " + e + System.lineSeparator() +
 					"Closing connection end exiting...");
-			timer.cancel();
-			if (httpURLConnectionField != null)
-				httpURLConnectionField.disconnect();
-			System.exit(1);
+			cleanLastResources();
+			return 1;
 		}
+		cleanLastResources();
+		return 0;
+	}
+
+	private void cleanLastResources()
+	{
+		task.cancel();
 		timer.cancel();
 		if (httpURLConnectionField != null)
 			httpURLConnectionField.disconnect();
-		System.exit(0);
 	}
 
 	@Override
@@ -325,24 +328,5 @@ public class RedAlert implements Runnable, IVersionProvider
 			Set<String> districtsOfInterest
 	)
 	{
-	}
-
-	private record Districts(
-			Map<String, String> HE,
-			Map<String, String> EN,
-			Map<String, String> AR,
-			Map<String, String> RU
-	)
-	{
-		private Map<String, String> getLanguage(Settings settings)
-		{
-			return switch (settings.language())
-					{
-						case HE -> HE();
-						case EN -> EN();
-						case AR -> AR();
-						case RU -> RU();
-					};
-		}
 	}
 }
