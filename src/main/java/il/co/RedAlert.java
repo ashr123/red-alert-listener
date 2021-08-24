@@ -96,7 +96,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	{
 		System.err.println("Getting remote districts from IDF's Home Front Command's server...");
 		@SuppressWarnings("RegExpRedundantEscape")
-		final Pattern COMPILE = Pattern.compile("var districts =\\s*(\\[.*\\}\\])", Pattern.DOTALL);
+		final Pattern COMPILE = Pattern.compile("var districts =\\s*(\\[.*\\])", Pattern.DOTALL);
 		final ScriptEngine js = new ScriptEngineManager().getEngineByName("javascript");
 
 		return Stream.of(Language.values()).parallel()
@@ -104,9 +104,9 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				{
 					try
 					{
-						Matcher script = COMPILE.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
+						final Matcher script = COMPILE.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
 								.get()
-								.select("script")
+								.select("script:containsData(districts)")
 								.html());
 						if (script.find())
 							return ((Bindings) js.eval(script.group(1)))
