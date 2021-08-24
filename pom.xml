@@ -54,11 +54,13 @@
 			<artifactId>jsoup</artifactId>
 			<version>1.14.2</version>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.graalvm.js/js -->
 		<dependency>
-			<groupId>org.openjdk.nashorn</groupId>
-			<artifactId>nashorn-core</artifactId>
-			<version>15.3</version>
+			<groupId>org.graalvm.js</groupId>
+			<artifactId>js</artifactId>
+			<version>21.2.0</version>
 		</dependency>
+
 	</dependencies>
 
 	<build>

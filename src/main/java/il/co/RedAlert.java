@@ -2,16 +2,14 @@ package il.co;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.TypeLiteral;
 import org.jsoup.Jsoup;
-import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.IVersionProvider;
 import picocli.CommandLine.Option;
 
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
 import javax.sound.sampled.*;
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -52,6 +50,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			description = "Enter custom path to settings file.",
 			defaultValue = "red-alert-settings.json")
 	private final File settingsFile = new File("red-alert-settings.json");
+	private final Timer timer = new Timer();
 	private Settings settings;
 	private long settingsLastModified = 1;
 	private Set<String> districtsNotFound = Collections.emptySet();
@@ -60,8 +59,6 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
 	private Map<Language, Map<String, String>> districts;
-	private boolean isContinue = true;
-	private final Timer timer = new Timer();
 	private final TimerTask task = new TimerTask()
 	{
 		@Override
@@ -70,6 +67,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			districts = loadRemoteDistricts();
 		}
 	};
+	private boolean isContinue = true;
 
 	public static void main(String... args)
 	{
@@ -97,37 +95,63 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		System.err.println("Getting remote districts from IDF's Home Front Command's server...");
 		@SuppressWarnings("RegExpRedundantEscape")
 		final Pattern COMPILE = Pattern.compile("var districts =\\s*(\\[.*\\}\\])", Pattern.DOTALL);
-		final ScriptEngine js = new ScriptEngineManager().getEngineByName("javascript");
+//		final ScriptEngine js = new ScriptEngineManager().getEngineByName("javascript");
 
 		return Stream.of(Language.values()).parallel()
 				.collect(Collectors.toMap(Function.identity(), language ->
 				{
-					try
+					try (Context context = Context.newBuilder()
+							.option("engine.WarnInterpreterOnly", "false")
+							.build())
 					{
-						return generateDict(js, COMPILE.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
+						final Matcher matcher = COMPILE.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
 								.get()
 								.select("script")
-								.html()));
-					} catch (ScriptException | IOException e)
+								.html());
+						return matcher.find() ?
+								context.eval("js", matcher.group(1))
+										.as(new TypeLiteral<List<Map<String, String>>>()
+										{
+										}).stream()
+										.collect(Collectors.toMap(district -> district.get("label_he"), district -> district.get("label"), (a, b) ->
+										{
+//											System.err.println("a: " + a + ", b: " + b);
+											return b;
+										})) :
+								Map.of();
+					} catch (IOException e)
 					{
 						throw new RuntimeException(e);
 					}
 				}));
+
+
+//					try
+//					{
+//						return generateDict(js, COMPILE.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
+//								.get()
+//								.select("script")
+//								.html()));
+//					} catch (ScriptException | IOException e)
+//					{
+//						throw new RuntimeException(e);
+//					}
+//				}));
 	}
 
-	private static Map<String, String> generateDict(ScriptEngine js, Matcher script) throws ScriptException
-	{
-		//noinspection ResultOfMethodCallIgnored
-		script.find();
-		return ((ScriptObjectMirror) js.eval(script.group(1)))
-				.values().parallelStream()
-				.map(ScriptObjectMirror.class::cast)
-				.collect(Collectors.toMap(scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(), scriptObjectMirror -> scriptObjectMirror.get("label").toString(), (a, b) ->
-				{
-//					System.err.println("a: " + a + ", b: " + b);
-					return b;
-				}));
-	}
+//	private static Map<String, String> generateDict(ScriptEngine js, Matcher script) throws ScriptException
+//	{
+//		//noinspection ResultOfMethodCallIgnored
+//		script.find();
+//		return ((ScriptObjectMirror) js.eval(script.group(1)))
+//				.values().parallelStream()
+//				.map(ScriptObjectMirror.class::cast)
+//				.collect(Collectors.toMap(scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(), scriptObjectMirror -> scriptObjectMirror.get("label").toString(), (a, b) ->
+//				{
+////					System.err.println("a: " + a + ", b: " + b);
+//					return b;
+//				}));
+//	}
 
 	private void printDistrictsNotFoundWarning()
 	{
