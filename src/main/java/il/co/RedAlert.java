@@ -52,6 +52,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			description = "Enter custom path to settings file.",
 			defaultValue = "red-alert-settings.json")
 	private final File settingsFile = new File("red-alert-settings.json");
+	private final Timer timer = new Timer();
 	private Settings settings;
 	private long settingsLastModified = 1;
 	private Set<String> districtsNotFound = Collections.emptySet();
@@ -60,8 +61,6 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
 	private Map<Language, Map<String, String>> districts;
-	private boolean isContinue = true;
-	private final Timer timer = new Timer();
 	private final TimerTask task = new TimerTask()
 	{
 		@Override
@@ -70,6 +69,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			districts = loadRemoteDistricts();
 		}
 	};
+	private boolean isContinue = true;
 
 	public static void main(String... args)
 	{
@@ -104,28 +104,24 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				{
 					try
 					{
-						return generateDict(js, COMPILE.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
+						Matcher script = COMPILE.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
 								.get()
 								.select("script")
-								.html()));
+								.html());
+						if (script.find())
+							return ((ScriptObjectMirror) js.eval(script.group(1)))
+									.values().parallelStream()
+									.map(ScriptObjectMirror.class::cast)
+									.collect(Collectors.toMap(scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(), scriptObjectMirror -> scriptObjectMirror.get("label").toString(), (a, b) ->
+									{
+//										System.err.println("a: " + a + ", b: " + b);
+										return b;
+									}));
+						throw new IllegalStateException("Didn't find translation for language: " + language);
 					} catch (ScriptException | IOException e)
 					{
 						throw new RuntimeException(e);
 					}
-				}));
-	}
-
-	private static Map<String, String> generateDict(ScriptEngine js, Matcher script) throws ScriptException
-	{
-		//noinspection ResultOfMethodCallIgnored
-		script.find();
-		return ((ScriptObjectMirror) js.eval(script.group(1)))
-				.values().parallelStream()
-				.map(ScriptObjectMirror.class::cast)
-				.collect(Collectors.toMap(scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(), scriptObjectMirror -> scriptObjectMirror.get("label").toString(), (a, b) ->
-				{
-//					System.err.println("a: " + a + ", b: " + b);
-					return b;
 				}));
 	}
 
