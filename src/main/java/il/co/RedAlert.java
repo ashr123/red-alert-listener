@@ -3,12 +3,12 @@ package il.co;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.jsoup.Jsoup;
-import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.IVersionProvider;
 import picocli.CommandLine.Option;
 
+import javax.script.Bindings;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
@@ -109,14 +109,17 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 								.select("script")
 								.html());
 						if (script.find())
-							return ((ScriptObjectMirror) js.eval(script.group(1)))
+							return ((Bindings) js.eval(script.group(1)))
 									.values().parallelStream()
-									.map(ScriptObjectMirror.class::cast)
-									.collect(Collectors.toMap(scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(), scriptObjectMirror -> scriptObjectMirror.get("label").toString(), (a, b) ->
-									{
-//										System.err.println("a: " + a + ", b: " + b);
-										return b;
-									}));
+									.map(Bindings.class::cast)
+									.collect(Collectors.toMap(
+											scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(),
+											scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
+											(a, b) ->
+											{
+//												System.err.println("a: " + a + ", b: " + b);
+												return b;
+											}));
 						throw new IllegalStateException("Didn't find translation for language: " + language);
 					} catch (ScriptException | IOException e)
 					{
