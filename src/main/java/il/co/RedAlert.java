@@ -23,6 +23,9 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -56,7 +59,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			description = "Enter custom path to settings file.",
 			defaultValue = "red-alert-settings.json")
 	private final File settingsFile = new File("red-alert-settings.json");
-	private final Timer timer = new Timer();
+	private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 	private Settings settings;
 	private long settingsLastModified = 1;
 	private Set<String> districtsNotFound = Collections.emptySet();
@@ -65,19 +68,11 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
 	private Map<Language, Map<String, String>> districts;
-	private final TimerTask task = new TimerTask()
-	{
-		@Override
-		public void run()
-		{
-			districts = loadRemoteDistricts();
-		}
-	};
 	private boolean isContinue = true;
 
 	public static void main(String... args)
 	{
-		System.exit(new CommandLine(RedAlert.class).execute(args));
+		new CommandLine(RedAlert.class).execute(args);
 	}
 
 	private static void printHelpMsg()
@@ -190,7 +185,8 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			districts = loadRemoteDistricts();
-			timer.scheduleAtFixedRate(task, 1000 * 60 * 60 * 24, 1000 * 60 * 60 * 24);
+			scheduledExecutorService.scheduleAtFixedRate(() -> districts = loadRemoteDistricts(), 1, 1, TimeUnit.DAYS);
+//			timer.scheduleAtFixedRate(task, 1000 * 60 * 60 * 24, 1000 * 60 * 60 * 24);
 			loadSettings(objectMapper, settingsFile);
 			Set<String> prevData = Collections.emptySet();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
@@ -274,17 +270,11 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			return 1;
 		} finally
 		{
-			cleanLastResources();
+			scheduledExecutorService.shutdownNow();
+			if (httpURLConnectionField != null)
+				httpURLConnectionField.disconnect();
 		}
 		return 0;
-	}
-
-	private void cleanLastResources()
-	{
-		task.cancel();
-		timer.cancel();
-		if (httpURLConnectionField != null)
-			httpURLConnectionField.disconnect();
 	}
 
 	@Override
