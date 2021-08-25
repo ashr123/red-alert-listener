@@ -15,7 +15,7 @@
 1. Display alerts as the Home Front Command produces them.
 2. Make alert sound if the alert contains areas of interest defined
    in [red-alert-settings.json](red-alert-settings.json).
-3. Supports all official language:
+3. Supports all official languages:
    - Hebrew (code `HE`)
    - English (code `EN`)
    - Russian (code `RU`)

@@ -33,7 +33,8 @@ import java.util.stream.Stream;
 @Command(name = "red-alert",
 		mixinStandardHelpOptions = true,
 		versionProvider = RedAlert.class,
-		description = "An App that can get \"red alert\"s from IDF's Home Front Command.")
+		description = "An App that can get \"red alert\"s from IDF's Home Front Command.",
+		showDefaultValues = true)
 public class RedAlert implements Callable<Integer>, IVersionProvider
 {
 	final ObjectMapper objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
@@ -73,7 +74,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 
 	public static void main(String... args)
 	{
-		System.exit(new CommandLine(new RedAlert()).execute(args));
+		System.exit(new CommandLine(RedAlert.class).execute(args));
 	}
 
 	private static void printHelpMsg()
@@ -268,10 +269,11 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		{
 			System.err.println("Fatal error at " + new Date() + ": " + e + System.lineSeparator() +
 					"Closing connection end exiting...");
-			cleanLastResources();
 			return 1;
+		} finally
+		{
+			cleanLastResources();
 		}
-		cleanLastResources();
 		return 0;
 	}
 
@@ -286,12 +288,13 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	@Override
 	public String[] getVersion()
 	{
-		return new String[]{RedAlert.class.getPackage().getImplementationVersion()};
+		return new String[]{"Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion()};
 	}
 
 	@Command(mixinStandardHelpOptions = true,
 			versionProvider = RedAlert.class,
-			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout.")
+			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout.",
+			showDefaultValues = true)
 	private void getRemoteDistrictsAsJSON() throws IOException
 	{
 		System.out.println(objectMapper.writeValueAsString(loadRemoteDistricts()));
@@ -299,9 +302,13 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 
 	@Command(mixinStandardHelpOptions = true,
 			versionProvider = RedAlert.class,
-			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file.")
+			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file.",
+			showDefaultValues = true)
 	private void getRemoteDistrictsAsJSONToFile(
-			@Option(names = {"-o", "--output"}, paramLabel = "file", defaultValue = "districts.json")
+			@Option(names = {"-o", "--output"},
+					paramLabel = "file",
+					defaultValue = "districts.json",
+					description = "Where to save received districts.")
 					File file) throws IOException
 	{
 		objectMapper.writeValue(file, loadRemoteDistricts());
