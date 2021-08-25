@@ -1,4 +1,4 @@
-package il.co.ashr;
+package il.co.ashr.redAlert;
 
 public enum Language
 {

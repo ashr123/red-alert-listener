@@ -88,7 +88,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>il.co.ashr.RedAlert</mainClass>
+							<mainClass>il.co.ashr.redAlert.RedAlert</mainClass>
 							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
 						</manifest>
 					</archive>

@@ -1,4 +1,4 @@
-package il.co.ashr;
+package il.co.ashr.redAlert;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
