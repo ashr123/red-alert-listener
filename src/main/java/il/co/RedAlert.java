@@ -37,6 +37,9 @@ import java.util.stream.Stream;
 		showDefaultValues = true)
 public class RedAlert implements Callable<Integer>, IVersionProvider
 {
+	@SuppressWarnings("RegExpRedundantEscape")
+	private static final Pattern PATTERN = Pattern.compile("var districts =\\s*(\\[.*\\])", Pattern.DOTALL);
+	private static final ScriptEngine JS = new ScriptEngineManager().getEngineByName("javascript");
 	final ObjectMapper objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 	private final Settings DEFAULT_SETTINGS = new Settings(
 			false,
@@ -93,40 +96,41 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		}
 	}
 
+	private static Map<String, String> languageToMapDict(Language language)
+	{
+		try
+		{
+			final Matcher script = PATTERN.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
+					.get()
+					.select("script:containsData(districts)")
+					.html());
+			if (script.find())
+				return ((Bindings) JS.eval(script.group(1)))
+						.values().parallelStream()
+						.map(Bindings.class::cast)
+						.collect(Collectors.toMap(
+								scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(),
+								scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
+								(a, b) ->
+								{
+//												System.err.println("a: " + a + ", b: " + b);
+									return b;
+								}));
+			System.out.println("Warning: Didn't find translation for language: " + language + ", returning empty dict");
+			throw new IllegalStateException("Didn't find translation for language: " + language);
+		} catch (ScriptException | IOException e)
+		{
+			System.err.println("Error: Failed to get data for language " + language + ": " + e + ". Trying again...");
+			return languageToMapDict(language);
+		}
+	}
+
 	private static Map<Language, Map<String, String>> loadRemoteDistricts()
 	{
 		System.err.println("Getting remote districts from IDF's Home Front Command's server...");
-		@SuppressWarnings("RegExpRedundantEscape")
-		final Pattern COMPILE = Pattern.compile("var districts =\\s*(\\[.*\\])", Pattern.DOTALL);
-		final ScriptEngine js = new ScriptEngineManager().getEngineByName("javascript");
 
 		return Stream.of(Language.values()).parallel()
-				.collect(Collectors.toMap(Function.identity(), language ->
-				{
-					try
-					{
-						final Matcher script = COMPILE.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
-								.get()
-								.select("script:containsData(districts)")
-								.html());
-						if (script.find())
-							return ((Bindings) js.eval(script.group(1)))
-									.values().parallelStream()
-									.map(Bindings.class::cast)
-									.collect(Collectors.toMap(
-											scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(),
-											scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
-											(a, b) ->
-											{
-//												System.err.println("a: " + a + ", b: " + b);
-												return b;
-											}));
-						throw new IllegalStateException("Didn't find translation for language: " + language);
-					} catch (ScriptException | IOException e)
-					{
-						throw new RuntimeException(e);
-					}
-				}));
+				.collect(Collectors.toMap(Function.identity(), RedAlert::languageToMapDict));
 	}
 
 	private void printDistrictsNotFoundWarning()
