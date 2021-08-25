@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>il.co</groupId>
+	<groupId>il.co.ashr</groupId>
 	<artifactId>red-alert</artifactId>
 	<version>4.0.2</version>
 
@@ -88,7 +88,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>il.co.RedAlert</mainClass>
+							<mainClass>il.co.ashr.RedAlert</mainClass>
 							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
 						</manifest>
 					</archive>
