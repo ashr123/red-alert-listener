@@ -119,7 +119,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 												scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
 												(a, b) ->
 												{
-													//												System.err.println("a: " + a + ", b: " + b);
+//													System.err.println("a: " + a + ", b: " + b);
 													return b;
 												}));
 							System.out.println("Warning: Didn't find translation for language: " + language + ", returning empty dict");
