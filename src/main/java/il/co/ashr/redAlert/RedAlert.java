@@ -39,9 +39,9 @@ import java.util.stream.Collectors;
 public class RedAlert implements Callable<Integer>, IVersionProvider
 {
 	@SuppressWarnings("RegExpRedundantEscape")
-	private static final Pattern PATTERN = Pattern.compile("(?:var|let|const) districts\\s*=\\s*(\\[.*\\])", Pattern.DOTALL);
+	private static final Pattern PATTERN = Pattern.compile("(?:var|let|const)\\s+districts\\s*=\\s*(\\[.*\\])", Pattern.DOTALL);
 	private static final ScriptEngine JS = new ScriptEngineManager().getEngineByName("javascript");
-	private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 	private final Settings DEFAULT_SETTINGS = new Settings(
 			false,
 			false,
@@ -57,11 +57,9 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			description = "Enter custom path to settings file.",
 			defaultValue = "red-alert-settings.json")
 	private final File settingsFile = new File("red-alert-settings.json");
-	private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 	private Settings settings;
 	private long settingsLastModified = 1;
 	private Set<String> districtsNotFound = Collections.emptySet();
-	private HttpURLConnection httpURLConnectionField;
 	/**
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
@@ -190,6 +188,8 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	public Integer call()
 	{
 		System.err.println("Preparing Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion() + "...");
+		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+		HttpURLConnection httpURLConnectionField = null;
 		try (Clip clip = AudioSystem.getClip();
 		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(RedAlert.class.getResourceAsStream("/alarmSound.wav")))))
 		{
@@ -222,7 +222,6 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslationDicts, 1, 1, TimeUnit.DAYS);
-//			timer.scheduleAtFixedRate(task, 1000 * 60 * 60 * 24, 1000 * 60 * 60 * 24);
 			loadSettings(settingsFile);
 			Set<String> prevData = Collections.emptySet();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
