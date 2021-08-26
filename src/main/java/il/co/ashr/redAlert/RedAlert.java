@@ -173,7 +173,10 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							clip.start();
 						}
 						case "c" -> System.err.println("\033[H\033[2JListening...");
-						case "r" -> refreshDistrictsTranslationDicts();
+						case "r" -> {
+							refreshDistrictsTranslationDicts();
+							System.err.println("Done");
+						}
 						case "h" -> printHelpMsg();
 					}
 			}).start();
