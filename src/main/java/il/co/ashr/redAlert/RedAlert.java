@@ -108,7 +108,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 									scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
 									(a, b) ->
 									{
-//													System.err.println("a: " + a + ", b: " + b);
+//										System.err.println("a: " + a + ", b: " + b);
 										return b;
 									}));
 				System.out.println("Warning: Didn't find translation for language: " + language + ", returning empty dict");
@@ -117,12 +117,6 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			{
 				System.err.println("Error: Failed to get data for language " + language + ": " + e + ". Trying again...");
 			}
-	}
-
-	private void printDistrictsNotFoundWarning()
-	{
-		if (!districtsNotFound.isEmpty())
-			System.err.println("Warning: those districts don't exist: " + districtsNotFound);
 	}
 
 	@Command(mixinStandardHelpOptions = true,
@@ -156,6 +150,12 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 					Language language) throws IOException
 	{
 		OBJECT_MAPPER.writeValue(file, loadRemoteDistricts(language));
+	}
+
+	private void printDistrictsNotFoundWarning()
+	{
+		if (!districtsNotFound.isEmpty())
+			System.err.println("Warning: those districts don't exist: " + districtsNotFound);
 	}
 
 	@Override
