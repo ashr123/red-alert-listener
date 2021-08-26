@@ -26,12 +26,10 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Command(name = "red-alert",
 		mixinStandardHelpOptions = true,
@@ -67,7 +65,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	/**
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
-	private Map<Language, Map<String, String>> districts;
+	private Map<String, String> districts;
 	private boolean isContinue = true;
 
 	public static void main(String... args)
@@ -77,7 +75,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 
 	private static void printHelpMsg()
 	{
-		System.err.println("Enter \"t\" for sound test, \"c\" for clearing the screen, \"q\" to quit or \"h\" for displaying this help massage.");
+		System.err.println("Enter \"t\" for sound test, \"c\" for clearing the screen, \"r\" for refresh the districts translation dictionary, \"q\" to quit or \"h\" for displaying this help massage.");
 	}
 
 	private static void sleep()
@@ -91,39 +89,34 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		}
 	}
 
-	private static Map<Language, Map<String, String>> loadRemoteDistricts()
+	private Map<String, String> loadRemoteDistricts(Language language)
 	{
 		System.err.println("Getting remote districts from IDF's Home Front Command's server...");
-
-		return Stream.of(Language.values()).parallel()
-				.collect(Collectors.toMap(Function.identity(), language ->
-				{
-					while (true)
-						try
-						{
-							final Matcher script = PATTERN.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
-									.get()
-									.select("script:containsData(districts)")
-									.html());
-							if (script.find())
-								return ((Bindings) JS.eval(script.group(1)))
-										.values().parallelStream()
-										.map(Bindings.class::cast)
-										.collect(Collectors.toMap(
-												scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(),
-												scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
-												(a, b) ->
-												{
+		while (true)
+			try
+			{
+				final Matcher script = PATTERN.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
+						.get()
+						.select("script:containsData(districts)")
+						.html());
+				if (script.find())
+					return ((Bindings) JS.eval(script.group(1)))
+							.values().parallelStream()
+							.map(Bindings.class::cast)
+							.collect(Collectors.toMap(
+									scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(),
+									scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
+									(a, b) ->
+									{
 //													System.err.println("a: " + a + ", b: " + b);
-													return b;
-												}));
-							System.out.println("Warning: Didn't find translation for language: " + language + ", returning empty dict");
-							return Map.of();
-						} catch (ScriptException | IOException e)
-						{
-							System.err.println("Error: Failed to get data for language " + language + ": " + e + ". Trying again...");
-						}
-				}));
+										return b;
+									}));
+				System.out.println("Warning: Didn't find translation for language: " + settings.language() + ", returning empty dict");
+				return Map.of();
+			} catch (ScriptException | IOException e)
+			{
+				System.err.println("Error: Failed to get data for language " + settings.language() + ": " + e + ". Trying again...");
+			}
 	}
 
 	private void printDistrictsNotFoundWarning()
@@ -139,9 +132,10 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		{
 			System.err.println("Info: (re)loading settings from file \"" + settingsFile + "\".");
 			settings = objectMapper.readValue(settingsFile, Settings.class);
+			refreshDistrictsTranslationDicts();
 			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
-					.filter(Predicate.not(new HashSet<>(districts.get(settings.language()).values())::contains))
+					.filter(Predicate.not(new HashSet<>(districts.values())::contains))
 					.collect(Collectors.toSet());
 			printDistrictsNotFoundWarning();
 		} else if (settingsLastModifiedTemp == 0 && settingsLastModified != 0)
@@ -179,13 +173,13 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							clip.start();
 						}
 						case "c" -> System.err.println("\033[H\033[2JListening...");
+						case "r" -> refreshDistrictsTranslationDicts();
 						case "h" -> printHelpMsg();
 					}
 			}).start();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
-			districts = loadRemoteDistricts();
-			scheduledExecutorService.scheduleAtFixedRate(() -> districts = loadRemoteDistricts(), 1, 1, TimeUnit.DAYS);
+			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslationDicts, 1, 1, TimeUnit.DAYS);
 //			timer.scheduleAtFixedRate(task, 1000 * 60 * 60 * 24, 1000 * 60 * 60 * 24);
 			loadSettings(objectMapper, settingsFile);
 			Set<String> prevData = Collections.emptySet();
@@ -223,7 +217,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 
 							final RedAlertResponse redAlertResponse = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class);
 							final Set<String> translatedData = redAlertResponse.data().parallelStream()
-									.map(districts.get(settings.language())::get)
+									.map(districts::get)
 									.collect(Collectors.toSet());
 
 							final StringBuilder output = new StringBuilder();
@@ -287,9 +281,14 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			versionProvider = RedAlert.class,
 			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout.",
 			showDefaultValues = true)
-	private void getRemoteDistrictsAsJSON() throws IOException
+	private void getRemoteDistrictsAsJSON(
+			@Option(names = {"-l", "--language"},
+					paramLabel = "HE|EN|RU|AR",
+					required = true,
+					description = "Which language's translation to get?")
+					Language language) throws IOException
 	{
-		System.out.println(objectMapper.writeValueAsString(loadRemoteDistricts()));
+		System.out.println(objectMapper.writeValueAsString(loadRemoteDistricts(language)));
 	}
 
 	@Command(mixinStandardHelpOptions = true,
@@ -301,9 +300,19 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 					paramLabel = "file",
 					defaultValue = "districts.json",
 					description = "Where to save received districts.")
-					File file) throws IOException
+					File file,
+			@Option(names = {"-l", "--language"},
+					paramLabel = "HE|EN|RU|AR",
+					required = true,
+					description = "Which language's translation to get?")
+					Language language) throws IOException
 	{
-		objectMapper.writeValue(file, loadRemoteDistricts());
+		objectMapper.writeValue(file, loadRemoteDistricts(language));
+	}
+
+	private void refreshDistrictsTranslationDicts()
+	{
+		districts = loadRemoteDistricts(settings.language());
 	}
 
 	public static final record RedAlertResponse(

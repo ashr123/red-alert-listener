@@ -6,7 +6,7 @@
 
 	<groupId>il.co.ashr</groupId>
 	<artifactId>red-alert</artifactId>
-	<version>4.0.2</version>
+	<version>4.0.3</version>
 
 	<properties>
 		<maven.compiler.source>16</maven.compiler.source>
