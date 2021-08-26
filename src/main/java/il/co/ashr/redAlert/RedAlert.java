@@ -39,9 +39,9 @@ import java.util.stream.Collectors;
 public class RedAlert implements Callable<Integer>, IVersionProvider
 {
 	@SuppressWarnings("RegExpRedundantEscape")
-	private static final Pattern PATTERN = Pattern.compile("var districts =\\s*(\\[.*\\])", Pattern.DOTALL);
+	private static final Pattern PATTERN = Pattern.compile("(?:var|let|const) districts\\s*=\\s*(\\[.*\\])", Pattern.DOTALL);
 	private static final ScriptEngine JS = new ScriptEngineManager().getEngineByName("javascript");
-	final ObjectMapper objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+	private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 	private final Settings DEFAULT_SETTINGS = new Settings(
 			false,
 			false,
@@ -89,7 +89,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		}
 	}
 
-	private Map<String, String> loadRemoteDistricts(Language language)
+	private static Map<String, String> loadRemoteDistricts(Language language)
 	{
 		System.err.println("Getting remote districts from IDF's Home Front Command's server...");
 		while (true)
@@ -111,11 +111,11 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 //													System.err.println("a: " + a + ", b: " + b);
 										return b;
 									}));
-				System.out.println("Warning: Didn't find translation for language: " + settings.language() + ", returning empty dict");
+				System.out.println("Warning: Didn't find translation for language: " + language + ", returning empty dict");
 				return Map.of();
 			} catch (ScriptException | IOException e)
 			{
-				System.err.println("Error: Failed to get data for language " + settings.language() + ": " + e + ". Trying again...");
+				System.err.println("Error: Failed to get data for language " + language + ": " + e + ". Trying again...");
 			}
 	}
 
@@ -125,13 +125,52 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			System.err.println("Warning: those districts don't exist: " + districtsNotFound);
 	}
 
-	private void loadSettings(ObjectMapper objectMapper, File settingsFile) throws IOException
+	@Command(mixinStandardHelpOptions = true,
+			versionProvider = RedAlert.class,
+			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout.",
+			showDefaultValues = true)
+	private static void getRemoteDistrictsAsJSON(
+			@Option(names = {"-l", "--language"},
+					paramLabel = "HE|EN|RU|AR",
+					required = true,
+					description = "Which language's translation to get?")
+					Language language) throws IOException
+	{
+		System.out.println(OBJECT_MAPPER.writeValueAsString(loadRemoteDistricts(language)));
+	}
+
+	@Command(mixinStandardHelpOptions = true,
+			versionProvider = RedAlert.class,
+			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file.",
+			showDefaultValues = true)
+	private static void getRemoteDistrictsAsJSONToFile(
+			@Option(names = {"-o", "--output"},
+					paramLabel = "file",
+					defaultValue = "districts.json",
+					description = "Where to save received districts.")
+					File file,
+			@Option(names = {"-l", "--language"},
+					paramLabel = "HE|EN|RU|AR",
+					required = true,
+					description = "Which language's translation to get?")
+					Language language) throws IOException
+	{
+		OBJECT_MAPPER.writeValue(file, loadRemoteDistricts(language));
+	}
+
+	@Override
+	public String[] getVersion()
+	{
+		return new String[]{"Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion()};
+	}
+
+	private void loadSettings(File settingsFile) throws IOException
 	{
 		final long settingsLastModifiedTemp = settingsFile.lastModified();
 		if (settingsLastModifiedTemp > settingsLastModified)
 		{
 			System.err.println("Info: (re)loading settings from file \"" + settingsFile + "\".");
-			settings = objectMapper.readValue(settingsFile, Settings.class);
+			settings = OBJECT_MAPPER.readValue(settingsFile, Settings.class);
 			refreshDistrictsTranslationDicts();
 			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
@@ -184,7 +223,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslationDicts, 1, 1, TimeUnit.DAYS);
 //			timer.scheduleAtFixedRate(task, 1000 * 60 * 60 * 24, 1000 * 60 * 60 * 24);
-			loadSettings(objectMapper, settingsFile);
+			loadSettings(settingsFile);
 			Set<String> prevData = Collections.emptySet();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
 			System.err.println("Listening...");
@@ -193,7 +232,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				{
 					if (url.openConnection() instanceof HttpURLConnection httpURLConnection)
 					{
-						loadSettings(objectMapper, settingsFile);
+						loadSettings(settingsFile);
 						httpURLConnectionField = httpURLConnection;
 						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-" + settings.language().name().toLowerCase() + "/Pakar.aspx");
 						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
@@ -218,7 +257,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified;
 
-							final RedAlertResponse redAlertResponse = objectMapper.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class);
+							final RedAlertResponse redAlertResponse = OBJECT_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class);
 							final Set<String> translatedData = redAlertResponse.data().parallelStream()
 									.map(districts::get)
 									.collect(Collectors.toSet());
@@ -272,45 +311,6 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				httpURLConnectionField.disconnect();
 		}
 		return 0;
-	}
-
-	@Override
-	public String[] getVersion()
-	{
-		return new String[]{"Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion()};
-	}
-
-	@Command(mixinStandardHelpOptions = true,
-			versionProvider = RedAlert.class,
-			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout.",
-			showDefaultValues = true)
-	private void getRemoteDistrictsAsJSON(
-			@Option(names = {"-l", "--language"},
-					paramLabel = "HE|EN|RU|AR",
-					required = true,
-					description = "Which language's translation to get?")
-					Language language) throws IOException
-	{
-		System.out.println(objectMapper.writeValueAsString(loadRemoteDistricts(language)));
-	}
-
-	@Command(mixinStandardHelpOptions = true,
-			versionProvider = RedAlert.class,
-			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file.",
-			showDefaultValues = true)
-	private void getRemoteDistrictsAsJSONToFile(
-			@Option(names = {"-o", "--output"},
-					paramLabel = "file",
-					defaultValue = "districts.json",
-					description = "Where to save received districts.")
-					File file,
-			@Option(names = {"-l", "--language"},
-					paramLabel = "HE|EN|RU|AR",
-					required = true,
-					description = "Which language's translation to get?")
-					Language language) throws IOException
-	{
-		objectMapper.writeValue(file, loadRemoteDistricts(language));
 	}
 
 	private void refreshDistrictsTranslationDicts()
