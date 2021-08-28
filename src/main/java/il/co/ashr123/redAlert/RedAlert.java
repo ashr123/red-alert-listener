@@ -317,6 +317,12 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		districts = loadRemoteDistricts(settings.language());
 	}
 
+	@SuppressWarnings("unused")
+	private enum Language
+	{
+		HE, EN, AR, RU
+	}
+
 	public static final record RedAlertResponse(
 			Set<String> data,
 			long id,
