@@ -1,4 +1,4 @@
-package il.co.ashr.redAlert;
+package il.co.ashr123.redAlert;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -42,7 +42,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	private static final Pattern PATTERN = Pattern.compile("(?:var|let|const)\\s+districts\\s*=\\s*(\\[.*\\])", Pattern.DOTALL);
 	private static final ScriptEngine JS = new ScriptEngineManager().getEngineByName("javascript");
 	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
-	private final Settings DEFAULT_SETTINGS = new Settings(
+	private static final Settings DEFAULT_SETTINGS = new Settings(
 			false,
 			false,
 			true,
