@@ -162,7 +162,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		return new String[]{"Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion()};
 	}
 
-	private void loadSettings(File settingsFile) throws IOException
+	private void loadSettings() throws IOException
 	{
 		final long settingsLastModifiedTemp = settingsFile.lastModified();
 		if (settingsLastModifiedTemp > settingsLastModified)
@@ -222,7 +222,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslationDicts, 1, 1, TimeUnit.DAYS);
-			loadSettings(settingsFile);
+			loadSettings();
 			Set<String> prevData = Collections.emptySet();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
 			System.err.println("Listening...");
@@ -231,7 +231,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				{
 					if (url.openConnection() instanceof HttpURLConnection httpURLConnection)
 					{
-						loadSettings(settingsFile);
+						loadSettings();
 						httpURLConnectionField = httpURLConnection;
 						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-" + settings.language().name().toLowerCase() + "/Pakar.aspx");
 						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
