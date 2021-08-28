@@ -68,7 +68,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 
 	public static void main(String... args)
 	{
-		new CommandLine(RedAlert.class).execute(args);
+		new CommandLine(RedAlert.class).setCaseInsensitiveEnumValuesAllowed(true).execute(args);
 	}
 
 	private static void printHelpMsg()
@@ -123,9 +123,9 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			showDefaultValues = true)
 	private static void getRemoteDistrictsAsJSON(
 			@Option(names = {"-l", "--language"},
-					paramLabel = "HE|EN|RU|AR",
+					paramLabel = "language",
 					required = true,
-					description = "Which language's translation to get?")
+					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES}")
 					Language language) throws IOException
 	{
 		System.out.println(OBJECT_MAPPER.writeValueAsString(loadRemoteDistricts(language)));
@@ -142,9 +142,9 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 					description = "Where to save received districts.")
 					File file,
 			@Option(names = {"-l", "--language"},
-					paramLabel = "HE|EN|RU|AR",
+					paramLabel = "language",
 					required = true,
-					description = "Which language's translation to get?")
+					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES}")
 					Language language) throws IOException
 	{
 		OBJECT_MAPPER.writeValue(file, loadRemoteDistricts(language));
