@@ -109,7 +109,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 //										System.err.println("a: " + a + ", b: " + b);
 										return b;
 									}));
-				System.out.println("Warning: Didn't find translation for language: " + language + ", returning empty dict");
+				System.err.println("Warning: Didn't find translations for language: " + language + ", returning empty dict");
 				return Map.of();
 			} catch (ScriptException | IOException e)
 			{
