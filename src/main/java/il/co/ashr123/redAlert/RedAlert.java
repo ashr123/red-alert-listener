@@ -18,6 +18,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -114,6 +115,8 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			} catch (ScriptException | IOException e)
 			{
 				System.err.println("Error: Failed to get data for language " + language + ": " + e + ". Trying again...");
+				if (e instanceof UnknownHostException)
+					sleep();
 			}
 	}
 
@@ -297,7 +300,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				} catch (IOException | ParseException e)
 				{
 					System.err.println("Exception at " + new Date() + ": " + e);
-					if (e instanceof IOException)
+					if (e instanceof UnknownHostException)
 						sleep();
 				}
 		} catch (UnsupportedAudioFileException | LineUnavailableException | IOException | NullPointerException e)
