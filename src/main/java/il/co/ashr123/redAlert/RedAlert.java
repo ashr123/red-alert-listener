@@ -168,8 +168,10 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		if (settingsLastModifiedTemp > settingsLastModified)
 		{
 			System.err.println("Info: (re)loading settings from file \"" + settingsFile + "\".");
+			final Language oldLanguage = settings.language();
 			settings = OBJECT_MAPPER.readValue(settingsFile, Settings.class);
-			refreshDistrictsTranslationDicts();
+			if (!oldLanguage.equals(settings.language()))
+				refreshDistrictsTranslationDicts();
 			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
 					.filter(Predicate.not(new HashSet<>(districts.values())::contains))
