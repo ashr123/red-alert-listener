@@ -59,6 +59,11 @@
 			<artifactId>nashorn-core</artifactId>
 			<version>15.3</version>
 		</dependency>
+		<dependency>
+			<groupId>il.co.ashr123</groupId>
+			<artifactId>time-mesurment</artifactId>
+			<version>1.0.5</version>
+		</dependency>
 	</dependencies>
 
 	<build>

@@ -2,6 +2,9 @@ package il.co.ashr123.redAlert;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import il.co.ashr123.timeMesurment.DurationCounter;
+import il.co.ashr123.timeMesurment.Result;
+import il.co.ashr123.timeMesurment.TimeScales;
 import org.jsoup.Jsoup;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -58,7 +61,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			description = "Enter custom path to settings file.",
 			defaultValue = "red-alert-settings.json")
 	private final File settingsFile = new File("red-alert-settings.json");
-	private Settings settings;
+	private Settings settings = DEFAULT_SETTINGS;
 	private long settingsLastModified = 1;
 	private Set<String> districtsNotFound = Collections.emptySet();
 	/**
@@ -91,33 +94,38 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	private static Map<String, String> loadRemoteDistricts(Language language)
 	{
 		System.err.println("Getting remote districts from IDF's Home Front Command's server...");
-		while (true)
-			try
-			{
-				final Matcher script = PATTERN.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
-						.get()
-						.select("script:containsData(districts)")
-						.html());
-				if (script.find())
-					return ((Bindings) JS.eval(script.group(1)))
-							.values().parallelStream()
-							.map(Bindings.class::cast)
-							.collect(Collectors.toMap(
-									scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(),
-									scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
-									(a, b) ->
-									{
+		Result<Map<String, String>> result = DurationCounter.measureAndExecute(() ->
+		{
+			while (true)
+				try
+				{
+					final Matcher script = PATTERN.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
+							.get()
+							.select("script:containsData(districts)")
+							.html());
+					if (script.find())
+						return ((Bindings) JS.eval(script.group(1)))
+								.values().parallelStream()
+								.map(Bindings.class::cast)
+								.collect(Collectors.toMap(
+										scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(),
+										scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
+										(a, b) ->
+										{
 //										System.err.println("a: " + a + ", b: " + b);
-										return b;
-									}));
-				System.err.println("Warning: Didn't find translations for language: " + language + ", returning empty dict");
-				return Map.of();
-			} catch (ScriptException | IOException e)
-			{
-				System.err.println("Error: Failed to get data for language " + language + ": " + e + ". Trying again...");
-				if (e instanceof UnknownHostException)
-					sleep();
-			}
+											return b;
+										}));
+					System.err.println("Warning: Didn't find translations for language: " + language + ", returning empty dict");
+					return Map.of();
+				} catch (ScriptException | IOException e)
+				{
+					System.err.println("Error: Failed to get data for language " + language + ": " + e + ". Trying again...");
+					if (e instanceof UnknownHostException)
+						sleep();
+				}
+		});
+		System.err.println("Done (took " + result.getTimeTaken(TimeScales.SECONDS) + " seconds)");
+		return result.getResult();
 	}
 
 	@Command(mixinStandardHelpOptions = true,
@@ -173,7 +181,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			System.err.println("Info: (re)loading settings from file \"" + settingsFile + "\".");
 			final Language oldLanguage = settings.language();
 			settings = OBJECT_MAPPER.readValue(settingsFile, Settings.class);
-			if (!oldLanguage.equals(settings.language()))
+			if (districts == null || !oldLanguage.equals(settings.language()))
 				refreshDistrictsTranslationDicts();
 			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
@@ -183,14 +191,17 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		} else if (settingsLastModifiedTemp == 0 && settingsLastModified != 0)
 		{
 			System.err.println("Warning: couldn't find \"" + settingsFile + "\", using default settings");
+			final Language oldLanguage = settings.language();
 			settings = DEFAULT_SETTINGS;
+			if (districts == null || !oldLanguage.equals(settings.language()))
+				refreshDistrictsTranslationDicts();
 			settingsLastModified = 0;
 			districtsNotFound = Collections.emptySet();
 		}
 	}
 
 	@Override
-	public Integer call()
+	public Integer call() throws IOException
 	{
 		System.err.println("Preparing Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion() + "...");
 		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -201,28 +212,29 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			clip.open(audioInputStream);
 			new Thread(() ->
 			{
-				final Scanner scanner = new Scanner(System.in);
-				printHelpMsg();
-				while (true)
-					switch (scanner.nextLine())
-					{
-						case "q" -> {
-							System.err.println("Bye Bye!");
-							isContinue = false;
-							return;
+				try (Scanner scanner = new Scanner(System.in))
+				{
+					printHelpMsg();
+					while (true)
+						switch (scanner.nextLine())
+						{
+							case "q" -> {
+								isContinue = false;
+								return;
+							}
+							case "t" -> {
+								System.err.println("Testing sound...");
+								clip.setFramePosition(0);
+								clip.start();
+							}
+							case "c" -> System.err.println("\033[H\033[2JListening...");
+							case "r" -> refreshDistrictsTranslationDicts();
+							case "h" -> printHelpMsg();
 						}
-						case "t" -> {
-							System.err.println("Testing sound...");
-							clip.setFramePosition(0);
-							clip.start();
-						}
-						case "c" -> System.err.println("\033[H\033[2JListening...");
-						case "r" -> {
-							refreshDistrictsTranslationDicts();
-							System.err.println("Done");
-						}
-						case "h" -> printHelpMsg();
-					}
+				} catch (NoSuchElementException ignored)
+				{
+				}
+				System.err.println("Bye Bye!");
 			}).start();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
@@ -311,6 +323,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		} finally
 		{
 			scheduledExecutorService.shutdownNow();
+			System.in.close();
 			if (httpURLConnectionField != null)
 				httpURLConnectionField.disconnect();
 		}
