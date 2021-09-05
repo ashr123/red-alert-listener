@@ -1,16 +1,16 @@
 {
   "isMakeSound": true,
   "isAlertAll": false,
-  "isDisplayAll": true,
-  "isDisplayOriginalResponseContent": false,
+  "isDisplayResponse": true,
   "connectTimeout": 5000,
   "readTimeout": 10000,
   "soundLoopCount": 15,
   "language": "HE",
+  "logLevel": "DEBUG",
   "districtsOfInterest": [
-    "נהריה",
-    "רמת גן - מערב",
-    "תל אביב - מרכז העיר",
-    "קריית אונו"
+	"נהריה",
+	"רמת גן - מערב",
+	"תל אביב - מרכז העיר",
+	"קריית אונו"
   ]
 }

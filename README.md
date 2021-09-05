@@ -21,17 +21,23 @@
    - Russian (code `RU`)
    - Arabic (code `AR`)
 
-   Got it by running the following code on the DevTools console window on chrome
-   ```javascript
-   console.log(JSON.stringify(districts.reduce((result, {label_he, label}) => (result[label_he] = label, result), {})))
-   ```
+[comment]: <> (   Got it by running the following code on the DevTools console window on chrome)
+
+[comment]: <> (   ```javascript)
+
+[comment]: <> (   console.log&#40;JSON.stringify&#40;districts.reduce&#40;&#40;result, {label_he, label}&#41; => &#40;result[label_he] = label, result&#41;, {}&#41;&#41;&#41;)
+
+[comment]: <> (   ```)
 
 Legal districts (and their translation) can be found by:
 
-1. Running `java -jar <downloaded-jar-file>.jar getRemoteDistrictsAsJSON -l <language code> | egrep "<district1>|<district2>[|...]"`
+1.
+
+Running `java -jar <downloaded-jar-file>.jar getRemoteDistrictsAsJSON -l <language code> | egrep "<district1>|<district2>[|...]"`
+
 2. Saving those districts to file like
-   this: `java -jar <downloaded-jar-file>.jar getRemoteDistrictsAsJSONToFile -l <language code> [-o <your-file-name>.json]` (the default file
-   name is `districts.json`) and search in it as you may like.
+   this: `java -jar <downloaded-jar-file>.jar getRemoteDistrictsAsJSONToFile -l <language code> [-o <your-file-name>.json]` (
+   the default file name is `districts.json`) and search in it as you may like.
 
 ## Demonstration
 

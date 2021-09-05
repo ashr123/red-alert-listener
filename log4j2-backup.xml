@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- No need to set system property "log4j2.contextSelector" to any value
+     when using <asyncLogger> or <asyncRoot>. -->
+
+<Configuration>
+	<Appenders>
+		<!-- Async Loggers will auto-flush in batches, so switch off immediateFlush. -->
+		<Console name="Console-Appender" target="SYSTEM_ERR">
+			<PatternLayout>
+				<pattern>
+					<!--					20:29:17.010 [main] INFO  il.co.ashr123.redAlert.RedAlert - -->
+					%d{DATE} [%level] - %msg%n
+				</pattern>>
+			</PatternLayout>
+		</Console>
+	</Appenders>
+	<Loggers>
+		<AsyncRoot level="INFO">
+			<AppenderRef ref="Console-Appender"/>
+		</AsyncRoot>
+	</Loggers>
+</Configuration>

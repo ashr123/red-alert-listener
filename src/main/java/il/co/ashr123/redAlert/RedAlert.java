@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import il.co.ashr123.timeMesurment.DurationCounter;
 import il.co.ashr123.timeMesurment.Result;
 import il.co.ashr123.timeMesurment.TimeScales;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
 import org.jsoup.Jsoup;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -19,6 +23,7 @@ import javax.sound.sampled.*;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.UnknownHostException;
@@ -42,6 +47,7 @@ import java.util.stream.Collectors;
 		showDefaultValues = true)
 public class RedAlert implements Callable<Integer>, IVersionProvider
 {
+	private final static Logger LOGGER = LogManager.getLogger();
 	@SuppressWarnings("RegExpRedundantEscape")
 	private static final Pattern PATTERN = Pattern.compile("(?:var|let|const)\\s+districts\\s*=\\s*(\\[.*\\])", Pattern.DOTALL);
 	private static final ScriptEngine JS = new ScriptEngineManager().getEngineByName("javascript");
@@ -50,11 +56,11 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			false,
 			false,
 			true,
-			false,
 			5000,
 			10000,
 			15,
 			Language.HE,
+			Level.INFO,
 			Collections.emptySet()
 	);
 	@Option(names = {"-s", "--settings"},
@@ -75,6 +81,13 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		new CommandLine(RedAlert.class).setCaseInsensitiveEnumValuesAllowed(true).execute(args);
 	}
 
+	private static void setLoggerLevel(Level level)
+	{
+		LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
+		loggerContext.getConfiguration().getLoggerConfig(LOGGER.getName()).setLevel(level);
+		loggerContext.updateLoggers();
+	}
+
 	private static void printHelpMsg()
 	{
 		System.err.println("Enter \"t\" for sound test, \"c\" for clearing the screen, \"r\" for refresh the districts translation dictionary, \"q\" to quit or \"h\" for displaying this help massage.");
@@ -87,45 +100,8 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			Thread.sleep(1000);
 		} catch (InterruptedException interruptedException)
 		{
-			interruptedException.printStackTrace();
+			interruptedException.printStackTrace(); // TODO think about
 		}
-	}
-
-	private static Map<String, String> loadRemoteDistricts(Language language)
-	{
-		System.err.println("Getting remote districts from IDF's Home Front Command's server...");
-		Result<Map<String, String>> result = DurationCounter.measureAndExecute(() ->
-		{
-			while (true)
-				try
-				{
-					final Matcher script = PATTERN.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
-							.get()
-							.select("script:containsData(districts)")
-							.html());
-					if (script.find())
-						return ((Bindings) JS.eval(script.group(1)))
-								.values().parallelStream()
-								.map(Bindings.class::cast)
-								.collect(Collectors.toMap(
-										scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(),
-										scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
-										(a, b) ->
-										{
-//										System.err.println("a: " + a + ", b: " + b);
-											return b;
-										}));
-					System.err.println("Warning: Didn't find translations for language: " + language + ", returning empty dict");
-					return Map.of();
-				} catch (ScriptException | IOException e)
-				{
-					System.err.println("Error: Failed to get data for language " + language + ": " + e + ". Trying again...");
-					if (e instanceof UnknownHostException)
-						sleep();
-				}
-		});
-		System.err.println("Done (took " + result.getTimeTaken(TimeScales.SECONDS) + " seconds)");
-		return result.getResult();
 	}
 
 	@Command(mixinStandardHelpOptions = true,
@@ -161,10 +137,47 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		OBJECT_MAPPER.writeValue(file, loadRemoteDistricts(language));
 	}
 
+	private static Map<String, String> loadRemoteDistricts(Language language)
+	{
+		LOGGER.info("Getting remote districts from IDF's Home Front Command's server...");
+		Result<Map<String, String>> result = DurationCounter.measureAndExecute(() ->
+		{
+			while (true)
+				try
+				{
+					final Matcher script = PATTERN.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + language.name().toLowerCase() + "/Pakar.aspx")
+							.get()
+							.select("script:containsData(districts)")
+							.html());
+					if (script.find())
+						return ((Bindings) JS.eval(script.group(1)))
+								.values().parallelStream()
+								.map(Bindings.class::cast)
+								.collect(Collectors.toMap(
+										scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(),
+										scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
+										(a, b) ->
+										{
+//											System.err.println("a: " + a + ", b: " + b);
+											return b;
+										}));
+					LOGGER.warn("Didn't find translations for language: {}, returning empty dict", language);
+					return Map.of();
+				} catch (ScriptException | IOException e)
+				{
+					LOGGER.error("Failed to get data for language {}: {}. Trying again...", language, e.toString());
+					if (e instanceof UnknownHostException)
+						sleep();
+				}
+		});
+		LOGGER.info("Done (took {} seconds)", result.getTimeTaken(TimeScales.SECONDS));
+		return result.getResult();
+	}
+
 	private void printDistrictsNotFoundWarning()
 	{
 		if (!districtsNotFound.isEmpty())
-			System.err.println("Warning: those districts don't exist: " + districtsNotFound);
+			LOGGER.warn("Warning: those districts don't exist: {}", districtsNotFound);
 	}
 
 	@Override
@@ -176,33 +189,35 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	private void loadSettings() throws IOException
 	{
 		final long settingsLastModifiedTemp = settingsFile.lastModified();
+		final Language oldLanguage = settings.language();
 		if (settingsLastModifiedTemp > settingsLastModified)
 		{
-			System.err.println("Info: (re)loading settings from file \"" + settingsFile + "\".");
-			final Language oldLanguage = settings.language();
+			LOGGER.info("(re)loading settings from file \"{}\"", settingsFile);
 			settings = OBJECT_MAPPER.readValue(settingsFile, Settings.class);
+			settingsLastModified = settingsLastModifiedTemp;
 			if (districts == null || !oldLanguage.equals(settings.language()))
 				refreshDistrictsTranslationDicts();
-			settingsLastModified = settingsLastModifiedTemp;
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
 					.filter(Predicate.not(new HashSet<>(districts.values())::contains))
 					.collect(Collectors.toSet());
 			printDistrictsNotFoundWarning();
+			setLoggerLevel(settings.logLevel());
 		} else if (settingsLastModifiedTemp == 0 && settingsLastModified != 0)
 		{
-			System.err.println("Warning: couldn't find \"" + settingsFile + "\", using default settings");
-			final Language oldLanguage = settings.language();
+			LOGGER.warn("couldn't find \"{}\", using default settings", settingsFile);
 			settings = DEFAULT_SETTINGS;
 			if (districts == null || !oldLanguage.equals(settings.language()))
 				refreshDistrictsTranslationDicts();
 			settingsLastModified = 0;
 			districtsNotFound = Collections.emptySet();
+			setLoggerLevel(settings.logLevel());
 		}
 	}
 
 	@Override
 	public Integer call() throws IOException
 	{
+		LOGGER.info("Hey");
 		System.err.println("Preparing Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion() + "...");
 		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 		HttpURLConnection httpURLConnectionField = null;
@@ -219,6 +234,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 						switch (scanner.nextLine())
 						{
 							case "q" -> {
+								System.err.println("Bye Bye!");
 								isContinue = false;
 								return;
 							}
@@ -236,10 +252,10 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				}
 				System.err.println("Bye Bye!");
 			}).start();
-			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslationDicts, 1, 1, TimeUnit.DAYS);
 			loadSettings();
+			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
+			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			Set<String> prevData = Collections.emptySet();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
 			System.err.println("Listening...");
@@ -258,7 +274,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 
 						if (httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_OK)
 						{
-							System.err.println("Error at " + new Date() + ": connection " + httpURLConnection.getResponseMessage());
+							LOGGER.error("Connection response {}", httpURLConnection.getResponseMessage());
 							sleep();
 							continue;
 						}
@@ -279,14 +295,12 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 									.collect(Collectors.toSet());
 
 							final StringBuilder output = new StringBuilder();
-							if (settings.isDisplayAll())
-								output.append("Content Length: ").append(contentLength)
-										.append(" bytes").append(System.lineSeparator())
+							if (settings.isDisplayResponse())
+								output.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 										.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
 										.append("Current Date: ").append(new Date()).append(System.lineSeparator())
 										.append("Translated districts: ").append(translatedData).append(System.lineSeparator());
-							if (settings.isDisplayOriginalResponseContent())
-								output.append("Original response content: ").append(redAlertResponse).append(System.lineSeparator());
+							LOGGER.debug("Original response content: {}", redAlertResponse);
 
 							printDistrictsNotFoundWarning();
 							final Set<String> importantDistricts = (translatedData.size() > settings.districtsOfInterest().size() ?
@@ -308,17 +322,16 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 								System.out.println(output);
 						}
 					} else
-						System.err.println("Error at " + new Date() + ": Not a HTTP connection!");
+						LOGGER.error("Not a HTTP connection!");
 				} catch (IOException | ParseException e)
 				{
-					System.err.println("Exception at " + new Date() + ": " + e);
-					if (e instanceof UnknownHostException)
+					LOGGER.error("Got exception: {}", e.toString());
+					if (e instanceof UnknownHostException || e instanceof ConnectException)
 						sleep();
 				}
 		} catch (UnsupportedAudioFileException | LineUnavailableException | IOException | NullPointerException e)
 		{
-			System.err.println("Fatal error at " + new Date() + ": " + e + System.lineSeparator() +
-					"Closing connection end exiting...");
+			LOGGER.fatal("Fatal error: {}.{}Closing connection end exiting...", e.toString(), System.lineSeparator());
 			return 1;
 		} finally
 		{
@@ -341,7 +354,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		HE, EN, AR, RU
 	}
 
-	public static final record RedAlertResponse(
+	private static final record RedAlertResponse(
 			Set<String> data,
 			long id,
 			String title
@@ -349,15 +362,15 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	{
 	}
 
-	public static final record Settings(
+	private static final record Settings(
 			boolean isMakeSound,
 			boolean isAlertAll,
-			boolean isDisplayAll,
-			boolean isDisplayOriginalResponseContent,
+			boolean isDisplayResponse,
 			int connectTimeout,
 			int readTimeout,
 			int soundLoopCount,
 			Language language,
+			Level logLevel,
 			Set<String> districtsOfInterest
 	)
 	{
