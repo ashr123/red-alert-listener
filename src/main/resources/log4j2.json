@@ -5,7 +5,7 @@
 		"name": "Console-Appender",
 		"target": "SYSTEM_ERR",
 		"patternLayout": {
-		  "pattern": "%d{DEFAULT} [%level] - %msg%n"
+		  "pattern": "%d{DATE} [%level] - %msg%n"
 		}
 	  }
 	},
