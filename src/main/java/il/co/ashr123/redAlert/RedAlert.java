@@ -217,7 +217,6 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	@Override
 	public Integer call() throws IOException
 	{
-		LOGGER.info("Hey");
 		System.err.println("Preparing Red Alert Listener v" + RedAlert.class.getPackage().getImplementationVersion() + "...");
 		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 		HttpURLConnection httpURLConnectionField = null;

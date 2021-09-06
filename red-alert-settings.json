@@ -6,7 +6,7 @@
   "readTimeout": 10000,
   "soundLoopCount": 15,
   "language": "HE",
-  "logLevel": "DEBUG",
+  "logLevel": "INFO",
   "districtsOfInterest": [
 	"נהריה",
 	"רמת גן - מערב",

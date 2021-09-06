@@ -1,18 +1,18 @@
 {
   "configuration": {
 	"appenders": {
-	  "Console": {
+	  "console": {
 		"name": "Console-Appender",
 		"target": "SYSTEM_ERR",
-		"PatternLayout": {
-		  "pattern": "%d{DATE} [%level] - %msg%n"
+		"patternLayout": {
+		  "pattern": "%d{DEFAULT} [%level] - %msg%n"
 		}
 	  }
 	},
 	"loggers": {
-	  "AsyncRoot": {
+	  "asyncRoot": {
 		"level": "INFO",
-		"AppenderRef": {
+		"appenderRef": {
 		  "ref": "Console-Appender"
 		}
 	  }
