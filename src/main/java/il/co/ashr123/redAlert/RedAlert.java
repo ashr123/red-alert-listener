@@ -254,7 +254,9 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslationDicts, 1, 1, TimeUnit.DAYS);
 			loadSettings();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-			final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
+			final SimpleDateFormat
+					httpsDateParser = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US),
+					dateFormatterForPrinting = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS");
 			Set<String> prevData = Collections.emptySet();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
 			System.err.println("Listening...");
@@ -283,7 +285,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 						if (contentLength == 0)
 							prevData = Collections.emptySet();
 						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null ||
-								(alertsLastModified = SIMPLE_DATE_FORMAT.parse(lastModifiedStr)).after(currAlertsLastModified))
+								(alertsLastModified = httpsDateParser.parse(lastModifiedStr)).after(currAlertsLastModified))
 						{
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified;
@@ -296,8 +298,8 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							final StringBuilder output = new StringBuilder();
 							if (settings.isDisplayResponse())
 								output.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
-										.append("Last Modified Date: ").append(alertsLastModified).append(System.lineSeparator())
-										.append("Current Date: ").append(new Date()).append(System.lineSeparator())
+										.append("Last Modified Date: ").append(alertsLastModified == null ? null : dateFormatterForPrinting.format(alertsLastModified)).append(System.lineSeparator())
+										.append("Current Date: ").append(dateFormatterForPrinting.format(new Date())).append(System.lineSeparator())
 										.append("Translated districts: ").append(translatedData).append(System.lineSeparator());
 							LOGGER.debug("Original response content: {}", redAlertResponse);
 
