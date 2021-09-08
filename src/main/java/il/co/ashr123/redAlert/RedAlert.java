@@ -245,6 +245,10 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							case "c" -> System.err.println("\033[H\033[2JListening...");
 							case "r" -> refreshDistrictsTranslationDicts();
 							case "h" -> printHelpMsg();
+							default -> {
+								System.err.println("Unrecognized command!");
+								printHelpMsg();
+							}
 						}
 				} catch (NoSuchElementException ignored)
 				{
