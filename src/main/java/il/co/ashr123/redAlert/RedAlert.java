@@ -140,7 +140,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	private static Map<String, String> loadRemoteDistricts(LanguageCode languageCode)
 	{
 		LOGGER.info("Getting remote districts from IDF's Home Front Command's server...");
-		Result<Map<String, String>> result = DurationCounter.measureAndExecute(() ->
+		final Result<Map<String, String>> result = DurationCounter.measureAndExecute(() ->
 		{
 			while (true)
 				try
@@ -166,7 +166,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				} catch (ScriptException | IOException e)
 				{
 					LOGGER.error("Failed to get data for language {}: {}. Trying again...", languageCode, e.toString());
-					if (e instanceof UnknownHostException)
+					if (e instanceof UnknownHostException || e instanceof ConnectException)
 						sleep();
 				}
 		});
