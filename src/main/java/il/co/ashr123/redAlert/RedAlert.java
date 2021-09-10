@@ -308,7 +308,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							LOGGER.debug("Original response content: {}", redAlertResponse);
 
 							printDistrictsNotFoundWarning();
-							final Set<String> importantDistricts = (translatedData.size() > settings.districtsOfInterest().size() ?
+							final Set<String> importantDistricts = (translatedData.size() < settings.districtsOfInterest().size() ?
 									translatedData.parallelStream()
 											.filter(settings.districtsOfInterest()::contains) :
 									settings.districtsOfInterest().parallelStream()
