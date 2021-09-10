@@ -177,7 +177,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	private void printDistrictsNotFoundWarning()
 	{
 		if (!districtsNotFound.isEmpty())
-			LOGGER.warn("Warning: those districts don't exist: {}", districtsNotFound);
+			LOGGER.warn("Those districts don't exist: {}", districtsNotFound);
 	}
 
 	@Override
@@ -295,36 +295,37 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 								currAlertsLastModified = alertsLastModified;
 
 							final RedAlertResponse redAlertResponse = OBJECT_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class);
-							final Set<String> translatedData = redAlertResponse.data().parallelStream()
+							LOGGER.debug("Original response content: {}", redAlertResponse);
+							final Set<String>
+									translatedData = redAlertResponse.data().parallelStream()
 									.map(districts::get)
-									.collect(Collectors.toSet());
-
+									.collect(Collectors.toSet()),
+									importantDistricts = (translatedData.size() < settings.districtsOfInterest().size() ?
+											translatedData.parallelStream()
+													.filter(settings.districtsOfInterest()::contains) :
+											settings.districtsOfInterest().parallelStream()
+													.filter(translatedData::contains))
+											.filter(Predicate.not(prevData::contains))
+											.collect(Collectors.toSet());
+							if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
+							{
+								clip.setFramePosition(0);
+								clip.loop(settings.soundLoopCount());
+							}
 							final StringBuilder output = new StringBuilder();
 							if (settings.isDisplayResponse())
 								output.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 										.append("Last Modified Date: ").append(alertsLastModified == null ? null : dateFormatterForPrinting.format(alertsLastModified)).append(System.lineSeparator())
 										.append("Current Date: ").append(dateFormatterForPrinting.format(new Date())).append(System.lineSeparator())
 										.append("Translated districts: ").append(translatedData).append(System.lineSeparator());
-							LOGGER.debug("Original response content: {}", redAlertResponse);
 
-							printDistrictsNotFoundWarning();
-							final Set<String> importantDistricts = (translatedData.size() < settings.districtsOfInterest().size() ?
-									translatedData.parallelStream()
-											.filter(settings.districtsOfInterest()::contains) :
-									settings.districtsOfInterest().parallelStream()
-											.filter(translatedData::contains))
-									.filter(Predicate.not(prevData::contains))
-									.collect(Collectors.toSet());
-							prevData = translatedData;
-							if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
-							{
-								clip.setFramePosition(0);
-								clip.loop(settings.soundLoopCount());
-							}
 							if (!importantDistricts.isEmpty())
 								output.append("ALERT: ").append(importantDistricts).append(System.lineSeparator());
 							if (!output.isEmpty())
 								System.out.println(output);
+
+							printDistrictsNotFoundWarning();
+							prevData = translatedData;
 						}
 					} else
 						LOGGER.error("Not a HTTP connection!");
@@ -336,14 +337,14 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				}
 		} catch (UnsupportedAudioFileException | LineUnavailableException | IOException | NullPointerException e)
 		{
-			LOGGER.fatal("Fatal error: {}.{}Closing connection end exiting...", e.toString(), System.lineSeparator());
+			LOGGER.fatal("Fatal error: {}. Closing connection end exiting...", e.toString());
 			return 1;
 		} finally
 		{
 			scheduledExecutorService.shutdownNow();
-			System.in.close();
 			if (httpURLConnectionField != null)
 				httpURLConnectionField.disconnect();
+			System.in.close();
 		}
 		return 0;
 	}
