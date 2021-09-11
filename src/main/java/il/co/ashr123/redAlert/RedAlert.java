@@ -158,7 +158,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 										scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
 										(a, b) ->
 										{
-//											System.err.println("a: " + a + ", b: " + b);
+//											LOGGER.debug("a: {}, b: {}", a, b);
 											return b;
 										}));
 					LOGGER.warn("Didn't find translations for language: {}, returning empty dict", languageCode);
@@ -170,7 +170,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 						sleep();
 				}
 		});
-		LOGGER.info("Done (took {} seconds)", result.getTimeTaken(TimeScales.SECONDS));
+		LOGGER.info("Done (took {} seconds, got {} districts)", result.getTimeTaken(TimeScales.SECONDS), result.getResult().size());
 		return result.getResult();
 	}
 
