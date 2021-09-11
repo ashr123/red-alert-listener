@@ -2,6 +2,7 @@ package il.co.ashr123.redAlert;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import il.co.ashr123.timeMesurment.DurationCounter;
 import il.co.ashr123.timeMesurment.Result;
 import il.co.ashr123.timeMesurment.TimeScales;
@@ -51,7 +52,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	@SuppressWarnings("RegExpRedundantEscape")
 	private static final Pattern PATTERN = Pattern.compile("(?:var|let|const)\\s+districts\\s*=\\s*(\\[.*\\])", Pattern.DOTALL);
 	private static final ScriptEngine JS = new ScriptEngineManager().getEngineByName("javascript");
-	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+	private static final ObjectMapper JSON_MAPPER = new JsonMapper().enable(SerializationFeature.INDENT_OUTPUT);
 	private static final Settings DEFAULT_SETTINGS = new Settings(
 			false,
 			false,
@@ -115,7 +116,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
 					LanguageCode languageCode) throws IOException
 	{
-		System.out.println(OBJECT_MAPPER.writeValueAsString(loadRemoteDistricts(languageCode)));
+		System.out.println(JSON_MAPPER.writeValueAsString(loadRemoteDistricts(languageCode)));
 	}
 
 	@Command(mixinStandardHelpOptions = true,
@@ -134,7 +135,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
 					LanguageCode languageCode) throws IOException
 	{
-		OBJECT_MAPPER.writeValue(file, loadRemoteDistricts(languageCode));
+		JSON_MAPPER.writeValue(file, loadRemoteDistricts(languageCode));
 	}
 
 	private static Map<String, String> loadRemoteDistricts(LanguageCode languageCode)
@@ -193,7 +194,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		if (settingsLastModifiedTemp > settingsLastModified)
 		{
 			LOGGER.info("(re)loading settings from file \"{}\"", settingsFile);
-			settings = OBJECT_MAPPER.readValue(settingsFile, Settings.class);
+			settings = JSON_MAPPER.readValue(settingsFile, Settings.class);
 			settingsLastModified = settingsLastModifiedTemp;
 			if (districts == null || !oldLanguageCode.equals(settings.languageCode()))
 				refreshDistrictsTranslationDicts();
@@ -294,7 +295,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified;
 
-							final RedAlertResponse redAlertResponse = OBJECT_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class);
+							final RedAlertResponse redAlertResponse = JSON_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class);
 							LOGGER.debug("Original response content: {}", redAlertResponse);
 							final Set<String>
 									translatedData = redAlertResponse.data().parallelStream()
