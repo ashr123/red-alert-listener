@@ -262,7 +262,6 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			loadSettings();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final SimpleDateFormat httpsDateParser = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
-			final Set<String> testDistrict = Set.of("בדיקה");
 			Set<String> prevData = Collections.emptySet();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
 			System.err.println("Listening...");
@@ -298,13 +297,13 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 
 							final RedAlertResponse redAlertResponse = JSON_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class);
 							LOGGER.debug("Original response content: {}", redAlertResponse);
-							if (settings.isShowTestEvents() && redAlertResponse.data().equals(testDistrict))
+							if (settings.isShowTestAlerts() && redAlertResponse.data().equals(LanguageCode.HE.getTestDistrictTranslation()))
 							{
-								System.out.println(redAlertEventToString(
+								System.out.println(redAlertToString(
 										alertsLastModified,
 										contentLength,
 										settings.languageCode().getTestDistrictTranslation(),
-										new StringBuilder("Test Event").append(System.lineSeparator()))
+										new StringBuilder("Test Alert").append(System.lineSeparator()))
 								);
 								continue;
 							}
@@ -326,7 +325,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							}
 							final StringBuilder output = new StringBuilder();
 							if (settings.isDisplayResponse())
-								redAlertEventToString(
+								redAlertToString(
 										alertsLastModified,
 										contentLength,
 										translatedData,
@@ -363,10 +362,10 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		return 0;
 	}
 
-	private StringBuilder redAlertEventToString(Date alertsLastModified,
-	                                            long contentLength,
-	                                            Set<String> translatedData,
-	                                            StringBuilder output)
+	private StringBuilder redAlertToString(Date alertsLastModified,
+	                                       long contentLength,
+	                                       Set<String> translatedData,
+	                                       StringBuilder output)
 	{
 		return output.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 				.append("Last Modified Date: ").append(alertsLastModified == null ? null : DATE_FORMATTER_FOR_PRINTING.format(alertsLastModified)).append(System.lineSeparator())
@@ -411,7 +410,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			boolean isMakeSound,
 			boolean isAlertAll,
 			boolean isDisplayResponse,
-			boolean isShowTestEvents,
+			boolean isShowTestAlerts,
 			int connectTimeout,
 			int readTimeout,
 			int soundLoopCount,
