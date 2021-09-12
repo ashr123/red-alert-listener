@@ -300,8 +300,8 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							if (settings.isShowTestAlerts() && redAlertResponse.data().equals(LanguageCode.HE.getTestDistrictTranslation()))
 							{
 								System.out.println(redAlertToString(
-										alertsLastModified,
 										contentLength,
+										alertsLastModified,
 										settings.languageCode().getTestDistrictTranslation(),
 										new StringBuilder("Test Alert").append(System.lineSeparator())
 								));
@@ -326,8 +326,8 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							final StringBuilder output = new StringBuilder();
 							if (settings.isDisplayResponse())
 								redAlertToString(
-										alertsLastModified,
 										contentLength,
+										alertsLastModified,
 										translatedData,
 										output
 								);
@@ -362,8 +362,8 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		return 0;
 	}
 
-	private StringBuilder redAlertToString(Date alertsLastModified,
-	                                       long contentLength,
+	private StringBuilder redAlertToString(long contentLength,
+	                                       Date alertsLastModified,
 	                                       Set<String> translatedData,
 	                                       StringBuilder output)
 	{
