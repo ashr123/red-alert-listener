@@ -2,6 +2,7 @@
   "isMakeSound": true,
   "isAlertAll": false,
   "isDisplayResponse": true,
+  "isShowTestEvents": false,
   "connectTimeout": 5000,
   "readTimeout": 10000,
   "soundLoopCount": 15,
