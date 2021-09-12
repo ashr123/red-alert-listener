@@ -303,8 +303,8 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 										alertsLastModified,
 										contentLength,
 										settings.languageCode().getTestDistrictTranslation(),
-										new StringBuilder("Test Alert").append(System.lineSeparator()))
-								);
+										new StringBuilder("Test Alert").append(System.lineSeparator())
+								));
 								continue;
 							}
 							final Set<String>
