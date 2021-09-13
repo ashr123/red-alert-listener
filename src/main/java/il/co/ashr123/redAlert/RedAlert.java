@@ -233,8 +233,10 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				{
 					printHelpMsg();
 					while (true)
-						switch (scanner.nextLine())
+						switch (scanner.nextLine().trim())
 						{
+							case "" -> {
+							}
 							case "q" -> {
 								System.err.println("Bye Bye!");
 								isContinue = false;
@@ -384,7 +386,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		HE(Set.of("בדיקה")),
 		EN(Set.of("Test")),
 		AR(Set.of("فحص")),
-		RU(Set.of("осмотр"));
+		RU(Set.of("Проверка"));
 		private final Set<String> testDistrictTranslation;
 
 		LanguageCode(Set<String> testDistrictTranslation)
