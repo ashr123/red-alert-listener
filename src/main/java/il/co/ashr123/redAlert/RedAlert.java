@@ -19,7 +19,6 @@ import picocli.CommandLine.Option;
 import javax.script.Bindings;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
 import javax.sound.sampled.*;
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -66,6 +65,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			Collections.emptySet()
 	);
 	private static final SimpleDateFormat DATE_FORMATTER_FOR_PRINTING = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS");
+	private static boolean isContinue = true;
 	@Option(names = {"-s", "--settings"},
 			description = "Enter custom path to settings file.",
 			defaultValue = "red-alert-settings.json")
@@ -77,7 +77,6 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
 	private Map<String, String> districts;
-	private boolean isContinue = true;
 
 	public static void main(String... args)
 	{
@@ -118,7 +117,14 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
 					LanguageCode languageCode) throws IOException
 	{
-		System.out.println(JSON_MAPPER.writeValueAsString(loadRemoteDistricts(languageCode)));
+		try
+		{
+			startSubcommandInputThread();
+			System.out.println(JSON_MAPPER.writeValueAsString(loadRemoteDistricts(languageCode)));
+		} finally
+		{
+			System.in.close();
+		}
 	}
 
 	@Command(mixinStandardHelpOptions = true,
@@ -137,16 +143,49 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
 					LanguageCode languageCode) throws IOException
 	{
-		JSON_MAPPER.writeValue(file, loadRemoteDistricts(languageCode));
+		try
+		{
+			startSubcommandInputThread();
+			JSON_MAPPER.writeValue(file, loadRemoteDistricts(languageCode));
+		} finally
+		{
+			System.in.close();
+		}
+	}
+
+	private static void startSubcommandInputThread()
+	{
+		new Thread(() ->
+		{
+			try (Scanner scanner = new Scanner(System.in))
+			{
+				System.err.println("Enter \"q\" to quit");
+				while (isContinue)
+					switch (scanner.nextLine().trim())
+					{
+						case "" -> {
+						}
+						case "q" -> {
+							System.err.println("Quiting...");
+							isContinue = false;
+						}
+						default -> System.err.println("""
+								Unrecognized command!
+								Enter "q" to quit""");
+					}
+			} catch (NoSuchElementException ignored)
+			{
+			}
+		}).start();
 	}
 
 	private static Map<String, String> loadRemoteDistricts(LanguageCode languageCode)
 	{
 		LOGGER.info("Getting remote districts from IDF's Home Front Command's server...");
-		final Result<Map<String, String>> result = DurationCounter.measureAndExecute(() ->
-		{
-			while (true)
-				try
+		while (isContinue)
+			try
+			{
+				final Result<Map<String, String>> result = DurationCounter.measureAndExecuteCallable(() ->
 				{
 					final Matcher script = PATTERN.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + languageCode.name().toLowerCase() + "/Pakar.aspx")
 							.get()
@@ -166,15 +205,16 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 										}));
 					LOGGER.warn("Didn't find translations for language: {}, returning empty dict", languageCode);
 					return Map.of();
-				} catch (ScriptException | IOException e)
-				{
-					LOGGER.error("Failed to get data for language {}: {}. Trying again...", languageCode, e.toString());
-					if (e instanceof UnknownHostException || e instanceof ConnectException)
-						sleep();
-				}
-		});
-		LOGGER.info("Done (took {} seconds, got {} districts)", result.getTimeTaken(TimeScales.SECONDS), result.getResult().size());
-		return result.getResult();
+				});
+				LOGGER.info("Done (took {} seconds, got {} districts)", result.getTimeTaken(TimeScales.SECONDS), result.getResult().size());
+				return result.getResult();
+			} catch (Exception e)
+			{
+				LOGGER.error("Failed to get data for language {}: {}. Trying again...", languageCode, e.toString());
+				if (e instanceof UnknownHostException || e instanceof ConnectException)
+					sleep();
+			}
+		return Map.of();
 	}
 
 	private void printDistrictsNotFoundWarning()
@@ -232,16 +272,12 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				try (Scanner scanner = new Scanner(System.in))
 				{
 					printHelpMsg();
-					while (true)
+					while (isContinue)
 						switch (scanner.nextLine().trim())
 						{
 							case "" -> {
 							}
-							case "q" -> {
-								System.err.println("Bye Bye!");
-								isContinue = false;
-								return;
-							}
+							case "q" -> isContinue = false;
 							case "t" -> {
 								System.err.println("Testing sound...");
 								clip.setFramePosition(0);
