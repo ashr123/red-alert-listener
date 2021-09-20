@@ -1,11 +1,11 @@
-package il.co.ashr123.redAlert;
+package io.github.ashr123.redAlert;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import il.co.ashr123.timeMesurment.DurationCounter;
-import il.co.ashr123.timeMesurment.Result;
-import il.co.ashr123.timeMesurment.TimeScales;
+import io.github.ashr123.timeMesurment.DurationCounter;
+import io.github.ashr123.timeMesurment.Result;
+import io.github.ashr123.timeMesurment.TimeScales;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
