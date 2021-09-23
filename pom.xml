@@ -11,25 +11,27 @@
 
 	<name>Red Alert</name>
 	<description>A stand alone terminal app that can get "red alert"s from IDF's Home Front Command</description>
-	<url>https://github.com/ashr123/red-alert</url>
+	<url>https://github.com/ashr123/${artifactId}</url>
 
 	<licenses>
 		<license>
 			<name>GNU GENERAL PUBLIC LICENSE</name>
-			<url>https://github.com/ashr123/red-alert/blob/master/LICENSE</url>
+			<url>${url}/blob/master/LICENSE</url>
 		</license>
 	</licenses>
 
 	<scm>
-		<connection>scm:git:git://github.com/ashr123/red-alert.git</connection>
-		<url>https://github.com/simpligility/ashr123/red-alert</url>
+		<connection>scm:git:${url}.git</connection>
+		<url>${url}</url>
 	</scm>
 
-	<properties>
-		<maven.compiler.source>16</maven.compiler.source>
-		<maven.compiler.target>16</maven.compiler.target>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-	</properties>
+	<distributionManagement>
+		<repository>
+			<id>github</id>
+			<name>GitHub Packages</name>
+			<url>https://maven.pkg.github.com/ashr123/${artifactId}</url>
+		</repository>
+	</distributionManagement>
 
 	<developers>
 		<developer>
@@ -44,13 +46,11 @@
 		</developer>
 	</developers>
 
-	<distributionManagement>
-		<repository>
-			<id>github</id>
-			<name>GitHub Packages</name>
-			<url>https://maven.pkg.github.com/ashr123/red-alert</url>
-		</repository>
-	</distributionManagement>
+	<properties>
+		<maven.compiler.source>16</maven.compiler.source>
+		<maven.compiler.target>16</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
 
 	<dependencies>
 		<dependency>
