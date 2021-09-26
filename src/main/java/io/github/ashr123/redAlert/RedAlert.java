@@ -3,9 +3,9 @@ package io.github.ashr123.redAlert;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import io.github.ashr123.timeMesurment.DurationCounter;
-import io.github.ashr123.timeMesurment.Result;
-import io.github.ashr123.timeMesurment.TimeScales;
+import io.github.ashr123.timeMeasurement.TimeMeasurement;
+import io.github.ashr123.timeMeasurement.Result;
+import io.github.ashr123.timeMeasurement.TimeScales;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -185,7 +185,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		while (isContinue)
 			try
 			{
-				final Result<Map<String, String>> result = DurationCounter.measureAndExecuteCallable(() ->
+				final Result<Map<String, String>> result = TimeMeasurement.measureAndExecuteCallable(() ->
 				{
 					final Matcher script = PATTERN.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + languageCode.name().toLowerCase() + "/Pakar.aspx")
 							.get()

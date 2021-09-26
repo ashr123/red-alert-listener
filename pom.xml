@@ -6,30 +6,30 @@
 
 	<groupId>io.github.ashr123</groupId>
 	<artifactId>red-alert</artifactId>
-	<version>4.2.4</version>
+	<version>4.2.5</version>
 	<packaging>jar</packaging>
 
 	<name>Red Alert</name>
 	<description>A stand alone terminal app that can get "red alert"s from IDF's Home Front Command</description>
-	<url>https://github.com/ashr123/${artifactId}</url>
+	<url>https://github.com/ashr123/${project.artifactId}</url>
 
 	<licenses>
 		<license>
 			<name>GNU GENERAL PUBLIC LICENSE</name>
-			<url>${url}/blob/master/LICENSE</url>
+			<url>${project.url}/blob/master/LICENSE</url>
 		</license>
 	</licenses>
 
 	<scm>
-		<connection>scm:git:${url}.git</connection>
-		<url>${url}</url>
+		<connection>scm:git:${project.url}.git</connection>
+		<url>${project.url}</url>
 	</scm>
 
 	<distributionManagement>
 		<repository>
 			<id>github</id>
 			<name>GitHub Packages</name>
-			<url>https://maven.pkg.github.com/ashr123/${artifactId}</url>
+			<url>https://maven.pkg.github.com/ashr123/${project.artifactId}</url>
 		</repository>
 	</distributionManagement>
 
@@ -47,8 +47,6 @@
 	</developers>
 
 	<properties>
-		<maven.compiler.source>16</maven.compiler.source>
-		<maven.compiler.target>16</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
@@ -94,13 +92,21 @@
 		</dependency>
 		<dependency>
 			<groupId>io.github.ashr123</groupId>
-			<artifactId>time-mesurment</artifactId>
-			<version>1.0.6</version>
+			<artifactId>time-measurement</artifactId>
+			<version>1.0.7</version>
 		</dependency>
 	</dependencies>
 
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.1</version>
+				<configuration>
+					<release>16</release>
+				</configuration>
+			</plugin>
 			<!-- this is for preventing the creation of jar without it's dependencies -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
