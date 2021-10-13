@@ -3,8 +3,8 @@ package io.github.ashr123.redAlert;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import io.github.ashr123.timeMeasurement.TimeMeasurement;
 import io.github.ashr123.timeMeasurement.Result;
+import io.github.ashr123.timeMeasurement.TimeMeasurement;
 import io.github.ashr123.timeMeasurement.TimeScales;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -19,14 +19,14 @@ import picocli.CommandLine.Option;
 import javax.script.Bindings;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
-import javax.sound.sampled.*;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -62,7 +62,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			15,
 			LanguageCode.HE,
 			Level.INFO,
-			Collections.emptySet()
+			Collections.emptyList()
 	);
 	private static final SimpleDateFormat DATE_FORMATTER_FOR_PRINTING = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS");
 	private static boolean isContinue = true;
@@ -72,7 +72,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	private final File settingsFile = new File("red-alert-settings.json");
 	private Settings settings = DEFAULT_SETTINGS;
 	private long settingsLastModified = 1;
-	private Set<String> districtsNotFound = Collections.emptySet();
+	private List<String> districtsNotFound = Collections.emptyList();
 	/**
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
@@ -211,7 +211,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			} catch (Exception e)
 			{
 				LOGGER.error("Failed to get data for language {}: {}. Trying again...", languageCode, e.toString());
-				if (e instanceof UnknownHostException || e instanceof ConnectException)
+				if (e instanceof IOException)
 					sleep();
 			}
 		return Map.of();
@@ -242,7 +242,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				refreshDistrictsTranslationDicts();
 			districtsNotFound = settings.districtsOfInterest().parallelStream()
 					.filter(Predicate.not(new HashSet<>(districts.values())::contains))
-					.collect(Collectors.toSet());
+					.collect(Collectors.toList());
 			printDistrictsNotFoundWarning();
 			setLoggerLevel(settings.logLevel());
 		} else if (settingsLastModifiedTemp == 0 && settingsLastModified != 0)
@@ -252,7 +252,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			if (districts == null || !oldLanguageCode.equals(settings.languageCode()))
 				refreshDistrictsTranslationDicts();
 			settingsLastModified = 0;
-			districtsNotFound = Collections.emptySet();
+			districtsNotFound = Collections.emptyList();
 			setLoggerLevel(settings.logLevel());
 		}
 	}
@@ -300,7 +300,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			loadSettings();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final SimpleDateFormat httpsDateParser = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
-			Set<String> prevData = Collections.emptySet();
+			List<String> prevData = Collections.emptyList();
 			Date currAlertsLastModified = Date.from(Instant.EPOCH);
 			System.err.println("Listening...");
 			while (isContinue)
@@ -326,7 +326,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 						final long contentLength = httpURLConnection.getContentLengthLong();
 						final String lastModifiedStr;
 						if (contentLength == 0)
-							prevData = Collections.emptySet();
+							prevData = Collections.emptyList();
 						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null ||
 								(alertsLastModified = httpsDateParser.parse(lastModifiedStr)).after(currAlertsLastModified))
 						{
@@ -345,17 +345,20 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 								));
 								continue;
 							}
-							final Set<String>
-									translatedData = redAlertResponse.data().parallelStream()
-									.map(districts::get)
-									.collect(Collectors.toSet()),
-									importantDistricts = (translatedData.size() < settings.districtsOfInterest().size() ?
-											translatedData.parallelStream()
-													.filter(settings.districtsOfInterest()::contains) :
-											settings.districtsOfInterest().parallelStream()
-													.filter(translatedData::contains))
-											.filter(Predicate.not(prevData::contains))
-											.collect(Collectors.toSet());
+							List<String> translatedData = getTranslatedData(redAlertResponse);
+							final List<String> importantDistricts = (translatedData.size() < settings.districtsOfInterest().size() ?
+									translatedData.parallelStream()
+											.filter(settings.districtsOfInterest()::contains) :
+									settings.districtsOfInterest().parallelStream()
+											.filter(translatedData::contains))
+									.filter(Predicate.not(prevData::contains))
+									.collect(Collectors.toList());
+							if (translatedData.contains(null))
+							{
+								LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
+								refreshDistrictsTranslationDicts();
+								translatedData = getTranslatedData(redAlertResponse);
+							}
 							if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
 							{
 								clip.setFramePosition(0);
@@ -383,10 +386,10 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 				} catch (IOException | ParseException e)
 				{
 					LOGGER.error("Got exception: {}", e.toString());
-					if (e instanceof UnknownHostException || e instanceof ConnectException)
+					if (e instanceof IOException)
 						sleep();
 				}
-		} catch (UnsupportedAudioFileException | LineUnavailableException | IOException | NullPointerException e)
+		} catch (Throwable e)
 		{
 			LOGGER.fatal("Fatal error: {}. Closing connection end exiting...", e.toString());
 			return 1;
@@ -400,9 +403,16 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		return 0;
 	}
 
+	private List<String> getTranslatedData(RedAlertResponse redAlertResponse)
+	{
+		return redAlertResponse.data().parallelStream()
+				.map(districts::get)
+				.collect(Collectors.toList());
+	}
+
 	private StringBuilder redAlertToString(long contentLength,
 	                                       Date alertsLastModified,
-	                                       Set<String> translatedData,
+	                                       List<String> translatedData,
 	                                       StringBuilder output)
 	{
 		return output.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
@@ -419,25 +429,25 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	@SuppressWarnings("unused")
 	private enum LanguageCode
 	{
-		HE(Set.of("בדיקה")),
-		EN(Set.of("Test")),
-		AR(Set.of("فحص")),
-		RU(Set.of("Проверка"));
-		private final Set<String> testDistrictTranslation;
+		HE(List.of("בדיקה")),
+		EN(List.of("Test")),
+		AR(List.of("فحص")),
+		RU(List.of("Проверка"));
+		private final List<String> testDistrictTranslation;
 
-		LanguageCode(Set<String> testDistrictTranslation)
+		LanguageCode(List<String> testDistrictTranslation)
 		{
 			this.testDistrictTranslation = testDistrictTranslation;
 		}
 
-		public Set<String> getTestDistrictTranslation()
+		public List<String> getTestDistrictTranslation()
 		{
 			return testDistrictTranslation;
 		}
 	}
 
 	private static final record RedAlertResponse(
-			Set<String> data,
+			List<String> data,
 			long id,
 			String title
 	)
@@ -454,7 +464,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			int soundLoopCount,
 			LanguageCode languageCode,
 			Level logLevel,
-			Set<String> districtsOfInterest
+			List<String> districtsOfInterest
 	)
 	{
 	}
