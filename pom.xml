@@ -104,7 +104,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
-					<release>16</release>
+					<release>17</release>
 				</configuration>
 			</plugin>
 			<!-- this is for preventing the creation of jar without it's dependencies -->
