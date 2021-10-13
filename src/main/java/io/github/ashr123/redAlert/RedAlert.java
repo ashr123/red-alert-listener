@@ -348,9 +348,9 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							List<String> translatedData = getTranslatedData(redAlertResponse);
 							final List<String> importantDistricts = (translatedData.size() < settings.districtsOfInterest().size() ?
 									translatedData.parallelStream()
-											.filter(settings.districtsOfInterest()::contains) :
+											.filter((settings.districtsOfInterest().size() > 1 ? new HashSet<>(settings.districtsOfInterest()) : settings.districtsOfInterest())::contains) :
 									settings.districtsOfInterest().parallelStream()
-											.filter(translatedData::contains))
+											.filter((translatedData.size() > 1 ? new HashSet<>(translatedData) : translatedData)::contains))
 									.filter(Predicate.not(prevData::contains))
 									.collect(Collectors.toList());
 							if (translatedData.contains(null))

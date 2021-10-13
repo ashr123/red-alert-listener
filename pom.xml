@@ -6,7 +6,7 @@
 
 	<groupId>io.github.ashr123</groupId>
 	<artifactId>red-alert</artifactId>
-	<version>4.2.6</version>
+	<version>4.2.7</version>
 	<packaging>jar</packaging>
 
 	<name>Red Alert</name>
