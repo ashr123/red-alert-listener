@@ -200,7 +200,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 										scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
 										(a, b) ->
 										{
-//											LOGGER.debug("a: {}, b: {}", a, b);
+											LOGGER.trace("a: {}, b: {}", a, b);
 											return b;
 										}));
 					LOGGER.warn("Didn't find translations for language: {}, returning empty dict", languageCode);
@@ -277,15 +277,15 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 						{
 							case "" -> {
 							}
-							case "q" -> isContinue = false;
-							case "t" -> {
+							case "q", "quit", "exit" -> isContinue = false;
+							case "t", "test", "test-sound" -> {
 								System.err.println("Testing sound...");
 								clip.setFramePosition(0);
 								clip.start();
 							}
-							case "c" -> System.err.println("\033[H\033[2JListening...");
-							case "r" -> refreshDistrictsTranslationDicts();
-							case "h" -> printHelpMsg();
+							case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
+							case "r", "refresh", "refresh-districts" -> refreshDistrictsTranslationDicts();
+							case "h", "help" -> printHelpMsg();
 							default -> {
 								System.err.println("Unrecognized command!");
 								printHelpMsg();
@@ -333,9 +333,9 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified;
 
-							final RedAlertResponse redAlertResponse = JSON_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertResponse.class);
-							LOGGER.debug("Original response content: {}", redAlertResponse);
-							if (settings.isShowTestAlerts() && redAlertResponse.data().equals(LanguageCode.HE.getTestDistrictTranslation()))
+							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertEvent.class);
+							LOGGER.debug("Original event data: {}", redAlertEvent);
+							if (settings.isShowTestAlerts() && redAlertEvent.data().equals(LanguageCode.HE.getTestDistrictTranslation()))
 							{
 								System.out.println(redAlertToString(
 										contentLength,
@@ -345,7 +345,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 								));
 								continue;
 							}
-							List<String> translatedData = getTranslatedData(redAlertResponse);
+							List<String> translatedData = getTranslatedData(redAlertEvent);
 							final List<String> importantDistricts = (translatedData.size() < settings.districtsOfInterest().size() ?
 									translatedData.parallelStream()
 											.filter((settings.districtsOfInterest().size() > 1 ? new HashSet<>(settings.districtsOfInterest()) : settings.districtsOfInterest())::contains) :
@@ -357,7 +357,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 							{
 								LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
 								refreshDistrictsTranslationDicts();
-								translatedData = getTranslatedData(redAlertResponse);
+								translatedData = getTranslatedData(redAlertEvent);
 							}
 							if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
 							{
@@ -403,9 +403,9 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		return 0;
 	}
 
-	private List<String> getTranslatedData(RedAlertResponse redAlertResponse)
+	private List<String> getTranslatedData(RedAlertEvent redAlertEvent)
 	{
-		return redAlertResponse.data().parallelStream()
+		return redAlertEvent.data().parallelStream()
 				.map(districts::get)
 				.collect(Collectors.toList());
 	}
@@ -446,7 +446,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		}
 	}
 
-	private static final record RedAlertResponse(
+	private static final record RedAlertEvent(
 			List<String> data,
 			long id,
 			String title
