@@ -446,7 +446,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 		}
 	}
 
-	private static final record RedAlertEvent(
+	private record RedAlertEvent(
 			List<String> data,
 			long id,
 			String title
@@ -454,7 +454,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	{
 	}
 
-	private static final record Settings(
+	private record Settings(
 			boolean isMakeSound,
 			boolean isAlertAll,
 			boolean isDisplayResponse,
