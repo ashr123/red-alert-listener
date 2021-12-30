@@ -6,7 +6,7 @@
 
 	<groupId>io.github.ashr123</groupId>
 	<artifactId>red-alert</artifactId>
-	<version>4.2.12</version>
+	<version>4.2.13</version>
 	<packaging>jar</packaging>
 
 	<name>Red Alert</name>
@@ -54,7 +54,7 @@
 		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-core</artifactId>
-			<version>2.17.0</version>
+			<version>2.17.1</version>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/com.lmax/disruptor -->
 		<dependency>
@@ -72,7 +72,7 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
-			<version>2.13.0</version>
+			<version>2.13.1</version>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.jsoup/jsoup -->
 		<dependency>
