@@ -303,7 +303,7 @@ public class RedAlert implements Runnable, IVersionProvider
 			loadSettings();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			List<String> prevData = Collections.emptyList();
-			ZonedDateTime currAlertsLastModified = ZonedDateTime.from(LocalDateTime.MIN);
+			ZonedDateTime currAlertsLastModified = LocalDateTime.MIN.atZone(ZoneId.of("Z"));
 			System.err.println("Listening...");
 			while (isContinue)
 				try
