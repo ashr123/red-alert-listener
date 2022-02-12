@@ -29,6 +29,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -47,6 +49,7 @@ import java.util.stream.Collectors;
 		showDefaultValues = true)
 public class RedAlert implements Runnable, IVersionProvider
 {
+	public static final ZoneId DEFAULT_ZONE_ID = ZoneId.systemDefault();
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss,SSS");
 	private static final Logger LOGGER = LogManager.getLogger();
 	@SuppressWarnings("RegExpRedundantEscape")
@@ -299,9 +302,8 @@ public class RedAlert implements Runnable, IVersionProvider
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslationDicts, 1, 1, TimeUnit.DAYS);
 			loadSettings();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-			final DateTimeFormatter httpsDateParser = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			List<String> prevData = Collections.emptyList();
-			LocalDateTime currAlertsLastModified = LocalDateTime.MIN;
+			ZonedDateTime currAlertsLastModified = ZonedDateTime.from(LocalDateTime.MIN);
 			System.err.println("Listening...");
 			while (isContinue)
 				try
@@ -324,13 +326,13 @@ public class RedAlert implements Runnable, IVersionProvider
 							sleep();
 							continue;
 						}
-						LocalDateTime alertsLastModified = null;
+						ZonedDateTime alertsLastModified = null;
 						final long contentLength = httpURLConnection.getContentLengthLong();
 						final String lastModifiedStr;
 						if (contentLength == 0)
 							prevData = Collections.emptyList();
 						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null ||
-								(alertsLastModified = LocalDateTime.from(httpsDateParser.parse(lastModifiedStr))).isAfter(currAlertsLastModified))
+								(alertsLastModified = ZonedDateTime.parse(lastModifiedStr, DateTimeFormatter.RFC_1123_DATE_TIME)).isAfter(currAlertsLastModified))
 						{
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified;
@@ -409,13 +411,13 @@ public class RedAlert implements Runnable, IVersionProvider
 	}
 
 	private StringBuilder redAlertToString(long contentLength,
-										   LocalDateTime alertsLastModified,
+										   ZonedDateTime alertsLastModified,
 										   List<String> translatedData,
 										   StringBuilder output)
 	{
 		return output.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
-				.append("Last Modified Date: ").append(alertsLastModified == null ? null : DATE_TIME_FORMATTER.format(alertsLastModified)).append(System.lineSeparator())
-				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(LocalDateTime.now())).append(System.lineSeparator())
+				.append("Last Modified Date: ").append(alertsLastModified == null ? null : DATE_TIME_FORMATTER.format(alertsLastModified.withZoneSameInstant(DEFAULT_ZONE_ID))).append(System.lineSeparator())
+				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(ZonedDateTime.now())).append(System.lineSeparator())
 				.append("Translated districts: ").append(translatedData).append(System.lineSeparator());
 	}
 
