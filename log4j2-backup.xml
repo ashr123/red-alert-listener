@@ -11,7 +11,7 @@
 				<pattern>
 					<!--					20:29:17.010 [main] INFO  il.co.ashr123.redAlert.RedAlert - -->
 					%d{DATE} [%level] - %msg%n
-				</pattern>>
+				</pattern>
 			</PatternLayout>
 		</Console>
 	</Appenders>

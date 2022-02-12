@@ -25,13 +25,13 @@ import javax.sound.sampled.Clip;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -45,8 +45,9 @@ import java.util.stream.Collectors;
 		versionProvider = RedAlert.class,
 		description = "An App that can get \"red alert\"s from IDF's Home Front Command.",
 		showDefaultValues = true)
-public class RedAlert implements Callable<Integer>, IVersionProvider
+public class RedAlert implements Runnable, IVersionProvider
 {
+	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss,SSS");
 	private static final Logger LOGGER = LogManager.getLogger();
 	@SuppressWarnings("RegExpRedundantEscape")
 	private static final Pattern PATTERN = Pattern.compile("(?:var|let|const)\\s+districts\\s*=\\s*(\\[.*\\])", Pattern.DOTALL);
@@ -64,7 +65,6 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			Level.INFO,
 			Collections.emptyList()
 	);
-	private static final SimpleDateFormat DATE_FORMATTER_FOR_PRINTING = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS");
 	private static boolean isContinue = true;
 	@Option(names = {"-s", "--settings"},
 			description = "Enter custom path to settings file.",
@@ -80,7 +80,9 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 
 	public static void main(String... args)
 	{
-		new CommandLine(RedAlert.class).setCaseInsensitiveEnumValuesAllowed(true).execute(args);
+		System.exit(new CommandLine(RedAlert.class)
+				.setCaseInsensitiveEnumValuesAllowed(true)
+				.execute(args));
 	}
 
 	private static void setLoggerLevel(Level level)
@@ -115,15 +117,12 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 					paramLabel = "language code",
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
-					LanguageCode languageCode) throws IOException
+					LanguageCode languageCode) throws IOException, InterruptedException
 	{
-		try
+		try (InputStream ignored = System.in)
 		{
 			startSubcommandInputThread();
 			System.out.println(JSON_MAPPER.writeValueAsString(loadRemoteDistricts(languageCode)));
-		} finally
-		{
-			System.in.close();
 		}
 	}
 
@@ -141,25 +140,24 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 					paramLabel = "language code",
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
-					LanguageCode languageCode) throws IOException
+					LanguageCode languageCode) throws IOException, InterruptedException
 	{
-		try
+		try (InputStream ignored = System.in)
 		{
 			startSubcommandInputThread();
 			JSON_MAPPER.writeValue(file, loadRemoteDistricts(languageCode));
-		} finally
-		{
-			System.in.close();
 		}
 	}
 
-	private static void startSubcommandInputThread()
+	private static void startSubcommandInputThread() throws InterruptedException
 	{
+		final CountDownLatch startSignal = new CountDownLatch(1);
 		new Thread(() ->
 		{
 			try (Scanner scanner = new Scanner(System.in))
 			{
 				System.err.println("Enter \"q\" to quit");
+				startSignal.countDown();
 				while (isContinue)
 					switch (scanner.nextLine().trim())
 					{
@@ -177,6 +175,7 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			{
 			}
 		}).start();
+		startSignal.await();
 	}
 
 	private static Map<String, String> loadRemoteDistricts(LanguageCode languageCode)
@@ -203,14 +202,14 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 											LOGGER.trace("a: {}, b: {}", a, b);
 											return b;
 										}));
-					LOGGER.warn("Didn't find translations for language: {}, returning empty dict", languageCode);
+					LOGGER.warn("Didn't find translations for language code: {}, returning empty dict", languageCode);
 					return Map.of();
 				});
 				LOGGER.info("Done (took {} seconds, got {} districts)", result.getTimeTaken(TimeScales.SECONDS), result.getResult().size());
 				return result.getResult();
 			} catch (Exception e)
 			{
-				LOGGER.error("Failed to get data for language {}: {}. Trying again...", languageCode, e.toString());
+				LOGGER.error("Failed to get data for language code {}: {}. Trying again...", languageCode, e.toString());
 				if (e instanceof IOException)
 					sleep();
 			}
@@ -258,18 +257,19 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	}
 
 	@Override
-	public Integer call() throws IOException
+	public void run()
 	{
 		System.err.println("Preparing Red Alert Listener v" + getClass().getPackage().getImplementationVersion() + "...");
 		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 		HttpURLConnection httpURLConnectionField = null;
 		try (Clip clip = AudioSystem.getClip();
-		     AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/alarmSound.wav")))))
+			 AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/alarmSound.wav"))));
+			 InputStream in = System.in)
 		{
 			clip.open(audioInputStream);
 			new Thread(() ->
 			{
-				try (Scanner scanner = new Scanner(System.in))
+				try (Scanner scanner = new Scanner(in))
 				{
 					printHelpMsg();
 					while (isContinue)
@@ -299,9 +299,9 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslationDicts, 1, 1, TimeUnit.DAYS);
 			loadSettings();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-			final SimpleDateFormat httpsDateParser = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
+			final DateTimeFormatter httpsDateParser = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
 			List<String> prevData = Collections.emptyList();
-			Date currAlertsLastModified = Date.from(Instant.EPOCH);
+			LocalDateTime currAlertsLastModified = LocalDateTime.MIN;
 			System.err.println("Listening...");
 			while (isContinue)
 				try
@@ -311,24 +311,26 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 						loadSettings();
 						httpURLConnectionField = httpURLConnection;
 						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-" + settings.languageCode().name().toLowerCase() + "/Pakar.aspx");
+						httpURLConnection.setRequestProperty("Accept", "application/json"); // Not mandatory, but it's a good practice
 						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
 						httpURLConnection.setConnectTimeout(settings.connectTimeout());
 						httpURLConnection.setReadTimeout(settings.readTimeout());
 						httpURLConnection.setUseCaches(false);
 
-						if (httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_OK)
+						if (httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_OK/* &&
+								httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_NOT_MODIFIED*/)
 						{
 							LOGGER.error("Connection response {}", httpURLConnection.getResponseMessage());
 							sleep();
 							continue;
 						}
-						Date alertsLastModified = null;
+						LocalDateTime alertsLastModified = null;
 						final long contentLength = httpURLConnection.getContentLengthLong();
 						final String lastModifiedStr;
 						if (contentLength == 0)
 							prevData = Collections.emptyList();
 						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null ||
-								(alertsLastModified = httpsDateParser.parse(lastModifiedStr)).after(currAlertsLastModified))
+								(alertsLastModified = LocalDateTime.from(httpsDateParser.parse(lastModifiedStr))).isAfter(currAlertsLastModified))
 						{
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified;
@@ -383,24 +385,20 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 						}
 					} else
 						LOGGER.error("Not a HTTP connection!");
-				} catch (IOException | ParseException e)
+				} catch (IOException e)
 				{
 					LOGGER.error("Got exception: {}", e.toString());
-					if (e instanceof IOException)
-						sleep();
+					sleep();
 				}
 		} catch (Throwable e)
 		{
 			LOGGER.fatal("Fatal error: {}. Closing connection end exiting...", e.toString());
-			return 1;
 		} finally
 		{
 			scheduledExecutorService.shutdownNow();
 			if (httpURLConnectionField != null)
 				httpURLConnectionField.disconnect();
-			System.in.close();
 		}
-		return 0;
 	}
 
 	private List<String> getTranslatedData(RedAlertEvent redAlertEvent)
@@ -411,13 +409,13 @@ public class RedAlert implements Callable<Integer>, IVersionProvider
 	}
 
 	private StringBuilder redAlertToString(long contentLength,
-	                                       Date alertsLastModified,
-	                                       List<String> translatedData,
-	                                       StringBuilder output)
+										   LocalDateTime alertsLastModified,
+										   List<String> translatedData,
+										   StringBuilder output)
 	{
 		return output.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
-				.append("Last Modified Date: ").append(alertsLastModified == null ? null : DATE_FORMATTER_FOR_PRINTING.format(alertsLastModified)).append(System.lineSeparator())
-				.append("Current Date: ").append(DATE_FORMATTER_FOR_PRINTING.format(new Date())).append(System.lineSeparator())
+				.append("Last Modified Date: ").append(alertsLastModified == null ? null : DATE_TIME_FORMATTER.format(alertsLastModified)).append(System.lineSeparator())
+				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(LocalDateTime.now())).append(System.lineSeparator())
 				.append("Translated districts: ").append(translatedData).append(System.lineSeparator());
 	}
 
