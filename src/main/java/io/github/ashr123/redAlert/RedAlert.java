@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.util.datetime.FixedDateFormat;
 import org.jsoup.Jsoup;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -50,7 +51,7 @@ import java.util.stream.Collectors;
 public class RedAlert implements Runnable, IVersionProvider
 {
 	public static final ZoneId DEFAULT_ZONE_ID = ZoneId.systemDefault();
-	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss,SSS");
+	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern());
 	private static final Logger LOGGER = LogManager.getLogger();
 	@SuppressWarnings("RegExpRedundantEscape")
 	private static final Pattern PATTERN = Pattern.compile("(?:var|let|const)\\s+districts\\s*=\\s*(\\[.*\\])", Pattern.DOTALL);
