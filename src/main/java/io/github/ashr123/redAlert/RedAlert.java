@@ -23,12 +23,10 @@ import javax.script.ScriptEngineManager;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -92,6 +90,7 @@ public class RedAlert implements Runnable, IVersionProvider
 	private static void setLoggerLevel(Level level)
 	{
 		final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
+//		loggerContext.getConfiguration().getAppenders().values().stream().findAny().get().getLayout().getContentFormat();
 		loggerContext.getConfiguration().getLoggerConfig(LOGGER.getName()).setLevel(level);
 		loggerContext.updateLoggers();
 	}
@@ -338,9 +337,10 @@ public class RedAlert implements Runnable, IVersionProvider
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified;
 
-							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertEvent.class);
+							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(new InputStreamReader(httpURLConnection.getInputStream(), StandardCharsets.UTF_8), RedAlertEvent.class);
 							LOGGER.debug("Original event data: {}", redAlertEvent);
-							if (settings.isShowTestAlerts() && redAlertEvent.data().equals(LanguageCode.HE.getTestDistrictTranslation()))
+							if (settings.isShowTestAlerts() &&
+									redAlertEvent.data().equals(LanguageCode.HE.getTestDistrictTranslation()))
 							{
 								System.out.println(redAlertToString(
 										contentLength,
