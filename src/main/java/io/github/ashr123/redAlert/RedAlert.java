@@ -23,10 +23,12 @@ import javax.script.ScriptEngineManager;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -82,6 +84,7 @@ public class RedAlert implements Runnable, IVersionProvider
 
 	public static void main(String... args)
 	{
+		System.setProperty("file.encoding", "UTF-8");
 		System.exit(new CommandLine(RedAlert.class)
 				.setCaseInsensitiveEnumValuesAllowed(true)
 				.execute(args));
@@ -337,7 +340,7 @@ public class RedAlert implements Runnable, IVersionProvider
 							if (alertsLastModified != null)
 								currAlertsLastModified = alertsLastModified;
 
-							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(new InputStreamReader(httpURLConnection.getInputStream(), StandardCharsets.UTF_8), RedAlertEvent.class);
+							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertEvent.class);
 							LOGGER.debug("Original event data: {}", redAlertEvent);
 							if (settings.isShowTestAlerts() &&
 									redAlertEvent.data().equals(LanguageCode.HE.getTestDistrictTranslation()))
