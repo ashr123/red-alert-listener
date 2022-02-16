@@ -84,7 +84,6 @@ public class RedAlert implements Runnable, IVersionProvider
 
 	public static void main(String... args)
 	{
-		System.setProperty("file.encoding", "UTF-8");
 		System.exit(new CommandLine(RedAlert.class)
 				.setCaseInsensitiveEnumValuesAllowed(true)
 				.execute(args));
@@ -342,15 +341,15 @@ public class RedAlert implements Runnable, IVersionProvider
 
 							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertEvent.class);
 							LOGGER.debug("Original event data: {}", redAlertEvent);
-							if (settings.isShowTestAlerts() &&
-									redAlertEvent.data().equals(LanguageCode.HE.getTestDistrictTranslation()))
+							if (redAlertEvent.data().equals(LanguageCode.HE.getTestDistrictTranslation()))
 							{
-								System.out.println(redAlertToString(
-										contentLength,
-										alertsLastModified,
-										settings.languageCode().getTestDistrictTranslation(),
-										new StringBuilder("Test Alert").append(System.lineSeparator())
-								));
+								if (settings.isShowTestAlerts())
+									System.out.println(redAlertToString(
+											contentLength,
+											alertsLastModified,
+											settings.languageCode().getTestDistrictTranslation(),
+											new StringBuilder("Test Alert").append(System.lineSeparator())
+									));
 								continue;
 							}
 							List<String> translatedData = getTranslatedData(redAlertEvent);
