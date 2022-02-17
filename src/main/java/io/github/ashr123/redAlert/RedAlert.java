@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -306,6 +307,8 @@ public class RedAlert implements Runnable, IVersionProvider
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			List<String> prevData = Collections.emptyList();
 			ZonedDateTime currAlertsLastModified = LocalDateTime.MIN.atZone(ZoneId.of("Z"));
+			final int minRedAlertEventStrLength = """
+					{"data":[],"id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
 			System.err.println("Listening...");
 			while (isContinue)
 				try
@@ -331,7 +334,7 @@ public class RedAlert implements Runnable, IVersionProvider
 						ZonedDateTime alertsLastModified = null;
 						final long contentLength = httpURLConnection.getContentLengthLong();
 						final String lastModifiedStr;
-						if (contentLength == 0)
+						if (contentLength < minRedAlertEventStrLength)
 							prevData = Collections.emptyList();
 						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null ||
 								(alertsLastModified = ZonedDateTime.parse(lastModifiedStr, DateTimeFormatter.RFC_1123_DATE_TIME)).isAfter(currAlertsLastModified))
