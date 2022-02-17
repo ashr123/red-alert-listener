@@ -5,7 +5,6 @@
   "isShowTestAlerts": false,
   "connectTimeout": 5000,
   "readTimeout": 10000,
-  "soundLoopCount": 15,
   "languageCode": "HE",
   "logLevel": "INFO",
   "districtsOfInterest": [

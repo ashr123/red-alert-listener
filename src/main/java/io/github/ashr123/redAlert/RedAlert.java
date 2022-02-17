@@ -1,5 +1,6 @@
 package io.github.ashr123.redAlert;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -11,15 +12,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.util.datetime.FixedDateFormat;
-import org.jsoup.Jsoup;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.IVersionProvider;
 import picocli.CommandLine.Option;
 
-import javax.script.Bindings;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -40,8 +37,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Command(name = "red-alert",
@@ -54,9 +49,6 @@ public class RedAlert implements Runnable, IVersionProvider
 	public static final ZoneId DEFAULT_ZONE_ID = ZoneId.systemDefault();
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern());
 	private static final Logger LOGGER = LogManager.getLogger();
-	@SuppressWarnings("RegExpRedundantEscape")
-	private static final Pattern PATTERN = Pattern.compile("(?:var|let|const)\\s+districts\\s*=\\s*(\\[.*\\])", Pattern.DOTALL);
-	private static final ScriptEngine JS = new ScriptEngineManager().getEngineByName("javascript");
 	private static final ObjectMapper JSON_MAPPER = new JsonMapper().enable(SerializationFeature.INDENT_OUTPUT);
 	private static final Settings DEFAULT_SETTINGS = new Settings(
 			false,
@@ -65,10 +57,9 @@ public class RedAlert implements Runnable, IVersionProvider
 			false,
 			5000,
 			10000,
-			15,
 			LanguageCode.HE,
 			Level.INFO,
-			Collections.emptyList()
+			Collections.emptySet()
 	);
 	private static boolean isContinue = true;
 	@Option(names = {"-s", "--settings"},
@@ -81,7 +72,7 @@ public class RedAlert implements Runnable, IVersionProvider
 	/**
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
-	private Map<String, String> districts;
+	private Map<String, TranslationAndProtectionTime> districts;
 
 	public static void main(String... args)
 	{
@@ -184,31 +175,29 @@ public class RedAlert implements Runnable, IVersionProvider
 		startSignal.await();
 	}
 
-	private static Map<String, String> loadRemoteDistricts(LanguageCode languageCode)
+	private static Map<String, TranslationAndProtectionTime> loadRemoteDistricts(LanguageCode languageCode)
 	{
 		LOGGER.info("Getting remote districts from IDF's Home Front Command's server...");
 		while (isContinue)
 			try
 			{
-				final Result<Map<String, String>> result = TimeMeasurement.measureAndExecuteCallable(() ->
+				final Result<Map<String, TranslationAndProtectionTime>> result = TimeMeasurement.measureAndExecuteCallable(() ->
 				{
-					final Matcher script = PATTERN.matcher(Jsoup.connect("https://www.oref.org.il/12481-" + languageCode.name().toLowerCase() + "/Pakar.aspx")
-							.get()
-							.select("script:containsData(districts)")
-							.html());
-					if (script.find())
-						return ((Bindings) JS.eval(script.group(1)))
-								.values().parallelStream()
-								.map(Bindings.class::cast)
+					if (new URL("https://www.oref.org.il//Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()).openConnection() instanceof HttpURLConnection httpURLConnection)
+					{
+						return JSON_MAPPER.readValue(httpURLConnection.getInputStream(), new TypeReference<List<District>>()
+								{
+								}).parallelStream()
 								.collect(Collectors.toMap(
-										scriptObjectMirror -> scriptObjectMirror.get("label_he").toString(),
-										scriptObjectMirror -> scriptObjectMirror.get("label").toString(),
+										District::label_he,
+										district -> new TranslationAndProtectionTime(district.label(), district.migun_time()),
 										(a, b) ->
 										{
 											LOGGER.trace("a: {}, b: {}", a, b);
 											return b;
 										}));
-					LOGGER.warn("Didn't find translations for language code: {}, returning empty dict", languageCode);
+					} else
+						LOGGER.error("Not a HTTP connection, returning empty map");
 					return Map.of();
 				});
 				LOGGER.info("Done (took {} seconds, got {} districts)", result.getTimeTaken(TimeScales.SECONDS), result.getResult().size());
@@ -245,8 +234,10 @@ public class RedAlert implements Runnable, IVersionProvider
 			settingsLastModified = settingsLastModifiedTemp;
 			if (districts == null || !oldLanguageCode.equals(settings.languageCode()))
 				refreshDistrictsTranslationDicts();
-			districtsNotFound = settings.districtsOfInterest().parallelStream()
-					.filter(Predicate.not(new HashSet<>(districts.values())::contains))
+			districtsNotFound = new ArrayList<>(settings.districtsOfInterest()).parallelStream()
+					.filter(Predicate.not(districts.values().parallelStream()
+							.map(TranslationAndProtectionTime::translation)
+							.collect(Collectors.toSet())::contains))
 					.collect(Collectors.toList());
 			printDistrictsNotFoundWarning();
 			setLoggerLevel(settings.logLevel());
@@ -305,7 +296,7 @@ public class RedAlert implements Runnable, IVersionProvider
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslationDicts, 1, 1, TimeUnit.DAYS);
 			loadSettings();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-			List<String> prevData = Collections.emptyList();
+			Set<String> prevData = Collections.emptySet();
 			ZonedDateTime currAlertsLastModified = LocalDateTime.MIN.atZone(ZoneId.of("Z"));
 			final int minRedAlertEventStrLength = """
 					{"data":[],"id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
@@ -335,7 +326,7 @@ public class RedAlert implements Runnable, IVersionProvider
 						final long contentLength = httpURLConnection.getContentLengthLong();
 						final String lastModifiedStr;
 						if (contentLength < minRedAlertEventStrLength)
-							prevData = Collections.emptyList();
+							prevData = Collections.emptySet();
 						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null ||
 								(alertsLastModified = ZonedDateTime.parse(lastModifiedStr, DateTimeFormatter.RFC_1123_DATE_TIME)).isAfter(currAlertsLastModified))
 						{
@@ -355,14 +346,15 @@ public class RedAlert implements Runnable, IVersionProvider
 									));
 								continue;
 							}
-							List<String> translatedData = getTranslatedData(redAlertEvent);
-							final List<String> importantDistricts = (translatedData.size() < settings.districtsOfInterest().size() ?
-									translatedData.parallelStream()
-											.filter((settings.districtsOfInterest().size() > 1 ? new HashSet<>(settings.districtsOfInterest()) : settings.districtsOfInterest())::contains) :
-									settings.districtsOfInterest().parallelStream()
-											.filter((translatedData.size() > 1 ? new HashSet<>(translatedData) : translatedData)::contains))
-									.filter(Predicate.not(prevData::contains))
-									.collect(Collectors.toList());
+
+							List<TranslationAndProtectionTime> translatedData = getTranslatedData(redAlertEvent);
+
+							Set<String> finalPrevData = prevData;
+							final List<TranslationAndProtectionTime> importantDistricts = translatedData.parallelStream()
+									.filter(translationAndProtectionTime -> settings.districtsOfInterest().contains(translationAndProtectionTime.translation()))
+									.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
+									.toList();
+
 							if (translatedData.contains(null))
 							{
 								LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
@@ -371,17 +363,29 @@ public class RedAlert implements Runnable, IVersionProvider
 							}
 							if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
 							{
-								clip.setFramePosition(0);
-								clip.loop(settings.soundLoopCount());
+								importantDistricts.parallelStream()
+										.mapToInt(TranslationAndProtectionTime::protectionTime)
+										.max()
+										.ifPresent(maxProtectionTime ->
+										{
+											clip.setFramePosition(0);
+											clip.loop((int) Math.round(maxProtectionTime / (clip.getMicrosecondLength() * 1.0E-6)));
+										});
 							}
+							final Set<String> translatedDistricts = translatedData.parallelStream().
+									map(TranslationAndProtectionTime::translation)
+									.collect(Collectors.toSet());
 							final StringBuilder output = new StringBuilder();
 							if (settings.isDisplayResponse())
+							{
+
 								redAlertToString(
 										contentLength,
 										alertsLastModified,
-										translatedData,
+										translatedDistricts,
 										output
 								);
+							}
 
 							if (!importantDistricts.isEmpty())
 								output.append("ALERT: ").append(importantDistricts).append(System.lineSeparator());
@@ -389,7 +393,7 @@ public class RedAlert implements Runnable, IVersionProvider
 								System.out.println(output);
 
 							printDistrictsNotFoundWarning();
-							prevData = translatedData;
+							prevData = translatedDistricts;
 						}
 					} else
 						LOGGER.error("Not a HTTP connection!");
@@ -409,7 +413,7 @@ public class RedAlert implements Runnable, IVersionProvider
 		}
 	}
 
-	private List<String> getTranslatedData(RedAlertEvent redAlertEvent)
+	private List<TranslationAndProtectionTime> getTranslatedData(RedAlertEvent redAlertEvent)
 	{
 		return redAlertEvent.data().parallelStream()
 				.map(districts::get)
@@ -418,7 +422,7 @@ public class RedAlert implements Runnable, IVersionProvider
 
 	private StringBuilder redAlertToString(long contentLength,
 										   ZonedDateTime alertsLastModified,
-										   List<String> translatedData,
+										   Collection<String> translatedData,
 										   StringBuilder output)
 	{
 		return output.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
@@ -467,11 +471,31 @@ public class RedAlert implements Runnable, IVersionProvider
 			boolean isShowTestAlerts,
 			int connectTimeout,
 			int readTimeout,
-			int soundLoopCount,
 			LanguageCode languageCode,
 			Level logLevel,
-			List<String> districtsOfInterest
+			Set<String> districtsOfInterest
 	)
 	{
+	}
+
+	private record District(
+			String label,
+			String value,
+			String id,
+			int areaid,
+			String areaname,
+			String label_he,
+			int migun_time
+	)
+	{
+	}
+
+	private record TranslationAndProtectionTime(String translation, int protectionTime)
+	{
+		@Override
+		public String toString()
+		{
+			return translation + ": " + protectionTime + " seconds";
+		}
 	}
 }
