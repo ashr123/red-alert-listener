@@ -183,7 +183,7 @@ public class RedAlert implements Runnable, IVersionProvider
 			{
 				final Result<Map<String, TranslationAndProtectionTime>> result = TimeMeasurement.measureAndExecuteCallable(() ->
 				{
-					if (new URL("https://www.oref.org.il//Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()).openConnection() instanceof HttpURLConnection httpURLConnection)
+					if (new URL("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()).openConnection() instanceof HttpURLConnection httpURLConnection)
 					{
 						return JSON_MAPPER.readValue(httpURLConnection.getInputStream(), new TypeReference<List<District>>()
 								{
@@ -369,7 +369,7 @@ public class RedAlert implements Runnable, IVersionProvider
 										.ifPresent(maxProtectionTime ->
 										{
 											clip.setFramePosition(0);
-											clip.loop((int) Math.round(maxProtectionTime / (clip.getMicrosecondLength() * 1.0E-6)));
+											clip.loop((int) Math.round(maxProtectionTime * 1E6 / clip.getMicrosecondLength()));
 										});
 							}
 							final Set<String> translatedDistricts = translatedData.parallelStream().
@@ -481,7 +481,7 @@ public class RedAlert implements Runnable, IVersionProvider
 	private record District(
 			String label,
 			String value,
-			String id,
+			int id,
 			int areaid,
 			String areaname,
 			String label_he,
