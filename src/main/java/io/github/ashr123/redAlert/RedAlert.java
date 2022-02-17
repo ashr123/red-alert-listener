@@ -369,7 +369,7 @@ public class RedAlert implements Runnable, IVersionProvider
 										.ifPresent(maxProtectionTime ->
 										{
 											clip.setFramePosition(0);
-											clip.loop((int) Math.round(maxProtectionTime * 1E6 / clip.getMicrosecondLength()));
+											clip.loop((int) Math.round(Math.max(maxProtectionTime, 1) * 1E6 / clip.getMicrosecondLength()));
 										});
 							}
 							final Set<String> translatedDistricts = translatedData.parallelStream().
