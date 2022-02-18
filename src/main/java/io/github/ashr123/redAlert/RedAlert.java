@@ -457,7 +457,9 @@ public class RedAlert implements Runnable, IVersionProvider
 	}
 
 	private record RedAlertEvent(
+			int cat,
 			List<String> data,
+			String desc,
 			long id,
 			String title
 	)
