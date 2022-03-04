@@ -36,8 +36,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Command(name = "red-alert",
 		mixinStandardHelpOptions = true,
@@ -61,7 +63,7 @@ public class RedAlert implements Runnable, IVersionProvider
 			Level.INFO,
 			Collections.emptySet()
 	);
-	private static boolean isContinue = true;
+	private static volatile boolean isContinue = true;
 	@Option(names = {"-s", "--settings"},
 			description = "Enter custom path to settings file.",
 			defaultValue = "red-alert-settings.json")
@@ -72,7 +74,7 @@ public class RedAlert implements Runnable, IVersionProvider
 	/**
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
-	private Map<String, TranslationAndProtectionTime> districts;
+	private volatile Map<String, TranslationAndProtectionTime> districts;
 
 	public static void main(String... args)
 	{
@@ -119,7 +121,7 @@ public class RedAlert implements Runnable, IVersionProvider
 		try (InputStream ignored = System.in)
 		{
 			startSubcommandInputThread();
-			System.out.println(JSON_MAPPER.writeValueAsString(loadRemoteDistricts(languageCode)));
+			System.out.println(JSON_MAPPER.writeValueAsString(loadRemoteDistricts(languageCode, District::label)));
 		}
 	}
 
@@ -142,7 +144,7 @@ public class RedAlert implements Runnable, IVersionProvider
 		try (InputStream ignored = System.in)
 		{
 			startSubcommandInputThread();
-			JSON_MAPPER.writeValue(file, loadRemoteDistricts(languageCode));
+			JSON_MAPPER.writeValue(file, loadRemoteDistricts(languageCode, District::label));
 		}
 	}
 
@@ -175,28 +177,27 @@ public class RedAlert implements Runnable, IVersionProvider
 		startSignal.await();
 	}
 
-	private static Map<String, TranslationAndProtectionTime> loadRemoteDistricts(LanguageCode languageCode)
+	private static <T> Map<String, T> loadRemoteDistricts(LanguageCode languageCode, Function<District, T> districtMapper)
 	{
 		LOGGER.info("Getting remote districts from IDF's Home Front Command's server...");
 		while (isContinue)
 			try
 			{
-				final Result<Map<String, TranslationAndProtectionTime>> result = TimeMeasurement.measureAndExecuteCallable(() ->
+				final Result<Map<String, T>> result = TimeMeasurement.measureAndExecuteCallable(() ->
 				{
 					if (new URL("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()).openConnection() instanceof HttpURLConnection httpURLConnection)
-					{
 						return JSON_MAPPER.readValue(httpURLConnection.getInputStream(), new TypeReference<List<District>>()
 								{
 								}).parallelStream()
 								.collect(Collectors.toMap(
 										District::label_he,
-										district -> new TranslationAndProtectionTime(district.label(), district.migun_time()),
+										districtMapper,
 										(a, b) ->
 										{
 											LOGGER.trace("a: {}, b: {}", a, b);
 											return b;
 										}));
-					} else
+					else
 						LOGGER.error("Not a HTTP connection, returning empty map");
 					return Map.of();
 				});
@@ -209,6 +210,15 @@ public class RedAlert implements Runnable, IVersionProvider
 					sleep();
 			}
 		return Map.of();
+	}
+
+	private String translateTranslate(RedAlertEvent redAlertEvent, Map<Integer, Map<LanguageCode, String>> catVsAlertNames)
+	{
+		final Map<LanguageCode, String> titleTranslation;
+		return settings.languageCode().equals(LanguageCode.HE) ||
+				(titleTranslation = catVsAlertNames.get(redAlertEvent.cat())) == null ?
+				redAlertEvent.title() :
+				titleTranslation.get(settings.languageCode());
 	}
 
 	private void printDistrictsNotFoundWarning()
@@ -259,7 +269,10 @@ public class RedAlert implements Runnable, IVersionProvider
 		System.err.println("Preparing Red Alert Listener v" + getClass().getPackage().getImplementationVersion() + "...");
 		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 		HttpURLConnection httpURLConnectionField = null;
-		try (Clip clip = AudioSystem.getClip();
+		try (Clip clip = AudioSystem.getClip(Stream.of(AudioSystem.getMixerInfo()).parallel()
+				.filter(mixerInfo -> mixerInfo.getName().equals("default [default]"))
+				.findAny()
+				.orElse(null));
 			 AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/alarmSound.wav"))));
 			 InputStream in = System.in)
 		{
@@ -295,11 +308,80 @@ public class RedAlert implements Runnable, IVersionProvider
 			}).start();
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslationDicts, 1, 1, TimeUnit.DAYS);
 			loadSettings();
+			final Map<Integer, Map<LanguageCode, String>> catVsAlertNames = Map.ofEntries(
+					Map.entry(1, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Rocket and missile fire"),
+							Map.entry(LanguageCode.RU, "Ракетный обстрел"),
+							Map.entry(LanguageCode.AR, "اطلاق قذائف وصواريخ")
+					)),
+					//missing 2
+					Map.entry(3, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Earthquake"),
+							Map.entry(LanguageCode.RU, "Землетрясение"),
+							Map.entry(LanguageCode.AR, "هزّة أرضية")
+					)),
+					Map.entry(4, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Radiological event"),
+							Map.entry(LanguageCode.RU, "Радиоактивная опасность"),
+							Map.entry(LanguageCode.AR, "حدث إشعاعي")
+					)),
+					Map.entry(5, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Fear of a tsunami"),
+							Map.entry(LanguageCode.RU, "Угроза цунами"),
+							Map.entry(LanguageCode.AR, "تحسبا للتسونامي")
+					)),
+					Map.entry(6, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Hostile aircraft intrusion"),
+							Map.entry(LanguageCode.RU, "Нарушение воздушного пространства"),
+							Map.entry(LanguageCode.AR, "اختراق طائرة معادية")
+					)),
+					Map.entry(7, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Hazardous Materials Event"),
+							Map.entry(LanguageCode.RU, "Утечка опасных веществ"),
+							Map.entry(LanguageCode.AR, "حدث مواد خطرة")
+					)),
+					// missing 10
+					Map.entry(13, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Terrorist infiltration"),
+							Map.entry(LanguageCode.RU, "Проникновение террористов"),
+							Map.entry(LanguageCode.AR, "تسلل مخربين")
+					)),
+					Map.entry(101, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Rocket and missile fire drill"),
+							Map.entry(LanguageCode.RU, "Учения по ракетному обстрелу"),
+							Map.entry(LanguageCode.AR, "تمرين اطلاق قذائف وصواريخ")
+					)),
+					// missing 102
+					Map.entry(103, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Earthquake drill"),
+							Map.entry(LanguageCode.RU, "Учения на случай землетрясения"),
+							Map.entry(LanguageCode.AR, "تمرين هزّة أرضية")
+					)),
+					// missing 104
+					Map.entry(105, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Tsunami drill"),
+							Map.entry(LanguageCode.RU, "Учения на случай цунами"),
+							Map.entry(LanguageCode.AR, "تمرين تسونامي")
+					)),
+					// missing 106
+					Map.entry(107, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Hazardous Materials drill"),
+							Map.entry(LanguageCode.RU, "Учения на случай утечки опасных веществ"),
+							Map.entry(LanguageCode.AR, "تمرين مواد خطرة")
+					)),
+					// missing 110
+					Map.entry(113, Map.ofEntries(
+							Map.entry(LanguageCode.EN, "Terrorist infiltration drill"),
+							Map.entry(LanguageCode.RU, "Учения на случай проникновения террористов"),
+							Map.entry(LanguageCode.AR, "تمرين تسلل مخربين")
+					))
+			);
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			Set<String> prevData = Collections.emptySet();
 			ZonedDateTime currAlertsLastModified = LocalDateTime.MIN.atZone(ZoneId.of("Z"));
 			final int minRedAlertEventStrLength = """
-					{"data":[],"id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
+					{"cat":1,"data":[],"desc":"","id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
+			final double alarmSoundSecondLength = 1E6 / clip.getMicrosecondLength();
 			System.err.println("Listening...");
 			while (isContinue)
 				try
@@ -335,6 +417,7 @@ public class RedAlert implements Runnable, IVersionProvider
 
 							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertEvent.class);
 							LOGGER.debug("Original event data: {}", redAlertEvent);
+							// TODO rethink of what defines a drill alert
 							if (redAlertEvent.data().equals(LanguageCode.HE.getTestDistrictTranslation()))
 							{
 								if (settings.isShowTestAlerts())
@@ -343,6 +426,7 @@ public class RedAlert implements Runnable, IVersionProvider
 											alertsLastModified,
 											settings.languageCode().getTestDistrictTranslation(),
 											new StringBuilder("Test Alert").append(System.lineSeparator())
+													.append(translateTranslate(redAlertEvent, catVsAlertNames)).append(System.lineSeparator())
 									));
 								continue;
 							}
@@ -369,7 +453,7 @@ public class RedAlert implements Runnable, IVersionProvider
 										.ifPresent(maxProtectionTime ->
 										{
 											clip.setFramePosition(0);
-											clip.loop(Math.max(1, (int) Math.round(maxProtectionTime * 1E6 / clip.getMicrosecondLength())));
+											clip.loop(Math.max(1, (int) Math.round(maxProtectionTime * alarmSoundSecondLength)));
 										});
 							}
 							final Set<String> translatedDistricts = translatedData.parallelStream().
@@ -378,12 +462,11 @@ public class RedAlert implements Runnable, IVersionProvider
 							final StringBuilder output = new StringBuilder();
 							if (settings.isDisplayResponse())
 							{
-
 								redAlertToString(
 										contentLength,
 										alertsLastModified,
 										translatedDistricts,
-										output
+										output.append(translateTranslate(redAlertEvent, catVsAlertNames)).append(System.lineSeparator())
 								);
 							}
 
@@ -433,7 +516,7 @@ public class RedAlert implements Runnable, IVersionProvider
 
 	private void refreshDistrictsTranslationDicts()
 	{
-		districts = loadRemoteDistricts(settings.languageCode());
+		districts = loadRemoteDistricts(settings.languageCode(), district -> new TranslationAndProtectionTime(district.label(), district.migun_time()));
 	}
 
 	@SuppressWarnings("unused")
