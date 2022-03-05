@@ -192,11 +192,12 @@ public class RedAlert implements Runnable, IVersionProvider
 								.collect(Collectors.toMap(
 										District::label_he,
 										districtMapper,
-										(a, b) ->
+										(value1, value2) ->
 										{
-											LOGGER.trace("a: {}, b: {}", a, b);
-											return b;
-										}));
+											LOGGER.trace("value1: {}, value2: {}", value1, value2);
+											return value2;
+										}
+								));
 					else
 						LOGGER.error("Not a HTTP connection, returning empty map");
 					return Map.of();
@@ -205,20 +206,11 @@ public class RedAlert implements Runnable, IVersionProvider
 				return result.getResult();
 			} catch (Exception e)
 			{
-				LOGGER.error("Failed to get data for language code {}: {}. Trying again...", languageCode, e.toString());
+				LOGGER.debug("Failed to get data for language code {}: {}. Trying again...", languageCode, e.toString());
 				if (e instanceof IOException)
 					sleep();
 			}
 		return Map.of();
-	}
-
-	private String translateTranslate(RedAlertEvent redAlertEvent, Map<Integer, Map<LanguageCode, String>> catVsAlertNames)
-	{
-		final Map<LanguageCode, String> titleTranslation;
-		return settings.languageCode().equals(LanguageCode.HE) ||
-				(titleTranslation = catVsAlertNames.get(redAlertEvent.cat())) == null ?
-				redAlertEvent.title() :
-				titleTranslation.get(settings.languageCode());
 	}
 
 	private void printDistrictsNotFoundWarning()
@@ -244,7 +236,9 @@ public class RedAlert implements Runnable, IVersionProvider
 			settingsLastModified = settingsLastModifiedTemp;
 			if (districts == null || !oldLanguageCode.equals(settings.languageCode()))
 				refreshDistrictsTranslationDicts();
-			districtsNotFound = new ArrayList<>(settings.districtsOfInterest()).parallelStream()
+			districtsNotFound = (settings.districtsOfInterest().size() > 2 ?
+					new ArrayList<>(settings.districtsOfInterest()) :
+					settings.districtsOfInterest()).parallelStream()
 					.filter(Predicate.not(districts.values().parallelStream()
 							.map(TranslationAndProtectionTime::translation)
 							.collect(Collectors.toSet())::contains))
@@ -266,6 +260,7 @@ public class RedAlert implements Runnable, IVersionProvider
 	@Override
 	public void run()
 	{
+		LOGGER.log(Level.INFO, "Starting Red Alert Listener...");
 		System.err.println("Preparing Red Alert Listener v" + getClass().getPackage().getImplementationVersion() + "...");
 		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 		HttpURLConnection httpURLConnectionField = null;
@@ -380,7 +375,7 @@ public class RedAlert implements Runnable, IVersionProvider
 			Set<String> prevData = Collections.emptySet();
 			ZonedDateTime currAlertsLastModified = LocalDateTime.MIN.atZone(ZoneId.of("Z"));
 			final int minRedAlertEventStrLength = """
-					{"cat":1,"data":[],"desc":"","id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
+					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
 			final double alarmSoundSecondLength = 1E6 / clip.getMicrosecondLength();
 			System.err.println("Listening...");
 			while (isContinue)
@@ -400,7 +395,7 @@ public class RedAlert implements Runnable, IVersionProvider
 						if (httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_OK/* &&
 								httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_NOT_MODIFIED*/)
 						{
-							LOGGER.error("Connection response {}", httpURLConnection.getResponseMessage());
+							LOGGER.debug("Connection response: {}", httpURLConnection.getResponseMessage());
 							sleep();
 							continue;
 						}
@@ -424,9 +419,10 @@ public class RedAlert implements Runnable, IVersionProvider
 									System.out.println(redAlertToString(
 											contentLength,
 											alertsLastModified,
+											redAlertEvent,
+											catVsAlertNames,
 											settings.languageCode().getTestDistrictTranslation(),
 											new StringBuilder("Test Alert").append(System.lineSeparator())
-													.append(translateTranslate(redAlertEvent, catVsAlertNames)).append(System.lineSeparator())
 									));
 								continue;
 							}
@@ -465,8 +461,10 @@ public class RedAlert implements Runnable, IVersionProvider
 								redAlertToString(
 										contentLength,
 										alertsLastModified,
+										redAlertEvent,
+										catVsAlertNames,
 										translatedDistricts,
-										output.append(translateTranslate(redAlertEvent, catVsAlertNames)).append(System.lineSeparator())
+										output
 								);
 							}
 
@@ -482,12 +480,12 @@ public class RedAlert implements Runnable, IVersionProvider
 						LOGGER.error("Not a HTTP connection!");
 				} catch (IOException e)
 				{
-					LOGGER.error("Got exception: {}", e.toString());
+					LOGGER.debug("Got exception: {}", e.toString());
 					sleep();
 				}
 		} catch (Throwable e)
 		{
-			LOGGER.fatal("Fatal error: {}. Closing connection end exiting...", e.toString());
+			LOGGER.fatal("Fatal error: {}. Closing connection and exiting...", e.toString());
 		} finally
 		{
 			scheduledExecutorService.shutdownNow();
@@ -505,10 +503,18 @@ public class RedAlert implements Runnable, IVersionProvider
 
 	private StringBuilder redAlertToString(long contentLength,
 										   ZonedDateTime alertsLastModified,
+										   RedAlertEvent redAlertEvent,
+										   Map<Integer, Map<LanguageCode, String>> catVsAlertNames,
 										   Collection<String> translatedData,
 										   StringBuilder output)
 	{
-		return output.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
+		final Map<LanguageCode, String> titleTranslation;
+		return output.append("Title: ").append(settings.languageCode().equals(LanguageCode.HE) ?
+						redAlertEvent.title() :
+						(titleTranslation = catVsAlertNames.get(redAlertEvent.cat())) == null ?
+								redAlertEvent.title() + " (translation doesn't exist)" :
+								titleTranslation.get(settings.languageCode())).append(System.lineSeparator())
+				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 				.append("Last Modified Date: ").append(alertsLastModified == null ? null : DATE_TIME_FORMATTER.format(alertsLastModified.withZoneSameInstant(DEFAULT_ZONE_ID))).append(System.lineSeparator())
 				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(ZonedDateTime.now())).append(System.lineSeparator())
 				.append("Translated districts: ").append(translatedData).append(System.lineSeparator());
