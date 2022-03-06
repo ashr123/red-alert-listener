@@ -63,6 +63,9 @@ public class RedAlert implements Runnable, IVersionProvider
 			Level.INFO,
 			Collections.emptySet()
 	);
+	public static final TypeReference<List<District>> LIST_TYPE_REFERENCE = new TypeReference<>()
+	{
+	};
 	private static volatile boolean isContinue = true;
 	@Option(names = {"-s", "--settings"},
 			description = "Enter custom path to settings file.",
@@ -186,9 +189,9 @@ public class RedAlert implements Runnable, IVersionProvider
 				final Result<Map<String, T>> result = TimeMeasurement.measureAndExecuteCallable(() ->
 				{
 					if (new URL("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()).openConnection() instanceof HttpURLConnection httpURLConnection)
-						return JSON_MAPPER.readValue(httpURLConnection.getInputStream(), new TypeReference<List<District>>()
-								{
-								}).parallelStream()
+					{
+						httpURLConnection.setRequestProperty("Accept", "application/json");
+						return JSON_MAPPER.readValue(httpURLConnection.getInputStream(), LIST_TYPE_REFERENCE).parallelStream()
 								.collect(Collectors.toMap(
 										District::label_he,
 										districtMapper,
@@ -198,7 +201,7 @@ public class RedAlert implements Runnable, IVersionProvider
 											return value2;
 										}
 								));
-					else
+					} else
 						LOGGER.error("Not a HTTP connection, returning empty map");
 					return Map.of();
 				});
