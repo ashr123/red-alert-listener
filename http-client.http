@@ -1,0 +1,9 @@
+### GET request for red alerts from IDF's home front command with minimal headers
+GET https://www.oref.org.il/WarningMessages/alert/alerts.json
+Accept: application/json
+X-Requested-With: XMLHttpRequest
+Referer: https://www.oref.org.il/12481-{{languageCode}}/Pakar.aspx
+
+### GET request for IDF's home front command districts per language code
+GET https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang={{languageCode}}
+Accept: application/json

@@ -48,7 +48,10 @@ import java.util.stream.Stream;
 		showDefaultValues = true)
 public class RedAlert implements Runnable, IVersionProvider
 {
-	public static final ZoneId DEFAULT_ZONE_ID = ZoneId.systemDefault();
+	private static final ZoneId DEFAULT_ZONE_ID = ZoneId.systemDefault();
+	private static final TypeReference<List<District>> LIST_TYPE_REFERENCE = new TypeReference<>()
+	{
+	};
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern());
 	private static final Logger LOGGER = LogManager.getLogger();
 	private static final ObjectMapper JSON_MAPPER = new JsonMapper().enable(SerializationFeature.INDENT_OUTPUT);
@@ -63,9 +66,6 @@ public class RedAlert implements Runnable, IVersionProvider
 			Level.INFO,
 			Collections.emptySet()
 	);
-	public static final TypeReference<List<District>> LIST_TYPE_REFERENCE = new TypeReference<>()
-	{
-	};
 	private static volatile boolean isContinue = true;
 	@Option(names = {"-s", "--settings"},
 			description = "Enter custom path to settings file.",
@@ -455,8 +455,8 @@ public class RedAlert implements Runnable, IVersionProvider
 											clip.loop(Math.max(1, (int) Math.round(maxProtectionTime * alarmSoundSecondLength)));
 										});
 							}
-							final Set<String> translatedDistricts = translatedData.parallelStream().
-									map(TranslationAndProtectionTime::translation)
+							final Set<String> translatedDistricts = translatedData.parallelStream()
+									.map(TranslationAndProtectionTime::translation)
 									.collect(Collectors.toSet());
 							final StringBuilder output = new StringBuilder();
 							if (settings.isDisplayResponse())
