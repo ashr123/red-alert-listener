@@ -161,7 +161,7 @@ public class RedAlert implements Runnable, IVersionProvider
 				System.err.println("Enter \"q\" to quit");
 				startSignal.countDown();
 				while (isContinue)
-					switch (scanner.nextLine().trim())
+					switch (scanner.nextLine().strip())
 					{
 						case "" -> {
 						}
@@ -281,7 +281,7 @@ public class RedAlert implements Runnable, IVersionProvider
 				{
 					printHelpMsg();
 					while (isContinue)
-						switch (scanner.nextLine().trim())
+						switch (scanner.nextLine().strip())
 						{
 							case "" -> {
 							}

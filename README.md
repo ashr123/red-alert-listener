@@ -5,7 +5,7 @@
 ## Requirements
 
 1. Needs to be run from current working directory for being able to
-   find [red-alert-settings.json](red-alert-settings.json).
+   find [red-alert-settings.json](red-alert-settings.json) (or state the path to the settings file via `-s` flag).
 2. [red-alert-settings.json](red-alert-settings.json) needs to be in the same directory as the `jar` file.
 3. JDK 17 (or newer)
 4. Must have an Israeli IP address.
