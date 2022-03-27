@@ -1,4 +1,4 @@
-package io.github.ashr123.redAlert;
+package io.github.ashr123.red.alert;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,12 +41,12 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Command(name = "red-alert",
+@Command(name = "red-alert-listener",
 		mixinStandardHelpOptions = true,
-		versionProvider = RedAlert.class,
+		versionProvider = Listener.class,
 		description = "An App that can get \"red alert\"s from IDF's Home Front Command.",
 		showDefaultValues = true)
-public class RedAlert implements Runnable, IVersionProvider
+public class Listener implements Runnable, IVersionProvider
 {
 	private static final ZoneId DEFAULT_ZONE_ID = ZoneId.systemDefault();
 	private static final TypeReference<List<District>> LIST_TYPE_REFERENCE = new TypeReference<>()
@@ -69,8 +69,8 @@ public class RedAlert implements Runnable, IVersionProvider
 	private static volatile boolean isContinue = true;
 	@Option(names = {"-s", "--settings"},
 			description = "Enter custom path to settings file.",
-			defaultValue = "red-alert-settings.json")
-	private final File settingsFile = new File("red-alert-settings.json");
+			defaultValue = "red-alert-listener-settings.json")
+	private final File settingsFile = new File("red-alert-listener-settings.json");
 	private Settings settings = DEFAULT_SETTINGS;
 	private long settingsLastModified = 1;
 	private List<String> districtsNotFound = Collections.emptyList();
@@ -81,7 +81,7 @@ public class RedAlert implements Runnable, IVersionProvider
 
 	public static void main(String... args)
 	{
-		System.exit(new CommandLine(RedAlert.class)
+		System.exit(new CommandLine(Listener.class)
 				.setCaseInsensitiveEnumValuesAllowed(true)
 				.execute(args));
 	}
@@ -89,7 +89,6 @@ public class RedAlert implements Runnable, IVersionProvider
 	private static void setLoggerLevel(Level level)
 	{
 		final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
-//		loggerContext.getConfiguration().getAppenders().values().stream().findAny().get().getLayout().getContentFormat();
 		loggerContext.getConfiguration().getLoggerConfig(LOGGER.getName()).setLevel(level);
 		loggerContext.updateLoggers();
 	}
@@ -111,7 +110,7 @@ public class RedAlert implements Runnable, IVersionProvider
 	}
 
 	@Command(mixinStandardHelpOptions = true,
-			versionProvider = RedAlert.class,
+			versionProvider = Listener.class,
 			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout.",
 			showDefaultValues = true)
 	private static void getRemoteDistrictsAsJSON(
@@ -129,7 +128,7 @@ public class RedAlert implements Runnable, IVersionProvider
 	}
 
 	@Command(mixinStandardHelpOptions = true,
-			versionProvider = RedAlert.class,
+			versionProvider = Listener.class,
 			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file.",
 			showDefaultValues = true)
 	private static void getRemoteDistrictsAsJSONToFile(
@@ -263,7 +262,6 @@ public class RedAlert implements Runnable, IVersionProvider
 	@Override
 	public void run()
 	{
-		LOGGER.log(Level.INFO, "Starting Red Alert Listener...");
 		System.err.println("Preparing Red Alert Listener v" + getClass().getPackage().getImplementationVersion() + "...");
 		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 		HttpURLConnection httpURLConnectionField = null;
@@ -379,7 +377,7 @@ public class RedAlert implements Runnable, IVersionProvider
 			ZonedDateTime currAlertsLastModified = LocalDateTime.MIN.atZone(ZoneId.of("Z"));
 			final int minRedAlertEventStrLength = """
 					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
-			final double alarmSoundSecondLength = 1E6 / clip.getMicrosecondLength();
+			final double alarmSoundSecondLength = clip.getMicrosecondLength() / 1E6;
 			System.err.println("Listening...");
 			while (isContinue)
 				try
@@ -388,9 +386,9 @@ public class RedAlert implements Runnable, IVersionProvider
 					{
 						loadSettings();
 						httpURLConnectionField = httpURLConnection;
-						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-" + settings.languageCode().name().toLowerCase() + "/Pakar.aspx");
 						httpURLConnection.setRequestProperty("Accept", "application/json"); // Not mandatory, but it's a good practice
 						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
+						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-" + settings.languageCode().name().toLowerCase() + "/Pakar.aspx");
 						httpURLConnection.setConnectTimeout(settings.connectTimeout());
 						httpURLConnection.setReadTimeout(settings.readTimeout());
 						httpURLConnection.setUseCaches(false);
@@ -433,7 +431,7 @@ public class RedAlert implements Runnable, IVersionProvider
 							List<TranslationAndProtectionTime> translatedData = getTranslatedData(redAlertEvent);
 
 							Set<String> finalPrevData = prevData;
-							final List<TranslationAndProtectionTime> importantDistricts = translatedData.parallelStream()
+							final List<TranslationAndProtectionTime> newDistrictsOfInterest = translatedData.parallelStream()
 									.filter(translationAndProtectionTime -> settings.districtsOfInterest().contains(translationAndProtectionTime.translation()))
 									.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
 									.toList();
@@ -444,23 +442,20 @@ public class RedAlert implements Runnable, IVersionProvider
 								refreshDistrictsTranslationDicts();
 								translatedData = getTranslatedData(redAlertEvent);
 							}
-							if (settings.isMakeSound() && (settings.isAlertAll() || !importantDistricts.isEmpty()))
-							{
-								importantDistricts.parallelStream()
+							if (settings.isMakeSound() && (settings.isAlertAll() || !newDistrictsOfInterest.isEmpty()))
+								newDistrictsOfInterest.parallelStream()
 										.mapToInt(TranslationAndProtectionTime::protectionTime)
 										.max()
 										.ifPresent(maxProtectionTime ->
 										{
 											clip.setFramePosition(0);
-											clip.loop(Math.max(1, (int) Math.round(maxProtectionTime * alarmSoundSecondLength)));
+											clip.loop(Math.max(1, (int) Math.round(maxProtectionTime / alarmSoundSecondLength)));
 										});
-							}
 							final Set<String> translatedDistricts = translatedData.parallelStream()
 									.map(TranslationAndProtectionTime::translation)
 									.collect(Collectors.toSet());
 							final StringBuilder output = new StringBuilder();
 							if (settings.isDisplayResponse())
-							{
 								redAlertToString(
 										contentLength,
 										alertsLastModified,
@@ -469,10 +464,9 @@ public class RedAlert implements Runnable, IVersionProvider
 										translatedDistricts,
 										output
 								);
-							}
 
-							if (!importantDistricts.isEmpty())
-								output.append("ALERT: ").append(importantDistricts).append(System.lineSeparator());
+							if (!newDistrictsOfInterest.isEmpty())
+								output.append("ALERT: ").append(newDistrictsOfInterest).append(System.lineSeparator());
 							if (!output.isEmpty())
 								System.out.println(output);
 

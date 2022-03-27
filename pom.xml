@@ -5,8 +5,8 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>io.github.ashr123</groupId>
-	<artifactId>red-alert</artifactId>
-	<version>4.4.3</version>
+	<artifactId>red-alert-listener</artifactId>
+	<version>5.0.0</version>
 	<packaging>jar</packaging>
 
 	<name>Red Alert</name>
@@ -102,7 +102,7 @@
 					<release>17</release>
 				</configuration>
 			</plugin>
-			<!-- this is for preventing the creation of jar without it's dependencies -->
+			<!-- this is for preventing the creation of jar without its dependencies -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
@@ -114,7 +114,7 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- this is for creation of jar with it's dependencies -->
+			<!-- this is for creation of jar with its dependencies -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
@@ -130,7 +130,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>io.github.ashr123.redAlert.RedAlert</mainClass>
+							<mainClass>io.github.ashr123.red.alert.Listener</mainClass>
 							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
 						</manifest>
 						<manifestEntries>
