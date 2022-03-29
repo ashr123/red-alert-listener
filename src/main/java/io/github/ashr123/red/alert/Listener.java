@@ -69,8 +69,8 @@ public class Listener implements Runnable, IVersionProvider
 	private static volatile boolean isContinue = true;
 	@Option(names = {"-s", "--settings"},
 			description = "Enter custom path to settings file.",
-			defaultValue = "red-alert-listener-settings.json")
-	private final File settingsFile = new File("red-alert-listener-settings.json");
+			defaultValue = "red-alert-listener.conf.json")
+	private final File settingsFile = new File("red-alert-listener.conf.json");
 	private Settings settings = DEFAULT_SETTINGS;
 	private long settingsLastModified = 1;
 	private List<String> districtsNotFound = Collections.emptyList();

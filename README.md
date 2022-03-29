@@ -3,9 +3,9 @@
 ## Requirements
 
 1. Needs to be run from current working directory for being able to
-   find [red-alert-listener-settings.json](red-alert-listener-settings.json) (or state the path to the settings file
-   via `-s` flag).
-2. [red-alert-listener-settings.json](red-alert-listener-settings.json) needs to be in the same directory as the `jar`
+   find [red-alert-listener.conf.json](red-alert-listener.conf.json) (or state the path to the settings file via `-s`
+   flag).
+2. [red-alert-listener.conf.json](red-alert-listener.conf.json) needs to be in the same directory as the `jar`
    file.
 3. JDK 17 (or newer)
 4. Must have an Israeli IP address.
@@ -14,7 +14,7 @@
 
 1. Display alerts as the Home Front Command produces them.
 2. Make alert sound if the alert contains areas of interest defined
-   in [red-alert-listener-settings.json](red-alert-listener-settings.json).
+   in [red-alert-listener.conf.json](red-alert-listener.conf.json).
 3. Supports all official languages:
 	- Hebrew (code `HE`)
 	- English (code `EN`)
