@@ -118,7 +118,7 @@ public class Listener implements Runnable, IVersionProvider
 					paramLabel = "language code",
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
-					LanguageCode languageCode) throws IOException, InterruptedException
+			LanguageCode languageCode) throws IOException, InterruptedException
 	{
 		try (InputStream ignored = System.in)
 		{
@@ -136,12 +136,12 @@ public class Listener implements Runnable, IVersionProvider
 					paramLabel = "file",
 					defaultValue = "districts.json",
 					description = "Where to save received districts.")
-					File file,
+			File file,
 			@Option(names = {"-l", "--language"},
 					paramLabel = "language code",
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
-					LanguageCode languageCode) throws IOException, InterruptedException
+			LanguageCode languageCode) throws IOException, InterruptedException
 	{
 		try (InputStream ignored = System.in)
 		{
@@ -162,9 +162,11 @@ public class Listener implements Runnable, IVersionProvider
 				while (isContinue)
 					switch (scanner.nextLine().strip())
 					{
-						case "" -> {
+						case "" ->
+						{
 						}
-						case "q" -> {
+						case "q" ->
+						{
 							System.err.println("Quiting...");
 							isContinue = false;
 						}
@@ -190,7 +192,7 @@ public class Listener implements Runnable, IVersionProvider
 					if (new URL("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()).openConnection() instanceof HttpURLConnection httpURLConnection)
 					{
 						httpURLConnection.setRequestProperty("Accept", "application/json");
-						return JSON_MAPPER.readValue(httpURLConnection.getInputStream(), LIST_TYPE_REFERENCE).parallelStream()
+						return JSON_MAPPER.readValue(httpURLConnection.getInputStream(), LIST_TYPE_REFERENCE).parallelStream().unordered()
 								.collect(Collectors.toMap(
 										District::label_he,
 										districtMapper,
@@ -240,11 +242,9 @@ public class Listener implements Runnable, IVersionProvider
 				refreshDistrictsTranslationDicts();
 			districtsNotFound = (settings.districtsOfInterest().size() > 2 ?
 					new ArrayList<>(settings.districtsOfInterest()) :
-					settings.districtsOfInterest()).parallelStream()
-					.filter(Predicate.not(districts.values().parallelStream()
-							.map(TranslationAndProtectionTime::translation)
-							.collect(Collectors.toSet())::contains))
-					.collect(Collectors.toList());
+					settings.districtsOfInterest()).parallelStream().unordered()
+					.filter(Predicate.not(getTranslationFromTranslationAndProtectionTime(new ArrayList<>(districts.values()))::contains))
+					.toList();
 			printDistrictsNotFoundWarning();
 			setLoggerLevel(settings.logLevel());
 		} else if (settingsLastModifiedTemp == 0 && settingsLastModified != 0)
@@ -281,10 +281,12 @@ public class Listener implements Runnable, IVersionProvider
 					while (isContinue)
 						switch (scanner.nextLine().strip())
 						{
-							case "" -> {
+							case "" ->
+							{
 							}
 							case "q", "quit", "exit" -> isContinue = false;
-							case "t", "test", "test-sound" -> {
+							case "t", "test", "test-sound" ->
+							{
 								System.err.println("Testing sound...");
 								clip.setFramePosition(0);
 								clip.start();
@@ -292,7 +294,8 @@ public class Listener implements Runnable, IVersionProvider
 							case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
 							case "r", "refresh", "refresh-districts" -> refreshDistrictsTranslationDicts();
 							case "h", "help" -> printHelpMsg();
-							default -> {
+							default ->
+							{
 								System.err.println("Unrecognized command!");
 								printHelpMsg();
 							}
@@ -430,18 +433,22 @@ public class Listener implements Runnable, IVersionProvider
 
 							List<TranslationAndProtectionTime> translatedData = getTranslatedData(redAlertEvent);
 
-							Set<String> finalPrevData = prevData;
-							final List<TranslationAndProtectionTime> newDistrictsOfInterest = translatedData.parallelStream()
-									.filter(translationAndProtectionTime -> settings.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-									.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
-									.toList();
-
 							if (translatedData.contains(null))
 							{
 								LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
 								refreshDistrictsTranslationDicts();
 								translatedData = getTranslatedData(redAlertEvent);
 							}
+
+							Set<String> finalPrevData = prevData;
+							final List<TranslationAndProtectionTime>
+									unseenTranslatedDistricts = translatedData.parallelStream().unordered()
+									.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
+									.toList(), // to know if new (unseen) districts were added from previous request
+									newDistrictsOfInterest = unseenTranslatedDistricts.parallelStream().unordered()
+											.filter(translationAndProtectionTime -> settings.districtsOfInterest().contains(translationAndProtectionTime.translation()))
+											.toList(); // for not restarting alert sound unnecessarily
+
 							if (settings.isMakeSound() && (settings.isAlertAll() || !newDistrictsOfInterest.isEmpty()))
 								newDistrictsOfInterest.parallelStream()
 										.mapToInt(TranslationAndProtectionTime::protectionTime)
@@ -451,17 +458,15 @@ public class Listener implements Runnable, IVersionProvider
 											clip.setFramePosition(0);
 											clip.loop(Math.max(1, (int) Math.round(maxProtectionTime / alarmSoundSecondLength)));
 										});
-							final Set<String> translatedDistricts = translatedData.parallelStream()
-									.map(TranslationAndProtectionTime::translation)
-									.collect(Collectors.toSet());
+							final Set<String> unseenTranslatedStrings = getTranslationFromTranslationAndProtectionTime(unseenTranslatedDistricts);
 							final StringBuilder output = new StringBuilder();
-							if (settings.isDisplayResponse())
+							if (settings.isDisplayResponse() && !unseenTranslatedStrings.isEmpty())
 								redAlertToString(
 										contentLength,
 										alertsLastModified,
 										redAlertEvent,
 										catVsAlertNames,
-										translatedDistricts,
+										unseenTranslatedStrings,
 										output
 								);
 
@@ -471,7 +476,7 @@ public class Listener implements Runnable, IVersionProvider
 								System.out.println(output);
 
 							printDistrictsNotFoundWarning();
-							prevData = translatedDistricts;
+							prevData = getTranslationFromTranslationAndProtectionTime(translatedData);
 						}
 					} else
 						LOGGER.error("Not a HTTP connection!");
@@ -491,9 +496,16 @@ public class Listener implements Runnable, IVersionProvider
 		}
 	}
 
+	private Set<String> getTranslationFromTranslationAndProtectionTime(List<TranslationAndProtectionTime> translatedData)
+	{
+		return translatedData.parallelStream().unordered()
+				.map(TranslationAndProtectionTime::translation)
+				.collect(Collectors.toSet());
+	}
+
 	private List<TranslationAndProtectionTime> getTranslatedData(RedAlertEvent redAlertEvent)
 	{
-		return redAlertEvent.data().parallelStream()
+		return redAlertEvent.data().parallelStream().unordered()
 				.map(districts::get)
 				.collect(Collectors.toList());
 	}
@@ -506,7 +518,7 @@ public class Listener implements Runnable, IVersionProvider
 										   StringBuilder output)
 	{
 		final Map<LanguageCode, String> titleTranslation;
-		return output.append("Title: ").append(settings.languageCode().equals(LanguageCode.HE) ?
+		return output.append("Translated title: ").append(settings.languageCode().equals(LanguageCode.HE) ?
 						redAlertEvent.title() :
 						(titleTranslation = catVsAlertNames.get(redAlertEvent.cat())) == null ?
 								redAlertEvent.title() + " (translation doesn't exist)" :
