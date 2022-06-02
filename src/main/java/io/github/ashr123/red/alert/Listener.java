@@ -438,11 +438,14 @@ public class Listener implements Runnable, IVersionProvider
 								LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
 								refreshDistrictsTranslationDicts();
 								translatedData = getTranslatedData(redAlertEvent);
+								if (translatedData.contains(null))
+									LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
 							}
 
 							Set<String> finalPrevData = prevData;
 							final List<TranslationAndProtectionTime>
 									unseenTranslatedDistricts = translatedData.parallelStream().unordered()
+									.filter(Objects::nonNull)
 									.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
 									.toList(), // to know if new (unseen) districts were added from previous request
 									newDistrictsOfInterest = unseenTranslatedDistricts.parallelStream().unordered()
