@@ -417,7 +417,8 @@ public class Listener implements Runnable, IVersionProvider
 							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertEvent.class);
 							LOGGER.debug("Original event data: {}", redAlertEvent);
 							// TODO rethink of what defines a drill alert
-							if (redAlertEvent.data().equals(LanguageCode.HE.getTestDistrictTranslation()))
+							if (redAlertEvent.data().parallelStream().unordered()
+									.allMatch(LanguageCode.HE::containsKey))
 							{
 								if (settings.isShowTestAlerts())
 									System.out.println(redAlertToString(
@@ -425,7 +426,9 @@ public class Listener implements Runnable, IVersionProvider
 											alertsLastModified,
 											redAlertEvent,
 											catVsAlertNames,
-											settings.languageCode().getTestDistrictTranslation(),
+											redAlertEvent.data().parallelStream().unordered()
+													.map(settings.languageCode()::getTranslation)
+													.toList(),
 											new StringBuilder("Test Alert").append(System.lineSeparator())
 									));
 								continue;
@@ -490,7 +493,7 @@ public class Listener implements Runnable, IVersionProvider
 				}
 		} catch (Throwable e)
 		{
-			LOGGER.fatal("Fatal error: {}. Closing connection and exiting...", e.toString());
+			LOGGER.fatal("Closing connection and exiting...", e);
 		} finally
 		{
 			scheduledExecutorService.shutdownNow();
@@ -502,6 +505,7 @@ public class Listener implements Runnable, IVersionProvider
 	private Set<String> getTranslationFromTranslationAndProtectionTime(List<TranslationAndProtectionTime> translatedData)
 	{
 		return translatedData.parallelStream().unordered()
+				.filter(Objects::nonNull)
 				.map(TranslationAndProtectionTime::translation)
 				.collect(Collectors.toSet());
 	}
@@ -540,20 +544,37 @@ public class Listener implements Runnable, IVersionProvider
 	@SuppressWarnings("unused")
 	private enum LanguageCode
 	{
-		HE(List.of("בדיקה")),
-		EN(List.of("Test")),
-		AR(List.of("فحص")),
-		RU(List.of("Проверка"));
-		private final List<String> testDistrictTranslation;
+		HE(Map.ofEntries(
+				Map.entry("בדיקה", "בדיקה"),
+				Map.entry("בדיקה מחזורית", "בדיקה מחזורית")
+		)),
+		EN(Map.ofEntries(
+				Map.entry("בדיקה", "Test"),
+				Map.entry("בדיקה מחזורית", "Periodic Test")
+		)),
+		AR(Map.ofEntries(
+				Map.entry("בדיקה", "فحص"),
+				Map.entry("בדיקה מחזורית", "فحص الدوري")
+		)),
+		RU(Map.ofEntries(
+				Map.entry("בדיקה", "Проверка"),
+				Map.entry("בדיקה מחזורית", "Периодическая Проверка")
+		));
+		private final Map<String, String> testDistrictTranslation;
 
-		LanguageCode(List<String> testDistrictTranslation)
+		LanguageCode(Map<String, String> testDistrictTranslation)
 		{
 			this.testDistrictTranslation = testDistrictTranslation;
 		}
 
-		public List<String> getTestDistrictTranslation()
+		public boolean containsKey(String key)
 		{
-			return testDistrictTranslation;
+			return testDistrictTranslation.containsKey(key);
+		}
+
+		public String getTranslation(String key)
+		{
+			return testDistrictTranslation.get(key);
 		}
 	}
 
