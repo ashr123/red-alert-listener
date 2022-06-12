@@ -239,7 +239,7 @@ public class Listener implements Runnable, IVersionProvider
 			settings = JSON_MAPPER.readValue(settingsFile, Settings.class);
 			settingsLastModified = settingsLastModifiedTemp;
 			if (districts == null || !oldLanguageCode.equals(settings.languageCode()))
-				refreshDistrictsTranslationDicts();
+				refreshDistrictsTranslation();
 			districtsNotFound = (settings.districtsOfInterest().size() > 2 ?
 					new ArrayList<>(settings.districtsOfInterest()) :
 					settings.districtsOfInterest()).parallelStream().unordered()
@@ -252,7 +252,7 @@ public class Listener implements Runnable, IVersionProvider
 			LOGGER.warn("couldn't find \"{}\", using default settings", settingsFile);
 			settings = DEFAULT_SETTINGS;
 			if (districts == null || !oldLanguageCode.equals(settings.languageCode()))
-				refreshDistrictsTranslationDicts();
+				refreshDistrictsTranslation();
 			settingsLastModified = 0;
 			districtsNotFound = Collections.emptyList();
 			setLoggerLevel(settings.logLevel());
@@ -292,7 +292,7 @@ public class Listener implements Runnable, IVersionProvider
 								clip.start();
 							}
 							case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
-							case "r", "refresh", "refresh-districts" -> refreshDistrictsTranslationDicts();
+							case "r", "refresh", "refresh-districts" -> refreshDistrictsTranslation();
 							case "h", "help" -> printHelpMsg();
 							default ->
 							{
@@ -305,76 +305,8 @@ public class Listener implements Runnable, IVersionProvider
 				}
 				System.err.println("Bye Bye!");
 			}).start();
-			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslationDicts, 1, 1, TimeUnit.DAYS);
+			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
 			loadSettings();
-			final Map<Integer, Map<LanguageCode, String>> catVsAlertNames = Map.ofEntries(
-					Map.entry(1, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Rocket and missile fire"),
-							Map.entry(LanguageCode.RU, "Ракетный обстрел"),
-							Map.entry(LanguageCode.AR, "اطلاق قذائف وصواريخ")
-					)),
-					//missing 2
-					Map.entry(3, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Earthquake"),
-							Map.entry(LanguageCode.RU, "Землетрясение"),
-							Map.entry(LanguageCode.AR, "هزّة أرضية")
-					)),
-					Map.entry(4, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Radiological event"),
-							Map.entry(LanguageCode.RU, "Радиоактивная опасность"),
-							Map.entry(LanguageCode.AR, "حدث إشعاعي")
-					)),
-					Map.entry(5, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Fear of a tsunami"),
-							Map.entry(LanguageCode.RU, "Угроза цунами"),
-							Map.entry(LanguageCode.AR, "تحسبا للتسونامي")
-					)),
-					Map.entry(6, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Hostile aircraft intrusion"),
-							Map.entry(LanguageCode.RU, "Нарушение воздушного пространства"),
-							Map.entry(LanguageCode.AR, "اختراق طائرة معادية")
-					)),
-					Map.entry(7, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Hazardous Materials Event"),
-							Map.entry(LanguageCode.RU, "Утечка опасных веществ"),
-							Map.entry(LanguageCode.AR, "حدث مواد خطرة")
-					)),
-					// missing 10
-					Map.entry(13, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Terrorist infiltration"),
-							Map.entry(LanguageCode.RU, "Проникновение террористов"),
-							Map.entry(LanguageCode.AR, "تسلل مخربين")
-					)),
-					Map.entry(101, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Rocket and missile fire drill"),
-							Map.entry(LanguageCode.RU, "Учения по ракетному обстрелу"),
-							Map.entry(LanguageCode.AR, "تمرين اطلاق قذائف وصواريخ")
-					)),
-					// missing 102
-					Map.entry(103, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Earthquake drill"),
-							Map.entry(LanguageCode.RU, "Учения на случай землетрясения"),
-							Map.entry(LanguageCode.AR, "تمرين هزّة أرضية")
-					)),
-					// missing 104
-					Map.entry(105, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Tsunami drill"),
-							Map.entry(LanguageCode.RU, "Учения на случай цунами"),
-							Map.entry(LanguageCode.AR, "تمرين تسونامي")
-					)),
-					// missing 106
-					Map.entry(107, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Hazardous Materials drill"),
-							Map.entry(LanguageCode.RU, "Учения на случай утечки опасных веществ"),
-							Map.entry(LanguageCode.AR, "تمرين مواد خطرة")
-					)),
-					// missing 110
-					Map.entry(113, Map.ofEntries(
-							Map.entry(LanguageCode.EN, "Terrorist infiltration drill"),
-							Map.entry(LanguageCode.RU, "Учения на случай проникновения террористов"),
-							Map.entry(LanguageCode.AR, "تمرين تسلل مخربين")
-					))
-			);
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			Set<String> prevData = Collections.emptySet();
 			ZonedDateTime currAlertsLastModified = LocalDateTime.MIN.atZone(ZoneId.of("Z"));
@@ -425,7 +357,6 @@ public class Listener implements Runnable, IVersionProvider
 											contentLength,
 											alertsLastModified,
 											redAlertEvent,
-											catVsAlertNames,
 											redAlertEvent.data().parallelStream().unordered()
 													.map(settings.languageCode()::getTranslation)
 													.toList(),
@@ -439,7 +370,7 @@ public class Listener implements Runnable, IVersionProvider
 							if (translatedData.contains(null))
 							{
 								LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
-								refreshDistrictsTranslationDicts();
+								refreshDistrictsTranslation();
 								translatedData = getTranslatedData(redAlertEvent);
 								if (translatedData.contains(null))
 									LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
@@ -471,7 +402,6 @@ public class Listener implements Runnable, IVersionProvider
 										contentLength,
 										alertsLastModified,
 										redAlertEvent,
-										catVsAlertNames,
 										unseenTranslatedStrings,
 										output
 								);
@@ -520,51 +450,101 @@ public class Listener implements Runnable, IVersionProvider
 	private StringBuilder redAlertToString(long contentLength,
 										   ZonedDateTime alertsLastModified,
 										   RedAlertEvent redAlertEvent,
-										   Map<Integer, Map<LanguageCode, String>> catVsAlertNames,
 										   Collection<String> translatedData,
 										   StringBuilder output)
 	{
-		final Map<LanguageCode, String> titleTranslation;
-		return output.append("Translated title: ").append(settings.languageCode().equals(LanguageCode.HE) ?
-						redAlertEvent.title() :
-						(titleTranslation = catVsAlertNames.get(redAlertEvent.cat())) == null ?
-								redAlertEvent.title() + " (translation doesn't exist)" :
-								titleTranslation.get(settings.languageCode())).append(System.lineSeparator())
+		return output.append("Translated title: ").append(settings.languageCode().getTitleTranslation(redAlertEvent.cat(), redAlertEvent.title())).append(System.lineSeparator())
 				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 				.append("Last Modified Date: ").append(alertsLastModified == null ? null : DATE_TIME_FORMATTER.format(alertsLastModified.withZoneSameInstant(DEFAULT_ZONE_ID))).append(System.lineSeparator())
 				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(ZonedDateTime.now())).append(System.lineSeparator())
 				.append("Translated districts: ").append(translatedData).append(System.lineSeparator());
 	}
 
-	private void refreshDistrictsTranslationDicts()
+	private void refreshDistrictsTranslation()
 	{
-		districts = loadRemoteDistricts(settings.languageCode(), district -> new TranslationAndProtectionTime(district.label(), district.migun_time()));
+		districts = loadRemoteDistricts(
+				settings.languageCode(),
+				district -> new TranslationAndProtectionTime(district.label(), district.migun_time())
+		);
 	}
 
 	@SuppressWarnings("unused")
 	private enum LanguageCode
 	{
-		HE(Map.ofEntries(
-				Map.entry("בדיקה", "בדיקה"),
-				Map.entry("בדיקה מחזורית", "בדיקה מחזורית")
-		)),
-		EN(Map.ofEntries(
-				Map.entry("בדיקה", "Test"),
-				Map.entry("בדיקה מחזורית", "Periodic Test")
-		)),
-		AR(Map.ofEntries(
-				Map.entry("בדיקה", "فحص"),
-				Map.entry("בדיקה מחזורית", "فحص الدوري")
-		)),
-		RU(Map.ofEntries(
-				Map.entry("בדיקה", "Проверка"),
-				Map.entry("בדיקה מחזורית", "Периодическая Проверка")
-		));
+		HE(
+				Map.ofEntries(
+						Map.entry("בדיקה", "בדיקה"),
+						Map.entry("בדיקה מחזורית", "בדיקה מחזורית")
+				),
+				null
+		),
+		EN(
+				Map.ofEntries(
+						Map.entry("בדיקה", "Test"),
+						Map.entry("בדיקה מחזורית", "Periodic Test")
+				),
+				Map.ofEntries(
+						Map.entry(1, "Rocket and missile fire"),
+						Map.entry(3, "Earthquake"),
+						Map.entry(4, "Radiological event"),
+						Map.entry(5, "Fear of a tsunami"),
+						Map.entry(6, "Hostile aircraft intrusion"),
+						Map.entry(7, "Hazardous Materials Event"),
+						Map.entry(13, "Terrorist infiltration"),
+						Map.entry(101, "Rocket and missile fire drill"),
+						Map.entry(103, "Earthquake drill"),
+						Map.entry(105, "Tsunami drill"),
+						Map.entry(107, "Hazardous Materials drill"),
+						Map.entry(113, "Terrorist infiltration drill")
+				)
+		),
+		AR(
+				Map.ofEntries(
+						Map.entry("בדיקה", "فحص"),
+						Map.entry("בדיקה מחזורית", "فحص الدوري")
+				),
+				Map.ofEntries(
+						Map.entry(1, "اطلاق قذائف وصواريخ"),
+						Map.entry(3, "هزّة أرضية"),
+						Map.entry(4, "حدث إشعاعي"),
+						Map.entry(5, "تحسبا للتسونامي"),
+						Map.entry(6, "اختراق طائرة معادية"),
+						Map.entry(7, "حدث مواد خطرة"),
+						Map.entry(13, "تسلل مخربين"),
+						Map.entry(101, "تمرين اطلاق قذائف وصواريخ"),
+						Map.entry(103, "تمرين هزّة أرضية"),
+						Map.entry(105, "تمرين تسونامي"),
+						Map.entry(107, "تمرين مواد خطرة"),
+						Map.entry(113, "تمرين تسلل مخربين")
+				)
+		),
+		RU(
+				Map.ofEntries(
+						Map.entry("בדיקה", "Проверка"),
+						Map.entry("בדיקה מחזורית", "Периодическая Проверка")
+				),
+				Map.ofEntries(
+						Map.entry(1, "Ракетный обстрел"),
+						Map.entry(3, "Землетрясение"),
+						Map.entry(4, "Радиоактивная опасность"),
+						Map.entry(5, "Угроза цунами"),
+						Map.entry(6, "Нарушение воздушного пространства"),
+						Map.entry(7, "Утечка опасных веществ"),
+						Map.entry(13, "Проникновение террористов"),
+						Map.entry(101, "Учения по ракетному обстрелу"),
+						Map.entry(103, "Учения на случай землетрясения"),
+						Map.entry(105, "Учения на случай цунами"),
+						Map.entry(107, "Учения на случай утечки опасных веществ"),
+						Map.entry(113, "Учения на случай проникновения террористов")
+				)
+		);
 		private final Map<String, String> testDistrictTranslation;
+		private final Map<Integer, String> titleTranslations;
 
-		LanguageCode(Map<String, String> testDistrictTranslation)
+		LanguageCode(Map<String, String> testDistrictTranslation, Map<Integer, String> titleTranslations)
 		{
 			this.testDistrictTranslation = testDistrictTranslation;
+			this.titleTranslations = titleTranslations;
 		}
 
 		public boolean containsKey(String key)
@@ -575,6 +555,16 @@ public class Listener implements Runnable, IVersionProvider
 		public String getTranslation(String key)
 		{
 			return testDistrictTranslation.get(key);
+		}
+
+		public String getTitleTranslation(int categoryCode, String defaultTitleTranslation)
+		{
+			final String titleTranslation;
+			return titleTranslations == null ?
+					defaultTitleTranslation :
+					(titleTranslation = titleTranslations.get(categoryCode)) == null ?
+							defaultTitleTranslation + " (translation doesn't exist)" :
+							titleTranslation;
 		}
 	}
 
