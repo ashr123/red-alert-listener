@@ -118,12 +118,28 @@ public class Listener implements Runnable, IVersionProvider
 					paramLabel = "language code",
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
-			LanguageCode languageCode) throws IOException, InterruptedException
+			LanguageCode languageCode,
+			@Option(names = {"-c", "--connect-timeout"},
+					paramLabel = "connect timeout",
+					defaultValue = "5000",
+					description = "Connect timeout for connecting to IDF's Home Front Command's server.")
+			int connectTimeout,
+			@Option(names = {"-r", "--read-timeout"},
+					paramLabel = "read timeout",
+					defaultValue = "10000",
+					description = "Read timeout for connecting to IDF's Home Front Command's server.")
+			int readTimeout
+	) throws IOException, InterruptedException
 	{
 		try (InputStream ignored = System.in)
 		{
 			startSubcommandInputThread();
-			System.out.println(JSON_MAPPER.writeValueAsString(loadRemoteDistricts(languageCode, District::label)));
+			System.out.println(JSON_MAPPER.writeValueAsString(loadRemoteDistricts(
+					languageCode,
+					connectTimeout,
+					readTimeout,
+					District::label
+			)));
 		}
 	}
 
@@ -141,12 +157,31 @@ public class Listener implements Runnable, IVersionProvider
 					paramLabel = "language code",
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
-			LanguageCode languageCode) throws IOException, InterruptedException
+			LanguageCode languageCode,
+			@Option(names = {"-c", "--connect-timeout"},
+					paramLabel = "connect timeout",
+					defaultValue = "5000",
+					description = "Connect timeout for connecting to IDF's Home Front Command's server.")
+			int connectTimeout,
+			@Option(names = {"-r", "--read-timeout"},
+					paramLabel = "read timeout",
+					defaultValue = "10000",
+					description = "Read timeout for connecting to IDF's Home Front Command's server.")
+			int readTimeout
+	) throws IOException, InterruptedException
 	{
 		try (InputStream ignored = System.in)
 		{
 			startSubcommandInputThread();
-			JSON_MAPPER.writeValue(file, loadRemoteDistricts(languageCode, District::label));
+			JSON_MAPPER.writeValue(
+					file,
+					loadRemoteDistricts(
+							languageCode,
+							connectTimeout,
+							readTimeout,
+							District::label
+					)
+			);
 		}
 	}
 
@@ -181,7 +216,12 @@ public class Listener implements Runnable, IVersionProvider
 		startSignal.await();
 	}
 
-	private static <T> Map<String, T> loadRemoteDistricts(LanguageCode languageCode, Function<District, T> districtMapper)
+	private static <T> Map<String, T> loadRemoteDistricts(
+			LanguageCode languageCode,
+			int connectTimeout,
+			int readTimeout,
+			Function<District, T> districtMapper
+	)
 	{
 		LOGGER.info("Getting remote districts from IDF's Home Front Command's server...");
 		while (isContinue)
@@ -192,7 +232,11 @@ public class Listener implements Runnable, IVersionProvider
 					if (new URL("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()).openConnection() instanceof HttpURLConnection httpURLConnection)
 					{
 						httpURLConnection.setRequestProperty("Accept", "application/json");
-						return JSON_MAPPER.readValue(httpURLConnection.getInputStream(), LIST_TYPE_REFERENCE).parallelStream().unordered()
+						httpURLConnection.setConnectTimeout(connectTimeout);
+						httpURLConnection.setReadTimeout(readTimeout);
+						httpURLConnection.setUseCaches(false);
+						return JSON_MAPPER.readValue(httpURLConnection.getInputStream(), LIST_TYPE_REFERENCE)
+								.parallelStream().unordered()
 								.collect(Collectors.toMap(
 										District::label_he,
 										districtMapper,
@@ -464,6 +508,8 @@ public class Listener implements Runnable, IVersionProvider
 	{
 		districts = loadRemoteDistricts(
 				settings.languageCode(),
+				settings.connectTimeout(),
+				settings.readTimeout(),
 				district -> new TranslationAndProtectionTime(district.label(), district.migun_time())
 		);
 	}
