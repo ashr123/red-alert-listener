@@ -14,6 +14,7 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.util.datetime.FixedDateFormat;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.ITypeConverter;
 import picocli.CommandLine.IVersionProvider;
 import picocli.CommandLine.Option;
 
@@ -111,7 +112,7 @@ public class Listener implements Runnable, IVersionProvider
 
 	@Command(mixinStandardHelpOptions = true,
 			versionProvider = Listener.class,
-			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout.",
+			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout (No need for configuration file).",
 			showDefaultValues = true)
 	private static void getRemoteDistrictsAsJSON(
 			@Option(names = {"-l", "--language"},
@@ -128,16 +129,22 @@ public class Listener implements Runnable, IVersionProvider
 					paramLabel = "read timeout",
 					defaultValue = "10000",
 					description = "Read timeout for connecting to IDF's Home Front Command's server.")
-			int readTimeout
+			int readTimeout,
+			@Option(names = {"-L", "--logger-level"},
+					paramLabel = "logger level",
+					defaultValue = "INFO",
+					converter = LevelConverter.class,
+					description = "Level of logger. Valid values: OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE, ALL (case insensitive).")
+			Level loggerLevel
 	) throws IOException, InterruptedException
 	{
 		try (InputStream ignored = System.in)
 		{
-			startSubcommandInputThread();
-			System.out.println(JSON_MAPPER.writeValueAsString(loadRemoteDistricts(
+			System.out.println(JSON_MAPPER.writeValueAsString(startSubcommandInputThread(
 					languageCode,
 					connectTimeout,
 					readTimeout,
+					loggerLevel,
 					District::label
 			)));
 		}
@@ -145,7 +152,7 @@ public class Listener implements Runnable, IVersionProvider
 
 	@Command(mixinStandardHelpOptions = true,
 			versionProvider = Listener.class,
-			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file.",
+			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file (No need for configuration file).",
 			showDefaultValues = true)
 	private static void getRemoteDistrictsAsJSONToFile(
 			@Option(names = {"-o", "--output"},
@@ -167,25 +174,37 @@ public class Listener implements Runnable, IVersionProvider
 					paramLabel = "read timeout",
 					defaultValue = "10000",
 					description = "Read timeout for connecting to IDF's Home Front Command's server.")
-			int readTimeout
+			int readTimeout,
+			@Option(names = {"-L", "--logger-level"},
+					paramLabel = "logger level",
+					defaultValue = "INFO",
+					converter = LevelConverter.class,
+					description = "Level of logger. Valid values: OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE, ALL (case insensitive).")
+			Level loggerLevel
 	) throws IOException, InterruptedException
 	{
 		try (InputStream ignored = System.in)
 		{
-			startSubcommandInputThread();
 			JSON_MAPPER.writeValue(
 					file,
-					loadRemoteDistricts(
+					startSubcommandInputThread(
 							languageCode,
 							connectTimeout,
 							readTimeout,
+							loggerLevel,
 							District::label
 					)
 			);
 		}
 	}
 
-	private static void startSubcommandInputThread() throws InterruptedException
+	private static <T> Map<String, T> startSubcommandInputThread(
+			LanguageCode languageCode,
+			int connectTimeout,
+			int readTimeout,
+			Level level,
+			Function<District, T> districtMapper
+	) throws InterruptedException
 	{
 		final CountDownLatch startSignal = new CountDownLatch(1);
 		new Thread(() ->
@@ -213,7 +232,9 @@ public class Listener implements Runnable, IVersionProvider
 			{
 			}
 		}).start();
+		setLoggerLevel(level);
 		startSignal.await();
+		return loadRemoteDistricts(languageCode, connectTimeout, readTimeout, districtMapper);
 	}
 
 	private static <T> Map<String, T> loadRemoteDistricts(
@@ -656,6 +677,15 @@ public class Listener implements Runnable, IVersionProvider
 		public String toString()
 		{
 			return translation + ": " + protectionTime + " seconds";
+		}
+	}
+
+	private static class LevelConverter implements ITypeConverter<Level>
+	{
+		@Override
+		public Level convert(String s)
+		{
+			return Level.valueOf(s);
 		}
 	}
 }
