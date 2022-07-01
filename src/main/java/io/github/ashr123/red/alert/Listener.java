@@ -45,8 +45,8 @@ import java.util.stream.Stream;
 @Command(name = "red-alert-listener",
 		mixinStandardHelpOptions = true,
 		versionProvider = Listener.class,
-		description = "An App that can get \"red alert\"s from IDF's Home Front Command.",
-		showDefaultValues = true)
+		showDefaultValues = true,
+		description = "An App that can get \"red alert\"s from IDF's Home Front Command.")
 public class Listener implements Runnable, IVersionProvider
 {
 	private static final ZoneId DEFAULT_ZONE_ID = ZoneId.systemDefault();
@@ -56,7 +56,7 @@ public class Listener implements Runnable, IVersionProvider
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern());
 	private static final Logger LOGGER = LogManager.getLogger();
 	private static final ObjectMapper JSON_MAPPER = new JsonMapper().enable(SerializationFeature.INDENT_OUTPUT);
-	private static final Settings DEFAULT_SETTINGS = new Settings(
+	private static final Configuration DEFAULT_CONFIGURATION = new Configuration(
 			false,
 			false,
 			true,
@@ -68,12 +68,13 @@ public class Listener implements Runnable, IVersionProvider
 			Collections.emptySet()
 	);
 	private static volatile boolean isContinue = true;
-	@Option(names = {"-s", "--settings"},
-			description = "Enter custom path to settings file.",
-			defaultValue = "red-alert-listener.conf.json")
-	private final File settingsFile = new File("red-alert-listener.conf.json");
-	private Settings settings = DEFAULT_SETTINGS;
-	private long settingsLastModified = 1;
+	@Option(names = {"-c", "--configuration-file"},
+			paramLabel = "configuration file",
+			defaultValue = "red-alert-listener.conf.json",
+			description = "Enter custom path to configuration file.")
+	private final File configurationFile = new File("red-alert-listener.conf.json");
+	private Configuration configuration = DEFAULT_CONFIGURATION;
+	private long configurationLastModified = 1;
 	private List<String> districtsNotFound = Collections.emptyList();
 	/**
 	 * Will be updated once a day from IDF's Home Front Command's server.
@@ -112,13 +113,13 @@ public class Listener implements Runnable, IVersionProvider
 
 	@Command(mixinStandardHelpOptions = true,
 			versionProvider = Listener.class,
-			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout (No need for configuration file).",
-			showDefaultValues = true)
+			showDefaultValues = true,
+			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout (No need for configuration file).")
 	private static void getRemoteDistrictsAsJSON(
 			@Option(names = {"-l", "--language"},
 					paramLabel = "language code",
 					required = true,
-					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
+					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive).")
 			LanguageCode languageCode,
 			@Option(names = {"-c", "--connect-timeout"},
 					paramLabel = "connect timeout",
@@ -133,7 +134,7 @@ public class Listener implements Runnable, IVersionProvider
 			@Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
 					defaultValue = "INFO",
-					converter = LevelConverter.class,
+					converter = LoggerLevelConverter.class,
 					description = "Level of logger. Valid values: OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE, ALL (case insensitive).")
 			Level loggerLevel
 	) throws IOException, InterruptedException
@@ -144,16 +145,15 @@ public class Listener implements Runnable, IVersionProvider
 					languageCode,
 					connectTimeout,
 					readTimeout,
-					loggerLevel,
-					District::label
+					loggerLevel
 			)));
 		}
 	}
 
 	@Command(mixinStandardHelpOptions = true,
 			versionProvider = Listener.class,
-			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file (No need for configuration file).",
-			showDefaultValues = true)
+			showDefaultValues = true,
+			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file (No need for configuration file).")
 	private static void getRemoteDistrictsAsJSONToFile(
 			@Option(names = {"-o", "--output"},
 					paramLabel = "file",
@@ -163,7 +163,7 @@ public class Listener implements Runnable, IVersionProvider
 			@Option(names = {"-l", "--language"},
 					paramLabel = "language code",
 					required = true,
-					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive)")
+					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive).")
 			LanguageCode languageCode,
 			@Option(names = {"-c", "--connect-timeout"},
 					paramLabel = "connect timeout",
@@ -178,7 +178,7 @@ public class Listener implements Runnable, IVersionProvider
 			@Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
 					defaultValue = "INFO",
-					converter = LevelConverter.class,
+					converter = LoggerLevelConverter.class,
 					description = "Level of logger. Valid values: OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE, ALL (case insensitive).")
 			Level loggerLevel
 	) throws IOException, InterruptedException
@@ -191,19 +191,17 @@ public class Listener implements Runnable, IVersionProvider
 							languageCode,
 							connectTimeout,
 							readTimeout,
-							loggerLevel,
-							District::label
+							loggerLevel
 					)
 			);
 		}
 	}
 
-	private static <T> Map<String, T> startSubcommandInputThread(
+	private static Map<String, String> startSubcommandInputThread(
 			LanguageCode languageCode,
 			int connectTimeout,
 			int readTimeout,
-			Level level,
-			Function<District, T> districtMapper
+			Level level
 	) throws InterruptedException
 	{
 		final CountDownLatch startSignal = new CountDownLatch(1);
@@ -234,7 +232,7 @@ public class Listener implements Runnable, IVersionProvider
 		}).start();
 		setLoggerLevel(level);
 		startSignal.await();
-		return loadRemoteDistricts(languageCode, connectTimeout, readTimeout, districtMapper);
+		return loadRemoteDistricts(languageCode, connectTimeout, readTimeout, District::label);
 	}
 
 	private static <T> Map<String, T> loadRemoteDistricts(
@@ -250,7 +248,8 @@ public class Listener implements Runnable, IVersionProvider
 			{
 				final Result<Map<String, T>> result = TimeMeasurement.measureAndExecuteCallable(() ->
 				{
-					if (new URL("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()).openConnection() instanceof HttpURLConnection httpURLConnection)
+					if (new URL("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase())
+							.openConnection() instanceof HttpURLConnection httpURLConnection)
 					{
 						httpURLConnection.setRequestProperty("Accept", "application/json");
 						httpURLConnection.setConnectTimeout(connectTimeout);
@@ -294,33 +293,33 @@ public class Listener implements Runnable, IVersionProvider
 		return new String[]{"Red Alert Listener v" + getClass().getPackage().getImplementationVersion()};
 	}
 
-	private void loadSettings() throws IOException
+	private void loadConfiguration() throws IOException
 	{
-		final long settingsLastModifiedTemp = settingsFile.lastModified();
-		final LanguageCode oldLanguageCode = settings.languageCode();
-		if (settingsLastModifiedTemp > settingsLastModified)
+		final long configurationLastModifiedTemp = configurationFile.lastModified();
+		final LanguageCode oldLanguageCode = configuration.languageCode();
+		if (configurationLastModifiedTemp > configurationLastModified)
 		{
-			LOGGER.info("(re)loading settings from file \"{}\"", settingsFile);
-			settings = JSON_MAPPER.readValue(settingsFile, Settings.class);
-			settingsLastModified = settingsLastModifiedTemp;
-			if (districts == null || !oldLanguageCode.equals(settings.languageCode()))
+			LOGGER.info("(re)loading configuration from file \"{}\"", configurationFile);
+			configuration = JSON_MAPPER.readValue(configurationFile, Configuration.class);
+			configurationLastModified = configurationLastModifiedTemp;
+			if (districts == null || !oldLanguageCode.equals(configuration.languageCode()))
 				refreshDistrictsTranslation();
-			districtsNotFound = (settings.districtsOfInterest().size() > 2 ?
-					new ArrayList<>(settings.districtsOfInterest()) :
-					settings.districtsOfInterest()).parallelStream().unordered()
+			districtsNotFound = (configuration.districtsOfInterest().size() > 2 ?
+					new ArrayList<>(configuration.districtsOfInterest()) :
+					configuration.districtsOfInterest()).parallelStream().unordered()
 					.filter(Predicate.not(getTranslationFromTranslationAndProtectionTime(new ArrayList<>(districts.values()))::contains))
 					.toList();
 			printDistrictsNotFoundWarning();
-			setLoggerLevel(settings.logLevel());
-		} else if (settingsLastModifiedTemp == 0 && settingsLastModified != 0)
+			setLoggerLevel(configuration.logLevel());
+		} else if (configurationLastModifiedTemp == 0 && configurationLastModified != 0)
 		{
-			LOGGER.warn("couldn't find \"{}\", using default settings", settingsFile);
-			settings = DEFAULT_SETTINGS;
-			if (districts == null || !oldLanguageCode.equals(settings.languageCode()))
+			LOGGER.warn("couldn't find \"{}\", using default configuration", configurationFile);
+			configuration = DEFAULT_CONFIGURATION;
+			if (districts == null || !oldLanguageCode.equals(configuration.languageCode()))
 				refreshDistrictsTranslation();
-			settingsLastModified = 0;
+			configurationLastModified = 0;
 			districtsNotFound = Collections.emptyList();
-			setLoggerLevel(settings.logLevel());
+			setLoggerLevel(configuration.logLevel());
 		}
 	}
 
@@ -371,11 +370,11 @@ public class Listener implements Runnable, IVersionProvider
 				System.err.println("Bye Bye!");
 			}).start();
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
-			loadSettings();
+			loadConfiguration();
 			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			Set<String> prevData = Collections.emptySet();
 			ZonedDateTime currAlertsLastModified = LocalDateTime.MIN.atZone(ZoneId.of("Z"));
-			final int minRedAlertEventStrLength = """
+			final int minRedAlertEventContentLength = """
 					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
 			final double alarmSoundSecondLength = clip.getMicrosecondLength() / 1E6;
 			System.err.println("Listening...");
@@ -384,13 +383,13 @@ public class Listener implements Runnable, IVersionProvider
 				{
 					if (url.openConnection() instanceof HttpURLConnection httpURLConnection)
 					{
-						loadSettings();
+						loadConfiguration();
 						httpURLConnectionField = httpURLConnection;
 						httpURLConnection.setRequestProperty("Accept", "application/json"); // Not mandatory, but it's a good practice
 						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
-						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-" + settings.languageCode().name().toLowerCase() + "/Pakar.aspx");
-						httpURLConnection.setConnectTimeout(settings.connectTimeout());
-						httpURLConnection.setReadTimeout(settings.readTimeout());
+						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase() + "/Pakar.aspx");
+						httpURLConnection.setConnectTimeout(configuration.connectTimeout());
+						httpURLConnection.setReadTimeout(configuration.readTimeout());
 						httpURLConnection.setUseCaches(false);
 
 						if (httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_OK/* &&
@@ -403,7 +402,7 @@ public class Listener implements Runnable, IVersionProvider
 						ZonedDateTime alertsLastModified = null;
 						final long contentLength = httpURLConnection.getContentLengthLong();
 						final String lastModifiedStr;
-						if (contentLength < minRedAlertEventStrLength)
+						if (contentLength < minRedAlertEventContentLength)
 							prevData = Collections.emptySet();
 						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null ||
 								(alertsLastModified = ZonedDateTime.parse(lastModifiedStr, DateTimeFormatter.RFC_1123_DATE_TIME)).isAfter(currAlertsLastModified))
@@ -417,13 +416,13 @@ public class Listener implements Runnable, IVersionProvider
 							if (redAlertEvent.data().parallelStream().unordered()
 									.allMatch(LanguageCode.HE::containsKey))
 							{
-								if (settings.isShowTestAlerts())
+								if (configuration.isShowTestAlerts())
 									System.out.println(redAlertToString(
 											contentLength,
 											alertsLastModified,
 											redAlertEvent,
 											redAlertEvent.data().parallelStream().unordered()
-													.map(settings.languageCode()::getTranslation)
+													.map(configuration.languageCode()::getTranslation)
 													.toList(),
 											new StringBuilder("Test Alert").append(System.lineSeparator())
 									));
@@ -448,10 +447,10 @@ public class Listener implements Runnable, IVersionProvider
 									.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
 									.toList(), // to know if new (unseen) districts were added from previous request
 									newDistrictsOfInterest = unseenTranslatedDistricts.parallelStream().unordered()
-											.filter(translationAndProtectionTime -> settings.districtsOfInterest().contains(translationAndProtectionTime.translation()))
+											.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
 											.toList(); // for not restarting alert sound unnecessarily
 
-							if (settings.isMakeSound() && (settings.isAlertAll() || !newDistrictsOfInterest.isEmpty()))
+							if (configuration.isMakeSound() && (configuration.isAlertAll() || !newDistrictsOfInterest.isEmpty()))
 								newDistrictsOfInterest.parallelStream().unordered()
 										.mapToInt(TranslationAndProtectionTime::protectionTime)
 										.max()
@@ -462,7 +461,7 @@ public class Listener implements Runnable, IVersionProvider
 										});
 							final Set<String> unseenTranslatedStrings = getTranslationFromTranslationAndProtectionTime(unseenTranslatedDistricts);
 							final StringBuilder output = new StringBuilder();
-							if (settings.isDisplayResponse() && !unseenTranslatedStrings.isEmpty())
+							if (configuration.isDisplayResponse() && !unseenTranslatedStrings.isEmpty())
 								redAlertToString(
 										contentLength,
 										alertsLastModified,
@@ -518,7 +517,7 @@ public class Listener implements Runnable, IVersionProvider
 										   Collection<String> translatedData,
 										   StringBuilder output)
 	{
-		return output.append("Translated title: ").append(settings.languageCode().getTitleTranslation(redAlertEvent.cat(), redAlertEvent.title())).append(System.lineSeparator())
+		return output.append("Translated title: ").append(configuration.languageCode().getTitleTranslation(redAlertEvent.cat(), redAlertEvent.title())).append(System.lineSeparator())
 				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 				.append("Last Modified Date: ").append(alertsLastModified == null ? null : DATE_TIME_FORMATTER.format(alertsLastModified.withZoneSameInstant(DEFAULT_ZONE_ID))).append(System.lineSeparator())
 				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(ZonedDateTime.now())).append(System.lineSeparator())
@@ -528,9 +527,9 @@ public class Listener implements Runnable, IVersionProvider
 	private void refreshDistrictsTranslation()
 	{
 		districts = loadRemoteDistricts(
-				settings.languageCode(),
-				settings.connectTimeout(),
-				settings.readTimeout(),
+				configuration.languageCode(),
+				configuration.connectTimeout(),
+				configuration.readTimeout(),
 				district -> new TranslationAndProtectionTime(district.label(), district.migun_time())
 		);
 	}
@@ -645,7 +644,7 @@ public class Listener implements Runnable, IVersionProvider
 	{
 	}
 
-	private record Settings(
+	private record Configuration(
 			boolean isMakeSound,
 			boolean isAlertAll,
 			boolean isDisplayResponse,
@@ -680,7 +679,7 @@ public class Listener implements Runnable, IVersionProvider
 		}
 	}
 
-	private static class LevelConverter implements ITypeConverter<Level>
+	private static class LoggerLevelConverter implements ITypeConverter<Level>
 	{
 		@Override
 		public Level convert(String s)

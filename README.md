@@ -3,7 +3,8 @@
 ## Requirements
 
 1. Needs to be run from current working directory for being able to
-   find [red-alert-listener.conf.json](red-alert-listener.conf.json) (or state the path to the settings file via `-s`
+   find [red-alert-listener.conf.json](red-alert-listener.conf.json) (or state the path to the configuration file
+   via `-c`
    flag).
 2. [red-alert-listener.conf.json](red-alert-listener.conf.json) needs to be in the same directory as the `jar`
    file.
