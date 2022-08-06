@@ -399,16 +399,13 @@ public class Listener implements Runnable, IVersionProvider
 							sleep();
 							continue;
 						}
-						ZonedDateTime alertsLastModified = null;
+						ZonedDateTime alertsLastModified;
 						final long contentLength = httpURLConnection.getContentLengthLong();
-						final String lastModifiedStr;
 						if (contentLength < minRedAlertEventContentLength)
 							prevData = Collections.emptySet();
-						else if ((lastModifiedStr = httpURLConnection.getHeaderField("last-modified")) == null ||
-								(alertsLastModified = ZonedDateTime.parse(lastModifiedStr, DateTimeFormatter.RFC_1123_DATE_TIME)).isAfter(currAlertsLastModified))
+						else if ((alertsLastModified = ZonedDateTime.parse(httpURLConnection.getHeaderField("last-modified"), DateTimeFormatter.RFC_1123_DATE_TIME)).isAfter(currAlertsLastModified))
 						{
-							if (alertsLastModified != null)
-								currAlertsLastModified = alertsLastModified;
+							currAlertsLastModified = alertsLastModified;
 
 							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertEvent.class);
 							LOGGER.debug("Original event data: {}", redAlertEvent);
@@ -519,7 +516,7 @@ public class Listener implements Runnable, IVersionProvider
 	{
 		return output.append("Translated title: ").append(configuration.languageCode().getTitleTranslation(redAlertEvent.cat(), redAlertEvent.title())).append(System.lineSeparator())
 				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
-				.append("Last Modified Date: ").append(alertsLastModified == null ? null : DATE_TIME_FORMATTER.format(alertsLastModified.withZoneSameInstant(DEFAULT_ZONE_ID))).append(System.lineSeparator())
+				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified.withZoneSameInstant(DEFAULT_ZONE_ID))).append(System.lineSeparator())
 				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(ZonedDateTime.now())).append(System.lineSeparator())
 				.append("Translated districts: ").append(translatedData).append(System.lineSeparator());
 	}
