@@ -207,7 +207,7 @@ public class Listener implements Runnable, IVersionProvider
 		final CountDownLatch startSignal = new CountDownLatch(1);
 		new Thread(() ->
 		{
-			try (Scanner scanner = new Scanner(System.in))
+			try (Scanner scanner = new Scanner(System.in, StandardCharsets.UTF_8))
 			{
 				System.err.println("Enter \"q\" to quit");
 				startSignal.countDown();
@@ -330,7 +330,7 @@ public class Listener implements Runnable, IVersionProvider
 		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 		HttpURLConnection httpURLConnectionField = null;
 		try (Clip clip = AudioSystem.getClip(Stream.of(AudioSystem.getMixerInfo()).parallel()
-				.filter(mixerInfo -> mixerInfo.getName().equals("default [default]"))
+				.filter(mixerInfo -> "default [default]".equals(mixerInfo.getName()))
 				.findAny()
 				.orElse(null));
 			 AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/alarmSound.wav"))));
@@ -493,7 +493,7 @@ public class Listener implements Runnable, IVersionProvider
 		}
 	}
 
-	private Set<String> getTranslationFromTranslationAndProtectionTime(List<TranslationAndProtectionTime> translatedData)
+	private static Set<String> getTranslationFromTranslationAndProtectionTime(List<TranslationAndProtectionTime> translatedData)
 	{
 		return translatedData.parallelStream().unordered()
 				.filter(Objects::nonNull)
