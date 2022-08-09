@@ -339,7 +339,7 @@ public class Listener implements Runnable, IVersionProvider
 			clip.open(audioInputStream);
 			new Thread(() ->
 			{
-				try (Scanner scanner = new Scanner(in))
+				try (Scanner scanner = new Scanner(in, StandardCharsets.UTF_8))
 				{
 					printHelpMsg();
 					while (isContinue)
@@ -468,7 +468,7 @@ public class Listener implements Runnable, IVersionProvider
 								);
 
 							if (!newDistrictsOfInterest.isEmpty())
-								output.append("ALERT: ").append(newDistrictsOfInterest).append(System.lineSeparator());
+								output.append("ALERT ALERT ALERT: ").append(newDistrictsOfInterest).append(System.lineSeparator());
 							if (!output.isEmpty())
 								System.out.println(output);
 
