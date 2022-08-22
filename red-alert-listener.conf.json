@@ -1,16 +1,15 @@
 {
-  "isMakeSound": true,
-  "isAlertAll": false,
-  "isDisplayResponse": true,
-  "isShowTestAlerts": false,
-  "connectTimeout": 5000,
-  "readTimeout": 10000,
-  "languageCode": "HE",
-  "logLevel": "INFO",
-  "districtsOfInterest": [
-	"נהריה",
-	"רמת גן - מערב",
-	"תל אביב - מרכז העיר",
-	"קריית אונו"
-  ]
+	"isMakeSound" : true,
+	"isAlertAll" : false,
+	"isDisplayResponse" : true,
+	"isShowTestAlerts" : false,
+	"timeout" : 10000,
+	"languageCode" : "HE",
+	"logLevel" : "INFO",
+	"districtsOfInterest" : [
+		"נהריה",
+		"רמת גן - מערב",
+		"תל אביב - מרכז העיר",
+		"קריית אונו"
+	]
 }

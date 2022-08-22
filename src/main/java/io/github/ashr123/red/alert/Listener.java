@@ -26,8 +26,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -39,6 +43,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -61,13 +66,14 @@ public class Listener implements Runnable, IVersionProvider
 			false,
 			true,
 			false,
-			5000,
 			10000,
 			LanguageCode.HE,
 			Level.INFO,
 			Collections.emptySet()
 	);
 	private static volatile boolean isContinue = true;
+	private static final HttpClient httpClient = HttpClient.newHttpClient();
+	private static final Pattern allDistrictsVarName = Pattern.compile("var allDistricts *= *");
 	@Option(names = {"-c", "--configuration-file"},
 			paramLabel = "configuration file",
 			defaultValue = "red-alert-listener.conf.json",
@@ -121,11 +127,6 @@ public class Listener implements Runnable, IVersionProvider
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive).")
 			LanguageCode languageCode,
-			@Option(names = {"-c", "--connect-timeout"},
-					paramLabel = "connect timeout",
-					defaultValue = "5000",
-					description = "Connect timeout for connecting to IDF's Home Front Command's server.")
-			int connectTimeout,
 			@Option(names = {"-r", "--read-timeout"},
 					paramLabel = "read timeout",
 					defaultValue = "10000",
@@ -143,7 +144,6 @@ public class Listener implements Runnable, IVersionProvider
 		{
 			System.out.println(JSON_MAPPER.writeValueAsString(startSubcommandInputThread(
 					languageCode,
-					connectTimeout,
 					readTimeout,
 					loggerLevel
 			)));
@@ -165,11 +165,6 @@ public class Listener implements Runnable, IVersionProvider
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive).")
 			LanguageCode languageCode,
-			@Option(names = {"-c", "--connect-timeout"},
-					paramLabel = "connect timeout",
-					defaultValue = "5000",
-					description = "Connect timeout for connecting to IDF's Home Front Command's server.")
-			int connectTimeout,
 			@Option(names = {"-r", "--read-timeout"},
 					paramLabel = "read timeout",
 					defaultValue = "10000",
@@ -189,7 +184,6 @@ public class Listener implements Runnable, IVersionProvider
 					file,
 					startSubcommandInputThread(
 							languageCode,
-							connectTimeout,
 							readTimeout,
 							loggerLevel
 					)
@@ -199,7 +193,6 @@ public class Listener implements Runnable, IVersionProvider
 
 	private static Map<String, String> startSubcommandInputThread(
 			LanguageCode languageCode,
-			int connectTimeout,
 			int readTimeout,
 			Level level
 	) throws InterruptedException
@@ -232,12 +225,11 @@ public class Listener implements Runnable, IVersionProvider
 		}).start();
 		setLoggerLevel(level);
 		startSignal.await();
-		return loadRemoteDistricts(languageCode, connectTimeout, readTimeout, District::label);
+		return loadRemoteDistricts(languageCode, readTimeout, District::label);
 	}
 
 	private static <T> Map<String, T> loadRemoteDistricts(
 			LanguageCode languageCode,
-			int connectTimeout,
 			int readTimeout,
 			Function<District, T> districtMapper
 	)
@@ -248,14 +240,16 @@ public class Listener implements Runnable, IVersionProvider
 			{
 				final Result<Map<String, T>> result = TimeMeasurement.measureAndExecuteCallable(() ->
 				{
-					if (new URL("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase())
-							.openConnection() instanceof HttpURLConnection httpURLConnection)
+					final HttpResponse<String> httpResponse = httpClient.send(
+							HttpRequest.newBuilder(new URI("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()))
+									.header("Accept", "application/json")
+									.timeout(Duration.ofMillis(readTimeout))
+									.build(),
+							HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+					);
+					if (httpResponse.statusCode() == HttpURLConnection.HTTP_OK)
 					{
-						httpURLConnection.setRequestProperty("Accept", "application/json");
-						httpURLConnection.setConnectTimeout(connectTimeout);
-						httpURLConnection.setReadTimeout(readTimeout);
-						httpURLConnection.setUseCaches(false);
-						return JSON_MAPPER.readValue(httpURLConnection.getInputStream(), LIST_TYPE_REFERENCE)
+						return JSON_MAPPER.readValue(allDistrictsVarName.matcher(httpResponse.body()).replaceFirst(""), LIST_TYPE_REFERENCE)
 								.parallelStream().unordered()
 								.collect(Collectors.toMap(
 										District::label_he,
@@ -267,7 +261,7 @@ public class Listener implements Runnable, IVersionProvider
 										}
 								));
 					} else
-						LOGGER.error("Not a HTTP connection, returning empty map");
+						LOGGER.error("Got bad response code: {}", httpResponse.statusCode());
 					return Map.of();
 				});
 				LOGGER.info("Done (took {} seconds, got {} districts)", result.getTimeTaken(TimeScales.SECONDS), result.getResult().size());
@@ -328,7 +322,6 @@ public class Listener implements Runnable, IVersionProvider
 	{
 		System.err.println("Preparing Red Alert Listener v" + getClass().getPackage().getImplementationVersion() + "...");
 		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-		HttpURLConnection httpURLConnectionField = null;
 		try (Clip clip = AudioSystem.getClip(Stream.of(AudioSystem.getMixerInfo()).parallel()
 				.filter(mixerInfo -> "default [default]".equals(mixerInfo.getName()))
 				.findAny()
@@ -371,7 +364,7 @@ public class Listener implements Runnable, IVersionProvider
 			}).start();
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
 			loadConfiguration();
-			final URL url = new URL("https://www.oref.org.il/WarningMessages/alert/alerts.json");
+			final URI url = new URI("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			Set<String> prevData = Collections.emptySet();
 			ZonedDateTime currAlertsLastModified = LocalDateTime.MIN.atZone(ZoneId.of("Z"));
 			final int minRedAlertEventContentLength = """
@@ -381,43 +374,49 @@ public class Listener implements Runnable, IVersionProvider
 			while (isContinue)
 				try
 				{
-					if (url.openConnection() instanceof HttpURLConnection httpURLConnection)
-					{
-						loadConfiguration();
-						httpURLConnectionField = httpURLConnection;
-						httpURLConnection.setRequestProperty("Accept", "application/json"); // Not mandatory, but it's a good practice
-						httpURLConnection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
-						httpURLConnection.setRequestProperty("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase() + "/Pakar.aspx");
-						httpURLConnection.setConnectTimeout(configuration.connectTimeout());
-						httpURLConnection.setReadTimeout(configuration.readTimeout());
-						httpURLConnection.setUseCaches(false);
+					loadConfiguration();
+					final HttpResponse<String> httpResponse = httpClient.send(
+							HttpRequest.newBuilder(url)
+									.header("Accept", "application/json")
+									.header("X-Requested-With", "XMLHttpRequest")
+									.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase() + "/Pakar.aspx")
+									.timeout(Duration.ofMillis(configuration.timeout()))
+									.build(),
+							HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+					);
 
-						if (httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_OK/* &&
+					if (httpResponse.statusCode() != HttpURLConnection.HTTP_OK/* &&
 								httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_NOT_MODIFIED*/)
-						{
-							LOGGER.debug("Connection response: {}", httpURLConnection.getResponseMessage());
-							sleep();
-							continue;
-						}
-						ZonedDateTime alertsLastModified;
-						final long contentLength = httpURLConnection.getContentLengthLong();
-						if (contentLength < minRedAlertEventContentLength)
-							prevData = Collections.emptySet();
-						else if ((alertsLastModified = ZonedDateTime.parse(httpURLConnection.getHeaderField("last-modified"), DateTimeFormatter.RFC_1123_DATE_TIME)).isAfter(currAlertsLastModified))
-						{
-							currAlertsLastModified = alertsLastModified;
+					{
+						LOGGER.debug("Connection response: {}", httpResponse.statusCode());
+						sleep();
+						continue;
+					}
+					ZonedDateTime alertsLastModified;
+					final long contentLength = httpResponse.headers().firstValueAsLong("content-length").orElse(-1);
+					if (contentLength < minRedAlertEventContentLength)
+						prevData = Collections.emptySet();
+					else if ((alertsLastModified = httpResponse.headers().firstValue("last-modified")
+							.map(lastModifiedStr -> ZonedDateTime.parse(lastModifiedStr, DateTimeFormatter.RFC_1123_DATE_TIME))
+							.filter(currAlertsLastModified::isBefore)
+							.orElse(null)) != null)
+					{
+						currAlertsLastModified = alertsLastModified;
 
-							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(httpURLConnection.getInputStream(), RedAlertEvent.class);
-							LOGGER.debug("Original event data: {}", redAlertEvent);
-							// TODO rethink of what defines a drill alert
-							if (redAlertEvent.data().parallelStream().unordered()
-									.allMatch(LanguageCode.HE::containsKey))
-							{
-								if (configuration.isShowTestAlerts())
-									System.out.println(redAlertToString(
-											contentLength,
-											alertsLastModified,
-											redAlertEvent,
+						final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(
+								httpResponse.body(),
+								RedAlertEvent.class
+						);
+						LOGGER.debug("Original event data: {}", redAlertEvent);
+						// TODO rethink of what defines a drill alert
+						if (redAlertEvent.data().parallelStream().unordered()
+								.allMatch(LanguageCode.HE::containsKey))
+						{
+							if (configuration.isShowTestAlerts())
+								System.out.println(redAlertToString(
+										contentLength,
+										alertsLastModified,
+										redAlertEvent,
 											redAlertEvent.data().parallelStream().unordered()
 													.map(configuration.languageCode()::getTranslation)
 													.toList(),
@@ -475,8 +474,6 @@ public class Listener implements Runnable, IVersionProvider
 							printDistrictsNotFoundWarning();
 							prevData = getTranslationFromTranslationAndProtectionTime(translatedData);
 						}
-					} else
-						LOGGER.error("Not a HTTP connection!");
 				} catch (IOException e)
 				{
 					LOGGER.debug("Got exception: {}", e.toString());
@@ -488,8 +485,6 @@ public class Listener implements Runnable, IVersionProvider
 		} finally
 		{
 			scheduledExecutorService.shutdownNow();
-			if (httpURLConnectionField != null)
-				httpURLConnectionField.disconnect();
 		}
 	}
 
@@ -525,8 +520,7 @@ public class Listener implements Runnable, IVersionProvider
 	{
 		districts = loadRemoteDistricts(
 				configuration.languageCode(),
-				configuration.connectTimeout(),
-				configuration.readTimeout(),
+				configuration.timeout(),
 				district -> new TranslationAndProtectionTime(district.label(), district.migun_time())
 		);
 	}
@@ -646,8 +640,7 @@ public class Listener implements Runnable, IVersionProvider
 			boolean isAlertAll,
 			boolean isDisplayResponse,
 			boolean isShowTestAlerts,
-			int connectTimeout,
-			int readTimeout,
+			int timeout,
 			LanguageCode languageCode,
 			Level logLevel,
 			Set<String> districtsOfInterest
