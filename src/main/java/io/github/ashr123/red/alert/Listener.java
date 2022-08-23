@@ -127,11 +127,11 @@ public class Listener implements Runnable, IVersionProvider
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive).")
 			LanguageCode languageCode,
-			@Option(names = {"-r", "--read-timeout"},
-					paramLabel = "read timeout",
+			@Option(names = {"-r", "--timeout"},
+					paramLabel = "timeout",
 					defaultValue = "10000",
-					description = "Read timeout for connecting to IDF's Home Front Command's server.")
-			int readTimeout,
+					description = "Timeout for connecting to IDF's Home Front Command's server.")
+			int timeout,
 			@Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
 					defaultValue = "INFO",
@@ -144,7 +144,7 @@ public class Listener implements Runnable, IVersionProvider
 		{
 			System.out.println(JSON_MAPPER.writeValueAsString(startSubcommandInputThread(
 					languageCode,
-					readTimeout,
+					timeout,
 					loggerLevel
 			)));
 		}
@@ -165,11 +165,11 @@ public class Listener implements Runnable, IVersionProvider
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive).")
 			LanguageCode languageCode,
-			@Option(names = {"-r", "--read-timeout"},
-					paramLabel = "read timeout",
+			@Option(names = {"-t", "--timeout"},
+					paramLabel = "timeout",
 					defaultValue = "10000",
-					description = "Read timeout for connecting to IDF's Home Front Command's server.")
-			int readTimeout,
+					description = "Timeout for connecting to IDF's Home Front Command's server.")
+			int timeout,
 			@Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
 					defaultValue = "INFO",
@@ -184,7 +184,7 @@ public class Listener implements Runnable, IVersionProvider
 					file,
 					startSubcommandInputThread(
 							languageCode,
-							readTimeout,
+							timeout,
 							loggerLevel
 					)
 			);
@@ -193,7 +193,7 @@ public class Listener implements Runnable, IVersionProvider
 
 	private static Map<String, String> startSubcommandInputThread(
 			LanguageCode languageCode,
-			int readTimeout,
+			int timeout,
 			Level level
 	) throws InterruptedException
 	{
@@ -225,12 +225,12 @@ public class Listener implements Runnable, IVersionProvider
 		}).start();
 		setLoggerLevel(level);
 		startSignal.await();
-		return loadRemoteDistricts(languageCode, readTimeout, District::label);
+		return loadRemoteDistricts(languageCode, timeout, District::label);
 	}
 
 	private static <T> Map<String, T> loadRemoteDistricts(
 			LanguageCode languageCode,
-			int readTimeout,
+			int timeout,
 			Function<District, T> districtMapper
 	)
 	{
@@ -243,7 +243,7 @@ public class Listener implements Runnable, IVersionProvider
 					final HttpResponse<String> httpResponse = httpClient.send(
 							HttpRequest.newBuilder(new URI("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()))
 									.header("Accept", "application/json")
-									.timeout(Duration.ofMillis(readTimeout))
+									.timeout(Duration.ofMillis(timeout))
 									.build(),
 							HttpResponse.BodyHandlers.ofString()
 					);
