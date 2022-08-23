@@ -32,7 +32,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -71,9 +71,9 @@ public class Listener implements Runnable, IVersionProvider
 			Level.INFO,
 			Collections.emptySet()
 	);
-	private static volatile boolean isContinue = true;
 	private static final HttpClient httpClient = HttpClient.newHttpClient();
-	private static final Pattern allDistrictsVarName = Pattern.compile("var allDistricts *= *");
+	private static final Pattern allDistrictsVarName = Pattern.compile(".*=\\s*", Pattern.MULTILINE);
+	private static volatile boolean isContinue = true;
 	@Option(names = {"-c", "--configuration-file"},
 			paramLabel = "configuration file",
 			defaultValue = "red-alert-listener.conf.json",
@@ -245,7 +245,7 @@ public class Listener implements Runnable, IVersionProvider
 									.header("Accept", "application/json")
 									.timeout(Duration.ofMillis(readTimeout))
 									.build(),
-							HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+							HttpResponse.BodyHandlers.ofString()
 					);
 					if (httpResponse.statusCode() == HttpURLConnection.HTTP_OK)
 					{
@@ -273,6 +273,14 @@ public class Listener implements Runnable, IVersionProvider
 					sleep();
 			}
 		return Map.of();
+	}
+
+	private static Set<String> getTranslationFromTranslationAndProtectionTime(List<TranslationAndProtectionTime> translatedData)
+	{
+		return translatedData.parallelStream().unordered()
+				.filter(Objects::nonNull)
+				.map(TranslationAndProtectionTime::translation)
+				.collect(Collectors.toSet());
 	}
 
 	private void printDistrictsNotFoundWarning()
@@ -364,9 +372,9 @@ public class Listener implements Runnable, IVersionProvider
 			}).start();
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
 			loadConfiguration();
-			final URI url = new URI("https://www.oref.org.il/WarningMessages/alert/alerts.json");
+			final URI url = URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			Set<String> prevData = Collections.emptySet();
-			ZonedDateTime currAlertsLastModified = LocalDateTime.MIN.atZone(ZoneId.of("Z"));
+			Instant currAlertsLastModified = Instant.MIN;
 			final int minRedAlertEventContentLength = """
 					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
 			final double alarmSoundSecondLength = clip.getMicrosecondLength() / 1E6;
@@ -382,7 +390,7 @@ public class Listener implements Runnable, IVersionProvider
 									.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase() + "/Pakar.aspx")
 									.timeout(Duration.ofMillis(configuration.timeout()))
 									.build(),
-							HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+							HttpResponse.BodyHandlers.ofString()
 					);
 
 					if (httpResponse.statusCode() != HttpURLConnection.HTTP_OK/* &&
@@ -392,12 +400,12 @@ public class Listener implements Runnable, IVersionProvider
 						sleep();
 						continue;
 					}
-					ZonedDateTime alertsLastModified;
+					Instant alertsLastModified;
 					final long contentLength = httpResponse.headers().firstValueAsLong("content-length").orElse(-1);
 					if (contentLength < minRedAlertEventContentLength)
 						prevData = Collections.emptySet();
 					else if ((alertsLastModified = httpResponse.headers().firstValue("last-modified")
-							.map(lastModifiedStr -> ZonedDateTime.parse(lastModifiedStr, DateTimeFormatter.RFC_1123_DATE_TIME))
+							.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from))
 							.filter(currAlertsLastModified::isBefore)
 							.orElse(null)) != null)
 					{
@@ -417,63 +425,63 @@ public class Listener implements Runnable, IVersionProvider
 										contentLength,
 										alertsLastModified,
 										redAlertEvent,
-											redAlertEvent.data().parallelStream().unordered()
-													.map(configuration.languageCode()::getTranslation)
-													.toList(),
-											new StringBuilder("Test Alert").append(System.lineSeparator())
-									));
-								continue;
-							}
-
-							List<TranslationAndProtectionTime> translatedData = getTranslatedData(redAlertEvent);
-
-							if (translatedData.contains(null))
-							{
-								LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
-								refreshDistrictsTranslation();
-								translatedData = getTranslatedData(redAlertEvent);
-								if (translatedData.contains(null))
-									LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
-							}
-
-							Set<String> finalPrevData = prevData;
-							final List<TranslationAndProtectionTime>
-									unseenTranslatedDistricts = translatedData.parallelStream().unordered()
-									.filter(Objects::nonNull)
-									.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
-									.toList(), // to know if new (unseen) districts were added from previous request
-									newDistrictsOfInterest = unseenTranslatedDistricts.parallelStream().unordered()
-											.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-											.toList(); // for not restarting alert sound unnecessarily
-
-							if (configuration.isMakeSound() && (configuration.isAlertAll() || !newDistrictsOfInterest.isEmpty()))
-								newDistrictsOfInterest.parallelStream().unordered()
-										.mapToInt(TranslationAndProtectionTime::protectionTime)
-										.max()
-										.ifPresent(maxProtectionTime ->
-										{
-											clip.setFramePosition(0);
-											clip.loop(Math.max(1, (int) Math.round(maxProtectionTime / alarmSoundSecondLength)));
-										});
-							final Set<String> unseenTranslatedStrings = getTranslationFromTranslationAndProtectionTime(unseenTranslatedDistricts);
-							final StringBuilder output = new StringBuilder();
-							if (configuration.isDisplayResponse() && !unseenTranslatedStrings.isEmpty())
-								redAlertToString(
-										contentLength,
-										alertsLastModified,
-										redAlertEvent,
-										unseenTranslatedStrings,
-										output
-								);
-
-							if (!newDistrictsOfInterest.isEmpty())
-								output.append("ALERT ALERT ALERT: ").append(newDistrictsOfInterest).append(System.lineSeparator());
-							if (!output.isEmpty())
-								System.out.println(output);
-
-							printDistrictsNotFoundWarning();
-							prevData = getTranslationFromTranslationAndProtectionTime(translatedData);
+										redAlertEvent.data().parallelStream().unordered()
+												.map(configuration.languageCode()::getTranslation)
+												.toList(),
+										new StringBuilder("Test Alert").append(System.lineSeparator())
+								));
+							continue;
 						}
+
+						List<TranslationAndProtectionTime> translatedData = getTranslatedData(redAlertEvent);
+
+						if (translatedData.contains(null))
+						{
+							LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
+							refreshDistrictsTranslation();
+							translatedData = getTranslatedData(redAlertEvent);
+							if (translatedData.contains(null))
+								LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
+						}
+
+						Set<String> finalPrevData = prevData;
+						final List<TranslationAndProtectionTime>
+								unseenTranslatedDistricts = translatedData.parallelStream().unordered()
+								.filter(Objects::nonNull)
+								.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
+								.toList(), // to know if new (unseen) districts were added from previous request
+								newDistrictsOfInterest = unseenTranslatedDistricts.parallelStream().unordered()
+										.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
+										.toList(); // for not restarting alert sound unnecessarily
+
+						if (configuration.isMakeSound() && (configuration.isAlertAll() || !newDistrictsOfInterest.isEmpty()))
+							newDistrictsOfInterest.parallelStream().unordered()
+									.mapToInt(TranslationAndProtectionTime::protectionTime)
+									.max()
+									.ifPresent(maxProtectionTime ->
+									{
+										clip.setFramePosition(0);
+										clip.loop(Math.max(1, (int) Math.round(maxProtectionTime / alarmSoundSecondLength)));
+									});
+						final Set<String> unseenTranslatedStrings = getTranslationFromTranslationAndProtectionTime(unseenTranslatedDistricts);
+						final StringBuilder output = new StringBuilder();
+						if (configuration.isDisplayResponse() && !unseenTranslatedStrings.isEmpty())
+							redAlertToString(
+									contentLength,
+									alertsLastModified,
+									redAlertEvent,
+									unseenTranslatedStrings,
+									output
+							);
+
+						if (!newDistrictsOfInterest.isEmpty())
+							output.append("ALERT ALERT ALERT: ").append(newDistrictsOfInterest).append(System.lineSeparator());
+						if (!output.isEmpty())
+							System.out.println(output);
+
+						printDistrictsNotFoundWarning();
+						prevData = getTranslationFromTranslationAndProtectionTime(translatedData);
+					}
 				} catch (IOException e)
 				{
 					LOGGER.debug("Got exception: {}", e.toString());
@@ -488,14 +496,6 @@ public class Listener implements Runnable, IVersionProvider
 		}
 	}
 
-	private static Set<String> getTranslationFromTranslationAndProtectionTime(List<TranslationAndProtectionTime> translatedData)
-	{
-		return translatedData.parallelStream().unordered()
-				.filter(Objects::nonNull)
-				.map(TranslationAndProtectionTime::translation)
-				.collect(Collectors.toSet());
-	}
-
 	private List<TranslationAndProtectionTime> getTranslatedData(RedAlertEvent redAlertEvent)
 	{
 		return redAlertEvent.data().parallelStream().unordered()
@@ -504,14 +504,14 @@ public class Listener implements Runnable, IVersionProvider
 	}
 
 	private StringBuilder redAlertToString(long contentLength,
-										   ZonedDateTime alertsLastModified,
+										   Instant alertsLastModified,
 										   RedAlertEvent redAlertEvent,
 										   Collection<String> translatedData,
 										   StringBuilder output)
 	{
 		return output.append("Translated title: ").append(configuration.languageCode().getTitleTranslation(redAlertEvent.cat(), redAlertEvent.title())).append(System.lineSeparator())
 				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
-				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified.withZoneSameInstant(DEFAULT_ZONE_ID))).append(System.lineSeparator())
+				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified.atZone(DEFAULT_ZONE_ID))).append(System.lineSeparator())
 				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(ZonedDateTime.now())).append(System.lineSeparator())
 				.append("Translated districts: ").append(translatedData).append(System.lineSeparator());
 	}
