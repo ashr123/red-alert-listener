@@ -1,9 +1,11 @@
 package io.github.ashr123.red.alert;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.github.ashr123.timeMeasurement.Result;
 import io.github.ashr123.timeMeasurement.TimeMeasurement;
 import io.github.ashr123.timeMeasurement.TimeScales;
@@ -60,13 +62,16 @@ public class Listener implements Runnable, IVersionProvider
 	};
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern());
 	private static final Logger LOGGER = LogManager.getLogger();
-	private static final ObjectMapper JSON_MAPPER = new JsonMapper().enable(SerializationFeature.INDENT_OUTPUT);
+	private static final ObjectMapper JSON_MAPPER = new JsonMapper()
+			.enable(SerializationFeature.INDENT_OUTPUT)
+			.disable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
+			.registerModule(new JavaTimeModule());
 	private static final Configuration DEFAULT_CONFIGURATION = new Configuration(
 			false,
 			false,
 			true,
 			false,
-			10000,
+			Duration.ofMillis(10000),
 			LanguageCode.HE,
 			Level.INFO,
 			Collections.emptySet()
@@ -127,11 +132,11 @@ public class Listener implements Runnable, IVersionProvider
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive).")
 			LanguageCode languageCode,
-			@Option(names = {"-r", "--timeout"},
+			@Option(names = {"-t", "--timeout"},
 					paramLabel = "timeout",
 					defaultValue = "10000",
 					description = "Timeout for connecting to IDF's Home Front Command's server.")
-			int timeout,
+			long timeout,
 			@Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
 					defaultValue = "INFO",
@@ -169,7 +174,7 @@ public class Listener implements Runnable, IVersionProvider
 					paramLabel = "timeout",
 					defaultValue = "10000",
 					description = "Timeout for connecting to IDF's Home Front Command's server.")
-			int timeout,
+			long timeout,
 			@Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
 					defaultValue = "INFO",
@@ -193,7 +198,7 @@ public class Listener implements Runnable, IVersionProvider
 
 	private static Map<String, String> startSubcommandInputThread(
 			LanguageCode languageCode,
-			int timeout,
+			long timeout,
 			Level level
 	) throws InterruptedException
 	{
@@ -225,12 +230,12 @@ public class Listener implements Runnable, IVersionProvider
 		}).start();
 		setLoggerLevel(level);
 		startSignal.await();
-		return loadRemoteDistricts(languageCode, timeout, District::label);
+		return loadRemoteDistricts(languageCode, Duration.ofMillis(timeout), District::label);
 	}
 
 	private static <T> Map<String, T> loadRemoteDistricts(
 			LanguageCode languageCode,
-			int timeout,
+			Duration timeout,
 			Function<District, T> districtMapper
 	)
 	{
@@ -243,7 +248,7 @@ public class Listener implements Runnable, IVersionProvider
 					final HttpResponse<String> httpResponse = httpClient.send(
 							HttpRequest.newBuilder(new URI("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()))
 									.header("Accept", "application/json")
-									.timeout(Duration.ofMillis(timeout))
+									.timeout(timeout)
 									.build(),
 							HttpResponse.BodyHandlers.ofString()
 					);
@@ -388,7 +393,7 @@ public class Listener implements Runnable, IVersionProvider
 									.header("Accept", "application/json")
 									.header("X-Requested-With", "XMLHttpRequest")
 									.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase() + "/Pakar.aspx")
-									.timeout(Duration.ofMillis(configuration.timeout()))
+									.timeout(configuration.timeout())
 									.build(),
 							HttpResponse.BodyHandlers.ofString()
 					);
@@ -640,7 +645,7 @@ public class Listener implements Runnable, IVersionProvider
 			boolean isAlertAll,
 			boolean isDisplayResponse,
 			boolean isShowTestAlerts,
-			int timeout,
+			Duration timeout,
 			LanguageCode languageCode,
 			Level logLevel,
 			Set<String> districtsOfInterest
