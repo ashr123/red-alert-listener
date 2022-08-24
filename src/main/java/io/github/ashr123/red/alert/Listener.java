@@ -77,7 +77,9 @@ public class Listener implements Runnable, IVersionProvider
 			Collections.emptySet()
 	);
 	private static final HttpClient httpClient = HttpClient.newHttpClient();
-	private static final Pattern allDistrictsVarName = Pattern.compile(".*=\\s*", Pattern.MULTILINE);
+	private static final Pattern
+			allDistrictsVarName = Pattern.compile(".*=\\s*", Pattern.MULTILINE),
+			bom = Pattern.compile("﻿");
 	private static volatile boolean isContinue = true;
 	@Option(names = {"-c", "--configuration-file"},
 			paramLabel = "configuration file",
@@ -417,7 +419,7 @@ public class Listener implements Runnable, IVersionProvider
 						currAlertsLastModified = alertsLastModified;
 
 						final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(
-								httpResponse.body(),
+								bom.matcher(httpResponse.body()).replaceFirst(""),
 								RedAlertEvent.class
 						);
 						LOGGER.debug("Original event data: {}", redAlertEvent);
