@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.github.ashr123.timeMeasurement.Result;
 import io.github.ashr123.timeMeasurement.TimeMeasurement;
 import io.github.ashr123.timeMeasurement.TimeScales;
@@ -65,7 +64,7 @@ public class Listener implements Runnable, IVersionProvider
 	private static final ObjectMapper JSON_MAPPER = new JsonMapper()
 			.enable(SerializationFeature.INDENT_OUTPUT)
 			.disable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
-			.registerModule(new JavaTimeModule());
+			.findAndRegisterModules();
 	private static final Configuration DEFAULT_CONFIGURATION = new Configuration(
 			false,
 			false,
@@ -407,7 +406,7 @@ public class Listener implements Runnable, IVersionProvider
 						sleep();
 						continue;
 					}
-					Instant alertsLastModified;
+					final Instant alertsLastModified;
 					final long contentLength = httpResponse.headers().firstValueAsLong("content-length").orElse(-1);
 					if (contentLength < minRedAlertEventContentLength)
 						prevData = Collections.emptySet();
