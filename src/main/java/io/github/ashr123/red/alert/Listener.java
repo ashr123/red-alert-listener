@@ -1,5 +1,6 @@
 package io.github.ashr123.red.alert;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -488,6 +489,9 @@ public class Listener implements Runnable, IVersionProvider
 						printDistrictsNotFoundWarning();
 						prevData = getTranslationFromTranslationAndProtectionTime(translatedData);
 					}
+				} catch (JsonParseException e)
+				{
+					LOGGER.error(e.toString());
 				} catch (IOException e)
 				{
 					LOGGER.debug("Got exception: {}", e.toString());
