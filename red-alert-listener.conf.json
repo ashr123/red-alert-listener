@@ -4,9 +4,12 @@
 	"isDisplayResponse" : true,
 	"isShowTestAlerts" : false,
 	"timeout" : 10000,
-	"languageCode" : "EN",
-	"logLevel" : "DEBUG",
+	"languageCode" : "HE",
+	"logLevel" : "INFO",
 	"districtsOfInterest" : [
-		"Nahariya"
+		"נהריה",
+		"רמת גן - מערב",
+		"תל אביב - מרכז העיר",
+		"קריית אונו"
 	]
 }

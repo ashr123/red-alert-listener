@@ -15,10 +15,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.util.datetime.FixedDateFormat;
 import picocli.CommandLine;
-import picocli.CommandLine.Command;
-import picocli.CommandLine.ITypeConverter;
-import picocli.CommandLine.IVersionProvider;
-import picocli.CommandLine.Option;
 
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -49,12 +45,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Command(name = "red-alert-listener",
+@CommandLine.Command(name = "red-alert-listener",
 		mixinStandardHelpOptions = true,
 		versionProvider = Listener.class,
 		showDefaultValues = true,
 		description = "An App that can get \"red alert\"s from IDF's Home Front Command.")
-public class Listener implements Runnable, IVersionProvider
+public class Listener implements Runnable, CommandLine.IVersionProvider
 {
 	private static final ZoneId DEFAULT_ZONE_ID = ZoneId.systemDefault();
 	private static final TypeReference<List<District>> LIST_TYPE_REFERENCE = new TypeReference<>()
@@ -78,10 +74,10 @@ public class Listener implements Runnable, IVersionProvider
 	);
 	private static final HttpClient httpClient = HttpClient.newHttpClient();
 	private static final Pattern
-			allDistrictsVarName = Pattern.compile(".*=\\s*", Pattern.MULTILINE),
-			bom = Pattern.compile("﻿");
-	private static volatile boolean isContinue = true;
-	@Option(names = {"-c", "--configuration-file"},
+			allDistrictsVarName = Pattern.compile(".*=\\s*", Pattern.MULTILINE)/*,
+			bom = Pattern.compile("﻿")*/;
+	private volatile boolean isContinue = true;
+	@CommandLine.Option(names = {"-c", "--configuration-file"},
 			paramLabel = "configuration file",
 			defaultValue = "red-alert-listener.conf.json",
 			description = "Enter custom path to configuration file.")
@@ -124,22 +120,22 @@ public class Listener implements Runnable, IVersionProvider
 		}
 	}
 
-	@Command(mixinStandardHelpOptions = true,
+	@CommandLine.Command(mixinStandardHelpOptions = true,
 			versionProvider = Listener.class,
 			showDefaultValues = true,
 			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout (No need for configuration file).")
-	private static void getRemoteDistrictsAsJSON(
-			@Option(names = {"-l", "--language"},
+	private void getRemoteDistrictsAsJSON(
+			@CommandLine.Option(names = {"-l", "--language"},
 					paramLabel = "language code",
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive).")
 			LanguageCode languageCode,
-			@Option(names = {"-t", "--timeout"},
+			@CommandLine.Option(names = {"-t", "--timeout"},
 					paramLabel = "timeout",
 					defaultValue = "10000",
 					description = "Timeout for connecting to IDF's Home Front Command's server.")
 			long timeout,
-			@Option(names = {"-L", "--logger-level"},
+			@CommandLine.Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
 					defaultValue = "INFO",
 					converter = LoggerLevelConverter.class,
@@ -157,27 +153,27 @@ public class Listener implements Runnable, IVersionProvider
 		}
 	}
 
-	@Command(mixinStandardHelpOptions = true,
+	@CommandLine.Command(mixinStandardHelpOptions = true,
 			versionProvider = Listener.class,
 			showDefaultValues = true,
 			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file (No need for configuration file).")
-	private static void getRemoteDistrictsAsJSONToFile(
-			@Option(names = {"-o", "--output"},
+	private void getRemoteDistrictsAsJSONToFile(
+			@CommandLine.Option(names = {"-o", "--output"},
 					paramLabel = "file",
 					defaultValue = "districts.json",
 					description = "Where to save received districts.")
 			File file,
-			@Option(names = {"-l", "--language"},
+			@CommandLine.Option(names = {"-l", "--language"},
 					paramLabel = "language code",
 					required = true,
 					description = "Which language's translation to get? Valid values: ${COMPLETION-CANDIDATES} (case insensitive).")
 			LanguageCode languageCode,
-			@Option(names = {"-t", "--timeout"},
+			@CommandLine.Option(names = {"-t", "--timeout"},
 					paramLabel = "timeout",
 					defaultValue = "10000",
 					description = "Timeout for connecting to IDF's Home Front Command's server.")
 			long timeout,
-			@Option(names = {"-L", "--logger-level"},
+			@CommandLine.Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
 					defaultValue = "INFO",
 					converter = LoggerLevelConverter.class,
@@ -198,7 +194,7 @@ public class Listener implements Runnable, IVersionProvider
 		}
 	}
 
-	private static Map<String, String> startSubcommandInputThread(
+	private Map<String, String> startSubcommandInputThread(
 			LanguageCode languageCode,
 			long timeout,
 			Level level
@@ -235,7 +231,7 @@ public class Listener implements Runnable, IVersionProvider
 		return loadRemoteDistricts(languageCode, Duration.ofMillis(timeout), District::label);
 	}
 
-	private static <T> Map<String, T> loadRemoteDistricts(
+	private <T> Map<String, T> loadRemoteDistricts(
 			LanguageCode languageCode,
 			Duration timeout,
 			Function<District, T> districtMapper
@@ -282,7 +278,7 @@ public class Listener implements Runnable, IVersionProvider
 		return Map.of();
 	}
 
-	private static Set<String> getTranslationFromTranslationAndProtectionTime(List<TranslationAndProtectionTime> translatedData)
+	private static Set<String> getTranslationFromTranslationAndProtectionTime(Collection<TranslationAndProtectionTime> translatedData)
 	{
 		return translatedData.parallelStream().unordered()
 				.filter(Objects::nonNull)
@@ -390,14 +386,14 @@ public class Listener implements Runnable, IVersionProvider
 				try
 				{
 					loadConfiguration();
-					final HttpResponse<String> httpResponse = httpClient.send(
+					final HttpResponse<InputStream> httpResponse = httpClient.send(
 							HttpRequest.newBuilder(url)
 									.header("Accept", "application/json")
 									.header("X-Requested-With", "XMLHttpRequest")
 									.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase() + "/Pakar.aspx")
 									.timeout(configuration.timeout())
 									.build(),
-							HttpResponse.BodyHandlers.ofString()
+							HttpResponse.BodyHandlers.ofInputStream()
 					);
 
 					if (httpResponse.statusCode() != HttpURLConnection.HTTP_OK/* &&
@@ -419,7 +415,7 @@ public class Listener implements Runnable, IVersionProvider
 						currAlertsLastModified = alertsLastModified;
 
 						final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(
-								bom.matcher(httpResponse.body()).replaceFirst(""),
+								/*bom.matcher(*/httpResponse.body()/*).replaceFirst("")*/,
 								RedAlertEvent.class
 						);
 						LOGGER.debug("Original event data: {}", redAlertEvent);
@@ -456,7 +452,7 @@ public class Listener implements Runnable, IVersionProvider
 								unseenTranslatedDistricts = translatedData.parallelStream().unordered()
 								.filter(Objects::nonNull)
 								.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
-								.toList(), // to know if new (unseen) districts were added from previous request
+								.toList(), // to know if new (unseen) districts were added from previous request.
 								newDistrictsOfInterest = unseenTranslatedDistricts.parallelStream().unordered()
 										.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
 										.toList(); // for not restarting alert sound unnecessarily
@@ -679,7 +675,7 @@ public class Listener implements Runnable, IVersionProvider
 		}
 	}
 
-	private static class LoggerLevelConverter implements ITypeConverter<Level>
+	private static class LoggerLevelConverter implements CommandLine.ITypeConverter<Level>
 	{
 		@Override
 		public Level convert(String s)
