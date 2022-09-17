@@ -253,7 +253,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 				final Result<Map<String, T>> result = TimeMeasurement.measureAndExecuteCallable(() ->
 				{
 					final HttpResponse<String> httpResponse = HTTP_CLIENT.send(
-							HttpRequest.newBuilder(new URI("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()))
+							HttpRequest.newBuilder(URI.create("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()))
 									.header("Accept", "application/json")
 									.timeout(timeout)
 									.build(),
@@ -276,7 +276,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 										}
 								));
 					} else
-						LOGGER.error("Got bad response code: {}", httpResponse.statusCode());
+						LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
 					return null;
 				});
 				if (result.getResult() == null)
@@ -288,7 +288,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 				return result.getResult();
 			} catch (JsonParseException e)
 			{
-				LOGGER.error(e.toString());
+				LOGGER.error("JSON parsing error: {}", e.toString());
 			} catch (Exception e)
 			{
 				LOGGER.debug("Failed to get data for language code {}: {}. Trying again...", languageCode, e.toString());
@@ -387,7 +387,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 			}).start();
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
 			loadConfiguration();
-			final URI url = URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json");
+			final URI uri = URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			Set<String> prevData = Collections.emptySet();
 			Instant currAlertsLastModified = Instant.MIN;
 			final int minRedAlertEventContentLength = """
@@ -399,7 +399,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 				{
 					loadConfiguration();
 					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
-							HttpRequest.newBuilder(url)
+							HttpRequest.newBuilder(uri)
 									.header("Accept", "application/json")
 									.header("X-Requested-With", "XMLHttpRequest")
 									.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase() + "/Pakar.aspx")
@@ -413,15 +413,15 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 						if (httpResponse.statusCode() != HttpURLConnection.HTTP_OK/* &&
 								httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_NOT_MODIFIED*/)
 						{
-							LOGGER.error("Connection response: {}", httpResponse.statusCode());
+							LOGGER.error("Connection response status code: {}", httpResponse.statusCode());
 							sleep();
 							continue;
 						}
 						final Instant alertsLastModified;
-						final long contentLength = httpResponse.headers().firstValueAsLong("content-length").orElse(-1);
+						final long contentLength = httpResponse.headers().firstValueAsLong("Content-Length").orElse(-1);
 						if (contentLength < minRedAlertEventContentLength)
 							prevData = Collections.emptySet();
-						else if ((alertsLastModified = httpResponse.headers().firstValue("last-modified")
+						else if ((alertsLastModified = httpResponse.headers().firstValue("Last-Modified")
 								.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from))
 								.filter(currAlertsLastModified::isBefore)
 								.orElse(null)) != null)
@@ -499,10 +499,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 							printDistrictsNotFoundWarning();
 							prevData = getTranslationFromTranslationAndProtectionTime(translatedData);
 						}
+					} catch (JsonParseException e)
+					{
+						LOGGER.error("JSON parsing error: {}", e.toString());
 					}
-				} catch (JsonParseException e)
-				{
-					LOGGER.error(e.toString());
 				} catch (IOException e)
 				{
 					LOGGER.debug("Got exception: {}", e.toString());
