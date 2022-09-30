@@ -8,7 +8,7 @@
    flag).
 2. [red-alert-listener.conf.json](red-alert-listener.conf.json) needs to be in the same directory as the `jar`
    file.
-3. JDK 17 (or newer)
+3. JDK 19 (or newer)
 4. Must have an Israeli IP address.
 
 ## Capabilities

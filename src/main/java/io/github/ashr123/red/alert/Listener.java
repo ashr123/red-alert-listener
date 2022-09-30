@@ -344,12 +344,12 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	public void run()
 	{
 		System.err.println("Preparing Red Alert Listener v" + getClass().getPackage().getImplementationVersion() + "...");
-		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 		try (Clip clip = AudioSystem.getClip(Stream.of(AudioSystem.getMixerInfo()).parallel().unordered()
 				.filter(mixerInfo -> "default [default]".equals(mixerInfo.getName()))
 				.findAny()
 				.orElse(null));
 			 AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/alarmSound.wav"))));
+			 ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 			 InputStream in = System.in)
 		{
 			clip.open(audioInputStream);
@@ -511,9 +511,6 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 		} catch (Throwable e)
 		{
 			LOGGER.fatal("Closing connection and exiting...", e);
-		} finally
-		{
-			scheduledExecutorService.shutdownNow();
 		}
 	}
 
