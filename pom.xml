@@ -6,7 +6,7 @@
 
 	<groupId>io.github.ashr123</groupId>
 	<artifactId>red-alert-listener</artifactId>
-	<version>5.1.7</version>
+	<version>5.1.8</version>
 
 	<name>Red Alert</name>
 	<description>A stand alone terminal app that can get "red alert"s from IDF's Home Front Command</description>
@@ -71,7 +71,7 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
-			<version>2.13.4</version>
+			<version>2.13.4.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.datatype</groupId>
