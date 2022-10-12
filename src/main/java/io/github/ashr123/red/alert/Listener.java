@@ -74,13 +74,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	);
 	private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 	private static final Pattern
-			VAR_ALL_DISTRICTS = Pattern.compile(".*=\\s*", Pattern.MULTILINE)/*,
-			BOM = Pattern.compile("﻿")*/;
+			VAR_ALL_DISTRICTS = Pattern.compile(".*=\\s*", Pattern.MULTILINE),
+			BOM = Pattern.compile("﻿");
 	@CommandLine.Option(names = {"-c", "--configuration-file"},
 			paramLabel = "configuration file",
 			defaultValue = "red-alert-listener.conf.json",
 			description = "Enter custom path to configuration file.")
-	private final File configurationFile = new File("red-alert-listener.conf.json");
+	private File configurationFile;
 	private volatile boolean isContinue = true;
 	private Configuration configuration = DEFAULT_CONFIGURATION;
 	private long configurationLastModified = 1;
@@ -275,8 +275,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 											return value2;
 										}
 								));
-					} else
-						LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
+					}
+					LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
 					return null;
 				});
 				if (result.getResult() == null)
@@ -316,7 +316,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 		final LanguageCode oldLanguageCode = configuration.languageCode();
 		if (configurationLastModifiedTemp > configurationLastModified)
 		{
-			LOGGER.info("(re)loading configuration from file \"{}\"", configurationFile);
+			LOGGER.info("(Re)Loading configuration from file \"{}\"", configurationFile);
 			configuration = JSON_MAPPER.readValue(configurationFile, Configuration.class);
 			configurationLastModified = configurationLastModifiedTemp;
 			if (districts == null || !oldLanguageCode.equals(configuration.languageCode()))
@@ -398,111 +398,108 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 				try
 				{
 					loadConfiguration();
-					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
+					final HttpResponse<String> httpResponse = HTTP_CLIENT.send(
 							HttpRequest.newBuilder(uri)
 									.header("Accept", "application/json")
 									.header("X-Requested-With", "XMLHttpRequest")
 									.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase() + "/Pakar.aspx")
 									.timeout(configuration.timeout())
 									.build(),
-							HttpResponse.BodyHandlers.ofInputStream()
+							HttpResponse.BodyHandlers.ofString()
 					);
 
-					try (InputStream httpResponseBody = httpResponse.body())
-					{
-						if (httpResponse.statusCode() != HttpURLConnection.HTTP_OK/* &&
+					if (httpResponse.statusCode() != HttpURLConnection.HTTP_OK/* &&
 								httpURLConnection.getResponseCode() != HttpURLConnection.HTTP_NOT_MODIFIED*/)
+					{
+						LOGGER.error("Connection response status code: {}", httpResponse.statusCode());
+						sleep();
+						continue;
+					}
+					final Instant alertsLastModified;
+					final long contentLength = httpResponse.headers().firstValueAsLong("Content-Length").orElse(-1);
+					if (contentLength < minRedAlertEventContentLength)
+						prevData = Collections.emptySet();
+					else if ((alertsLastModified = httpResponse.headers().firstValue("Last-Modified")
+							.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from))
+							.filter(currAlertsLastModified::isBefore)
+							.orElse(null)) != null)
+					{
+						currAlertsLastModified = alertsLastModified;
+
+						final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(
+								BOM.matcher(httpResponse.body()).replaceFirst(""),
+								RedAlertEvent.class
+						);
+						LOGGER.debug("Original event data: {}", redAlertEvent);
+						// TODO rethink of what defines a drill alert
+						if (redAlertEvent.data().parallelStream().unordered()
+								.allMatch(LanguageCode.HE::containsTestKey))
 						{
-							LOGGER.error("Connection response status code: {}", httpResponse.statusCode());
-							sleep();
-							continue;
-						}
-						final Instant alertsLastModified;
-						final long contentLength = httpResponse.headers().firstValueAsLong("Content-Length").orElse(-1);
-						if (contentLength < minRedAlertEventContentLength)
-							prevData = Collections.emptySet();
-						else if ((alertsLastModified = httpResponse.headers().firstValue("Last-Modified")
-								.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from))
-								.filter(currAlertsLastModified::isBefore)
-								.orElse(null)) != null)
-						{
-							currAlertsLastModified = alertsLastModified;
-
-							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(
-									httpResponseBody,
-									RedAlertEvent.class
-							);
-							LOGGER.debug("Original event data: {}", redAlertEvent);
-							// TODO rethink of what defines a drill alert
-							if (redAlertEvent.data().parallelStream().unordered()
-									.allMatch(LanguageCode.HE::containsTestKey))
-							{
-								if (configuration.isShowTestAlerts())
-									System.out.println(redAlertToString(
-											contentLength,
-											alertsLastModified,
-											redAlertEvent,
-											redAlertEvent.data().parallelStream().unordered()
-													.map(configuration.languageCode()::getTranslation)
-													.toList(),
-											new StringBuilder("Test Alert").append(System.lineSeparator())
-									));
-								continue;
-							}
-
-							List<TranslationAndProtectionTime> translatedData = getTranslatedData(redAlertEvent);
-
-							if (translatedData.contains(null))
-							{
-								LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
-								refreshDistrictsTranslation();
-								translatedData = getTranslatedData(redAlertEvent);
-								if (translatedData.contains(null))
-									LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
-							}
-
-							Set<String> finalPrevData = prevData;
-							final List<TranslationAndProtectionTime>
-									unseenTranslatedDistricts = translatedData.parallelStream().unordered()
-									.filter(Objects::nonNull)
-									.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
-									.toList(), // to know if new (unseen) districts were added from previous request.
-									newDistrictsOfInterest = unseenTranslatedDistricts.parallelStream().unordered()
-											.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-											.toList(); // for not restarting alert sound unnecessarily
-
-							if (configuration.isMakeSound() && (configuration.isAlertAll() || !newDistrictsOfInterest.isEmpty()))
-								newDistrictsOfInterest.parallelStream().unordered()
-										.mapToInt(TranslationAndProtectionTime::protectionTime)
-										.max()
-										.ifPresent(maxProtectionTime ->
-										{
-											clip.setFramePosition(0);
-											clip.loop(Math.max(1, (int) Math.round(maxProtectionTime / alarmSoundSecondLength)));
-										});
-							final Set<String> unseenTranslatedStrings = getTranslationFromTranslationAndProtectionTime(unseenTranslatedDistricts);
-							final StringBuilder output = new StringBuilder();
-							if (configuration.isDisplayResponse() && !unseenTranslatedStrings.isEmpty())
-								redAlertToString(
+							if (configuration.isShowTestAlerts())
+								System.out.println(redAlertToString(
 										contentLength,
 										alertsLastModified,
 										redAlertEvent,
-										unseenTranslatedStrings,
-										output
-								);
-
-							if (!newDistrictsOfInterest.isEmpty())
-								output.append("ALERT ALERT ALERT: ").append(newDistrictsOfInterest).append(System.lineSeparator());
-							if (!output.isEmpty())
-								System.out.println(output);
-
-							printDistrictsNotFoundWarning();
-							prevData = getTranslationFromTranslationAndProtectionTime(translatedData);
+										redAlertEvent.data().parallelStream().unordered()
+												.map(configuration.languageCode()::getTranslation)
+												.toList(),
+										new StringBuilder("Test Alert").append(System.lineSeparator())
+								));
+							continue;
 						}
-					} catch (JsonParseException e)
-					{
-						LOGGER.error("JSON parsing error: {}", e.toString());
+
+						List<TranslationAndProtectionTime> translatedData = getTranslatedData(redAlertEvent);
+
+						if (translatedData.contains(null))
+						{
+							LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
+							refreshDistrictsTranslation();
+							translatedData = getTranslatedData(redAlertEvent);
+							if (translatedData.contains(null))
+								LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
+						}
+
+						Set<String> finalPrevData = prevData;
+						final List<TranslationAndProtectionTime>
+								unseenTranslatedDistricts = translatedData.parallelStream().unordered()
+								.filter(Objects::nonNull)
+								.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
+								.toList(), // to know if new (unseen) districts were added from previous request.
+								newDistrictsOfInterest = unseenTranslatedDistricts.parallelStream().unordered()
+										.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
+										.toList(); // for not restarting alert sound unnecessarily
+
+						if (configuration.isMakeSound() && (configuration.isAlertAll() || !newDistrictsOfInterest.isEmpty()))
+							newDistrictsOfInterest.parallelStream().unordered()
+									.mapToInt(TranslationAndProtectionTime::protectionTime)
+									.max()
+									.ifPresent(maxProtectionTime ->
+									{
+										clip.setFramePosition(0);
+										clip.loop(Math.max(1, (int) Math.round(maxProtectionTime / alarmSoundSecondLength)));
+									});
+						final Set<String> unseenTranslatedStrings = getTranslationFromTranslationAndProtectionTime(unseenTranslatedDistricts);
+						final StringBuilder output = new StringBuilder();
+						if (configuration.isDisplayResponse() && !unseenTranslatedStrings.isEmpty())
+							redAlertToString(
+									contentLength,
+									alertsLastModified,
+									redAlertEvent,
+									unseenTranslatedStrings,
+									output
+							);
+
+						if (!newDistrictsOfInterest.isEmpty())
+							output.append("ALERT ALERT ALERT: ").append(newDistrictsOfInterest).append(System.lineSeparator());
+						if (!output.isEmpty())
+							System.out.println(output);
+
+						printDistrictsNotFoundWarning();
+						prevData = getTranslationFromTranslationAndProtectionTime(translatedData);
 					}
+				} catch (JsonParseException e)
+				{
+					LOGGER.error("JSON parsing error: {}", e.toString());
 				} catch (IOException e)
 				{
 					LOGGER.debug("Got exception: {}", e.toString());
