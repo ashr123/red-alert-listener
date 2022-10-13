@@ -29,6 +29,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.text.Collator;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -56,7 +57,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	private static final TypeReference<List<District>> LIST_TYPE_REFERENCE = new TypeReference<>()
 	{
 	};
-	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern());
+	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern(), Locale.ROOT);
 	private static final Logger LOGGER = LogManager.getLogger();
 	private static final ObjectMapper JSON_MAPPER = new JsonMapper()
 			.enable(SerializationFeature.INDENT_OUTPUT)
@@ -76,6 +77,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	private static final Pattern
 			VAR_ALL_DISTRICTS = Pattern.compile(".*=\\s*", Pattern.MULTILINE),
 			BOM = Pattern.compile("﻿");
+	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
 	@CommandLine.Option(names = {"-c", "--configuration-file"},
 			paramLabel = "configuration file",
 			defaultValue = "red-alert-listener.conf.json",
@@ -116,6 +118,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 			Thread.sleep(1000);
 		} catch (InterruptedException interruptedException)
 		{
+			//noinspection CallToPrintStackTrace
 			interruptedException.printStackTrace(); // TODO think about
 		}
 	}
@@ -242,7 +245,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	private <T> Map<String, T> loadRemoteDistricts(
 			LanguageCode languageCode,
 			Duration timeout,
-			Function<District, T> districtMapper
+			@SuppressWarnings("BoundedWildcard") Function<District, T> districtMapper
 	)
 	{
 		LOGGER.info("Getting remote districts from IDF's Home Front Command's server...");
@@ -253,7 +256,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 				final Result<Map<String, T>> result = TimeMeasurement.measureAndExecuteCallable(() ->
 				{
 					final HttpResponse<String> httpResponse = HTTP_CLIENT.send(
-							HttpRequest.newBuilder(URI.create("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase()))
+							HttpRequest.newBuilder(URI.create("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase(Locale.ROOT)))
 									.header("Accept", "application/json")
 									.timeout(timeout)
 									.build(),
@@ -346,7 +349,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 		System.err.println("Preparing Red Alert Listener v" + getClass().getPackage().getImplementationVersion() + "...");
 		final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 		try (Clip clip = AudioSystem.getClip(Stream.of(AudioSystem.getMixerInfo()).parallel().unordered()
-				.filter(mixerInfo -> "default [default]".equals(mixerInfo.getName()))
+				.filter(mixerInfo -> COLLATOR.equals(mixerInfo.getName(), "default [default]"))
 				.findAny()
 				.orElse(null));
 			 AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/alarmSound.wav"))));
@@ -402,7 +405,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 							HttpRequest.newBuilder(uri)
 									.header("Accept", "application/json")
 									.header("X-Requested-With", "XMLHttpRequest")
-									.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase() + "/Pakar.aspx")
+									.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase(Locale.ROOT) + "/Pakar.aspx")
 									.timeout(configuration.timeout())
 									.build(),
 							HttpResponse.BodyHandlers.ofString()
@@ -459,7 +462,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 								LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
 						}
 
-						Set<String> finalPrevData = prevData;
+						final Set<String> finalPrevData = prevData;
 						final List<TranslationAndProtectionTime>
 								unseenTranslatedDistricts = translatedData.parallelStream().unordered()
 								.filter(Objects::nonNull)
@@ -476,6 +479,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 									.ifPresent(maxProtectionTime ->
 									{
 										clip.setFramePosition(0);
+										//noinspection NumericCastThatLosesPrecision
 										clip.loop(Math.max(1, (int) Math.round(maxProtectionTime / alarmSoundSecondLength)));
 									});
 						final Set<String> unseenTranslatedStrings = getTranslationFromTranslationAndProtectionTime(unseenTranslatedDistricts);
@@ -690,9 +694,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	private static class LoggerLevelConverter implements CommandLine.ITypeConverter<Level>
 	{
 		@Override
-		public Level convert(String s)
+		public Level convert(String value)
 		{
-			return Level.valueOf(s);
+			return Level.valueOf(value);
 		}
 	}
 }
