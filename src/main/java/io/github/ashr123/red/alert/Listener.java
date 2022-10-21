@@ -280,9 +280,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 								));
 					}
 					LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
-					return null;
+					return Collections.emptyMap();
 				});
-				if (result.getResult() == null)
+				if (result.getResult().isEmpty())
 				{
 					sleep();
 					continue;
