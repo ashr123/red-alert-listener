@@ -26,9 +26,17 @@
 
 Legal districts (and their translation) can be found by:
 
-1. Running `java -jar <downloaded-jar-file>.jar getRemoteDistrictsAsJSON -l <language code> | egrep -i "<district1>|<district2>[|...]"`
+1.
 
-2. Saving those districts to file like this: `java -jar <downloaded-jar-file>.jar getRemoteDistrictsAsJSONToFile -l <language code> [-o <your-file-name>.json]` (the default file name is `districts.json`) and search in it as you may like.
+Running `java -jar <downloaded-jar-file>.jar getRemoteDistrictsAsJSON -l <language code> | egrep -i "<district1>|<district2>[|...]"`
+
+2. Saving those districts to file like
+   this: `java -jar <downloaded-jar-file>.jar getRemoteDistrictsAsJSONToFile -l <language code> [-o <your-file-name>.json]` (
+   the default file name is `districts.json`) and search in it as you may like.
+
+## Known bugs
+
+- On Raspberry Pi 4 with Ubuntu 22.10, alert sound isn't working.
 
 ## Demonstration
 

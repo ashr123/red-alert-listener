@@ -92,6 +92,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	 */
 	private volatile Map<String, TranslationAndProtectionTime> districts;
 
+	private Listener()
+	{
+	}
+
 	public static void main(String... args)
 	{
 		System.exit(new CommandLine(Listener.class)
