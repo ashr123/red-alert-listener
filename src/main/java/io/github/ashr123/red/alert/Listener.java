@@ -33,7 +33,6 @@ import java.text.Collator;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -53,11 +52,10 @@ import java.util.stream.Stream;
 		description = "An App that can get \"red alert\"s from IDF's Home Front Command.")
 public class Listener implements Runnable, CommandLine.IVersionProvider
 {
-	private static final ZoneId DEFAULT_ZONE_ID = ZoneId.systemDefault();
 	private static final TypeReference<List<District>> LIST_TYPE_REFERENCE = new TypeReference<>()
 	{
 	};
-	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern(), Locale.ROOT);
+	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern(), Locale.ROOT).withZone(ZoneId.systemDefault());
 	private static final Logger LOGGER = LogManager.getLogger();
 	private static final ObjectMapper JSON_MAPPER = new JsonMapper()
 			.enable(SerializationFeature.INDENT_OUTPUT)
@@ -75,7 +73,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	);
 	private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 	private static final Pattern
-			VAR_ALL_DISTRICTS = Pattern.compile(".*=\\s*", Pattern.MULTILINE),
+			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 			BOM = Pattern.compile("﻿");
 	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
 	@CommandLine.Option(names = {"-c", "--configuration-file"},
@@ -534,8 +532,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	{
 		return output.append("Translated title: ").append(configuration.languageCode().getTitleTranslation(redAlertEvent.cat(), redAlertEvent.title())).append(System.lineSeparator())
 				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
-				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified.atZone(DEFAULT_ZONE_ID))).append(System.lineSeparator())
-				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(ZonedDateTime.now())).append(System.lineSeparator())
+				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified)).append(System.lineSeparator())
+				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(Instant.now())).append(System.lineSeparator())
 				.append("Translated districts: ").append(translatedData).append(System.lineSeparator());
 	}
 
@@ -639,12 +637,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 
 		public String getTitleTranslation(int categoryCode, String defaultTitleTranslation)
 		{
-			final String titleTranslation;
 			return titleTranslations == null ?
 					defaultTitleTranslation :
-					(titleTranslation = titleTranslations.get(categoryCode)) == null ?
-							defaultTitleTranslation + " (translation doesn't exist)" :
-							titleTranslation;
+					Optional.ofNullable(titleTranslations.get(categoryCode))
+							.orElseGet(() -> defaultTitleTranslation + " (translation doesn't exist)");
 		}
 	}
 
