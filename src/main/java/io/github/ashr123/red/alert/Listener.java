@@ -55,7 +55,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	private static final TypeReference<List<District>> LIST_TYPE_REFERENCE = new TypeReference<>()
 	{
 	};
-	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern(), Locale.ROOT).withZone(ZoneId.systemDefault());
+	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern(), Locale.getDefault(Locale.Category.FORMAT)).withZone(ZoneId.systemDefault());
 	private static final Logger LOGGER = LogManager.getLogger();
 	private static final ObjectMapper JSON_MAPPER = new JsonMapper()
 			.enable(SerializationFeature.INDENT_OUTPUT)
@@ -73,7 +73,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	);
 	private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 	private static final Pattern
-			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
+//			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 			BOM = Pattern.compile("﻿");
 	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
 	@CommandLine.Option(names = {"-c", "--configuration-file"},
@@ -257,17 +257,17 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 			{
 				final Result<Map<String, T>> result = TimeMeasurement.measureAndExecuteCallable(() ->
 				{
-					final HttpResponse<String> httpResponse = HTTP_CLIENT.send(
+					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
 							HttpRequest.newBuilder(URI.create("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase(Locale.ROOT)))
 									.header("Accept", "application/json")
 									.timeout(timeout)
 									.build(),
-							HttpResponse.BodyHandlers.ofString()
+							HttpResponse.BodyHandlers.ofInputStream()
 					);
 					if (httpResponse.statusCode() == HttpURLConnection.HTTP_OK)
 					{
 						return JSON_MAPPER.readValue(
-										VAR_ALL_DISTRICTS.matcher(httpResponse.body()).replaceFirst(""),
+										/*VAR_ALL_DISTRICTS.matcher(*/httpResponse.body()/*).replaceFirst("")*/,
 										LIST_TYPE_REFERENCE
 								)
 								.parallelStream().unordered()
@@ -571,7 +571,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 						Map.entry(13, "Terrorist infiltration"),
 						Map.entry(101, "Rocket and missile fire drill"),
 						Map.entry(103, "Earthquake drill"),
+						Map.entry(104, "Home Front Command radiologic drill"),
 						Map.entry(105, "Tsunami drill"),
+						Map.entry(106, "Home Front Command drill"),
 						Map.entry(107, "Hazardous Materials drill"),
 						Map.entry(113, "Terrorist infiltration drill")
 				)
@@ -591,7 +593,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 						Map.entry(13, "تسلل مخربين"),
 						Map.entry(101, "تمرين اطلاق قذائف وصواريخ"),
 						Map.entry(103, "تمرين هزّة أرضية"),
+						Map.entry(104, "قيادة الجبهة الداخلية تدريب اشعاعي"),
 						Map.entry(105, "تمرين تسونامي"),
+						Map.entry(106, "قيادة الجبهة الداخلية تدريب"),
 						Map.entry(107, "تمرين مواد خطرة"),
 						Map.entry(113, "تمرين تسلل مخربين")
 				)
@@ -611,7 +615,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 						Map.entry(13, "Проникновение террористов"),
 						Map.entry(101, "Учения по ракетному обстрелу"),
 						Map.entry(103, "Учения на случай землетрясения"),
+						Map.entry(104, "Командование тыла - учения при опасности применения радиологического оружия"),
 						Map.entry(105, "Учения на случай цунами"),
+						Map.entry(106, "Командование тыла - военные учения"),
 						Map.entry(107, "Учения на случай утечки опасных веществ"),
 						Map.entry(113, "Учения на случай проникновения террористов")
 				)
