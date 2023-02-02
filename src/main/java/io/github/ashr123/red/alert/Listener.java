@@ -265,22 +265,23 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 							HttpResponse.BodyHandlers.ofInputStream()
 					);
 					if (httpResponse.statusCode() == HttpURLConnection.HTTP_OK)
-					{
-						return JSON_MAPPER.readValue(
-										/*VAR_ALL_DISTRICTS.matcher(*/httpResponse.body()/*).replaceFirst("")*/,
-										LIST_TYPE_REFERENCE
-								)
-								.parallelStream().unordered()
-								.collect(Collectors.toMap(
-										District::label_he,
-										districtMapper,
-										(value1, value2) ->
-										{
-											LOGGER.trace("value1: {}, value2: {}", value1, value2);
-											return value2;
-										}
-								));
-					}
+						try (InputStream inputStream = httpResponse.body())
+						{
+							return JSON_MAPPER.readValue(
+											/*VAR_ALL_DISTRICTS.matcher(*/inputStream/*).replaceFirst("")*/,
+											LIST_TYPE_REFERENCE
+									)
+									.parallelStream().unordered()
+									.collect(Collectors.toMap(
+											District::label_he,
+											districtMapper,
+											(value1, value2) ->
+											{
+												LOGGER.trace("value1: {}, value2: {}", value1, value2);
+												return value2;
+											}
+									));
+						}
 					LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
 					return Collections.emptyMap();
 				});
