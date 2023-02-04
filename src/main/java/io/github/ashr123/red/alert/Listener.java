@@ -264,9 +264,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 									.build(),
 							HttpResponse.BodyHandlers.ofInputStream()
 					);
-					if (httpResponse.statusCode() == HttpURLConnection.HTTP_OK)
-						try (InputStream inputStream = httpResponse.body())
-						{
+					try (InputStream inputStream = httpResponse.body())
+					{
+						if (httpResponse.statusCode() == HttpURLConnection.HTTP_OK)
 							return JSON_MAPPER.readValue(
 											/*VAR_ALL_DISTRICTS.matcher(*/inputStream/*).replaceFirst("")*/,
 											LIST_TYPE_REFERENCE
@@ -281,7 +281,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 												return value2;
 											}
 									));
-						}
+					}
 					LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
 					return Collections.emptyMap();
 				});
