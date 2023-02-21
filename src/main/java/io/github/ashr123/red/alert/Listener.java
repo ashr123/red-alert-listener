@@ -34,6 +34,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -125,10 +126,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 		}
 	}
 
-	private static Set<String> getTranslationFromTranslationAndProtectionTime(Collection<TranslationAndProtectionTime> translatedData)
+	private static Set<String> getTranslations(Collection<TranslationAndProtectionTime> translatedData)
 	{
 		return translatedData.parallelStream().unordered()
-				.filter(Objects::nonNull)
 				.map(TranslationAndProtectionTime::translation)
 				.collect(Collectors.toSet());
 	}
@@ -330,7 +330,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 			districtsNotFound = (configuration.districtsOfInterest().size() > 2 ?
 					new ArrayList<>(configuration.districtsOfInterest()) :
 					configuration.districtsOfInterest()).parallelStream().unordered()
-					.filter(Predicate.not(getTranslationFromTranslationAndProtectionTime(new ArrayList<>(districts.values()))::contains))
+					.filter(Predicate.not(getTranslations(new ArrayList<>(districts.values()))::contains))
 					.toList();
 			printDistrictsNotFoundWarning();
 			setLoggerLevel(configuration.logLevel());
@@ -454,22 +454,21 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 							continue;
 						}
 
-						List<TranslationAndProtectionTime> translatedData = getTranslatedData(redAlertEvent);
+						List<TranslationAndProtectionTime> translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
 
 						if (translatedData.contains(null))
 						{
 							LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
 							refreshDistrictsTranslation();
-							translatedData = getTranslatedData(redAlertEvent);
+							translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
 							if (translatedData.contains(null))
 								LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
 						}
 
-						final Set<String> finalPrevData = prevData;
 						final List<TranslationAndProtectionTime>
 								unseenTranslatedDistricts = translatedData.parallelStream().unordered()
+								.distinct() // TODO think about
 								.filter(Objects::nonNull)
-								.filter(translationAndProtectionTime -> !finalPrevData.contains(translationAndProtectionTime.translation()))
 								.toList(), // to know if new (unseen) districts were added from previous request.
 								newDistrictsOfInterest = unseenTranslatedDistricts.parallelStream().unordered()
 										.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
@@ -485,7 +484,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 										//noinspection NumericCastThatLosesPrecision
 										clip.loop(Math.max(1, (int) Math.round(maxProtectionTime / alarmSoundSecondLength)));
 									});
-						final Set<String> unseenTranslatedStrings = getTranslationFromTranslationAndProtectionTime(unseenTranslatedDistricts);
+						final Set<String> unseenTranslatedStrings = getTranslations(unseenTranslatedDistricts);
 						final StringBuilder output = new StringBuilder();
 						if (configuration.isDisplayResponse() && !unseenTranslatedStrings.isEmpty())
 							redAlertToString(
@@ -502,7 +501,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 							System.out.println(output);
 
 						printDistrictsNotFoundWarning();
-						prevData = getTranslationFromTranslationAndProtectionTime(translatedData);
+						prevData = new HashSet<>(redAlertEvent.data());
 					}
 				} catch (JsonParseException e)
 				{
@@ -518,15 +517,16 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 		}
 	}
 
-	private List<TranslationAndProtectionTime> getTranslatedData(RedAlertEvent redAlertEvent)
+	private List<TranslationAndProtectionTime> filterPrevAndGetTranslatedData(RedAlertEvent redAlertEvent, Set<String> prevData)
 	{
 		return redAlertEvent.data().parallelStream().unordered()
+				.filter(Predicate.not(prevData::contains))
 				.map(districts::get)
 				.toList();
 	}
 
 	private StringBuilder redAlertToString(long contentLength,
-										   Instant alertsLastModified,
+										   TemporalAccessor alertsLastModified,
 										   RedAlertEvent redAlertEvent,
 										   Collection<String> translatedData,
 										   StringBuilder output)
