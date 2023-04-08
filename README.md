@@ -3,7 +3,7 @@
 ## Requirements
 
 1. [red-alert-listener.conf.json](red-alert-listener.conf.json) is being searched under current working directory by default (can be changed by stating the path (can be relative) to the configuration file via `-c` flag).
-2. JRE 19 (or newer)
+2. JRE 20 (or newer)
 3. Must have an Israeli IP address.
 
 ## Capabilities
@@ -44,3 +44,4 @@ Running `java -jar <downloaded-jar-file>.jar getRemoteDistrictsAsJSON -l <langua
 ![demo2](pic2.png "Demo")
 ![demo3](pic3.png "Demo")
 ![Operation Breaking Dawn](pic4.png "Operation Breaking Dawn")
+![demo4](pic5.png "Demo")

@@ -103,7 +103,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.11.0</version>
 				<configuration>
-					<release>19</release>
+					<release>20</release>
 				</configuration>
 			</plugin>
 			<!-- this is for preventing the creation of jar without its dependencies -->
