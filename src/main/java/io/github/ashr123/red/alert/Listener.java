@@ -420,14 +420,17 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 							sleep();
 							continue;
 						}
+						final Instant alertsLastModified;
 						final long contentLength = httpResponse.headers().firstValueAsLong("Content-Length").orElse(-1);
 						if (contentLength < minRedAlertEventContentLength)
 							prevData = Collections.emptySet();
-						else if (!(currAlertsLastModified = httpResponse.headers().firstValue("Last-Modified")
+						else if ((alertsLastModified = httpResponse.headers().firstValue("Last-Modified")
 								.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from))
 								.filter(currAlertsLastModified::isBefore)
-								.orElse(Instant.MIN)).equals(Instant.MIN))
+								.orElse(null)) != null)
 						{
+							currAlertsLastModified = alertsLastModified;
+
 							final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(
 									/*BOM.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
 									RedAlertEvent.class
