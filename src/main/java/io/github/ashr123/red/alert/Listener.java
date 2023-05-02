@@ -44,7 +44,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@CommandLine.Command(name = "red-alert-listener",
+@CommandLine.Command(name = "java -jar red-alert-listener.jar",
 		mixinStandardHelpOptions = true,
 		versionProvider = Listener.class,
 		showDefaultValues = true,
@@ -71,7 +71,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 			Collections.emptySet()
 	);
 	private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
-//	private static final Pattern
+	//	private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 //			BOM = Pattern.compile("﻿");
 	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
@@ -87,7 +87,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	/**
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
-	private volatile Map<String, TranslationAndProtectionTime> districts;
+	private volatile Map<String, AreaTranslationProtectionTime> districts;
 
 	private Listener()
 	{
@@ -124,17 +124,28 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 		}
 	}
 
-	private static Set<String> getTranslations(Collection<TranslationAndProtectionTime> translatedData)
+	private static Set<String> getTranslations(Collection<AreaTranslationProtectionTime> translatedData)
 	{
 		return translatedData.parallelStream().unordered()
-				.map(TranslationAndProtectionTime::translation)
+				.map(AreaTranslationProtectionTime::translation)
 				.collect(Collectors.toSet());
 	}
 
-	@CommandLine.Command(mixinStandardHelpOptions = true,
+	private static String areaAndTranslatedDistrictsToString(Map<String, List<AreaTranslationProtectionTime>> districts)
+	{
+		return "\t" + districts.entrySet().parallelStream().unordered()
+				.map(stringListEntry -> stringListEntry.getKey() + ":" + System.lineSeparator() +
+						"\t\t" + stringListEntry.getValue().parallelStream().unordered()
+						.map(Object::toString)
+						.collect(Collectors.joining(System.lineSeparator() + "\t\t")))
+				.collect(Collectors.joining(System.lineSeparator() + "\t"));
+	}
+
+	@CommandLine.Command(name = "get-remote-districts-as-json",
+			mixinStandardHelpOptions = true,
 			versionProvider = Listener.class,
 			showDefaultValues = true,
-			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to stdout (No need for configuration file).")
+			description = "Gets all supported districts translation from Hebrew to the appropriate translation from IDF's Home Front Command's server and print it to stdout (No need for configuration file).")
 	private void getRemoteDistrictsAsJSON(
 			@CommandLine.Option(names = {"-l", "--language"},
 					paramLabel = "language code",
@@ -159,15 +170,17 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 			System.out.println(JSON_MAPPER.writeValueAsString(startSubcommandInputThread(
 					languageCode,
 					timeout,
-					loggerLevel
+					loggerLevel,
+					District::label
 			)));
 		}
 	}
 
-	@CommandLine.Command(mixinStandardHelpOptions = true,
+	@CommandLine.Command(name = "get-remote-districts-as-json-to-file",
+			mixinStandardHelpOptions = true,
 			versionProvider = Listener.class,
 			showDefaultValues = true,
-			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file (No need for configuration file).")
+			description = "Gets all supported districts translation from Hebrew from IDF's Home Front Command's server and print it to file, grouped by area-name, including also protection time in seconds (No need for configuration file).")
 	private void getRemoteDistrictsAsJSONToFile(
 			@CommandLine.Option(names = {"-o", "--output"},
 					paramLabel = "file",
@@ -199,16 +212,22 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 					startSubcommandInputThread(
 							languageCode,
 							timeout,
-							loggerLevel
+							loggerLevel,
+							district -> new AreaTranslationProtectionTime(
+									district.areaname(),
+									district.label(),
+									district.migun_time()
+							)
 					)
 			);
 		}
 	}
 
-	private Map<String, String> startSubcommandInputThread(
+	private <D> Map<String, D> startSubcommandInputThread(
 			LanguageCode languageCode,
 			long timeout,
-			Level level
+			Level level,
+			Function<District, D> districtMapper
 	) throws InterruptedException
 	{
 		final CountDownLatch startSignal = new CountDownLatch(1);
@@ -239,13 +258,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 		}).start();
 		setLoggerLevel(level);
 		startSignal.await();
-		return loadRemoteDistricts(languageCode, Duration.ofMillis(timeout), District::label);
+		return loadRemoteDistricts(languageCode, Duration.ofMillis(timeout), districtMapper);
 	}
 
 	private <T> Map<String, T> loadRemoteDistricts(
 			LanguageCode languageCode,
 			Duration timeout,
-			@SuppressWarnings("BoundedWildcard") Function<District, T> districtMapper
+			Function<District, T> districtMapper
 	)
 	{
 		LOGGER.info("Getting remote districts from IDF's Home Front Command's server...");
@@ -446,13 +465,14 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 											currAlertsLastModified,
 											redAlertEvent,
 											redAlertEvent.data().parallelStream().unordered()
-													.map(configuration.languageCode()::getTestTranslation),
+													.map(configuration.languageCode()::getTestTranslation)
+													.collect(Collectors.joining(System.lineSeparator())),
 											new StringBuilder("Test Alert").append(System.lineSeparator())
 									));
 								continue;
 							}
 
-							List<TranslationAndProtectionTime> translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
+							List<AreaTranslationProtectionTime> translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
 
 							if (translatedData.contains(null))
 							{
@@ -463,18 +483,20 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 									LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
 							}
 
-							final List<TranslationAndProtectionTime>
+							final Map<String, List<AreaTranslationProtectionTime>>
 									unseenTranslatedDistricts = translatedData.parallelStream().unordered()
 									.distinct() // TODO think about
 									.filter(Objects::nonNull)
-									.toList(), // to know if new (unseen) districts were added from previous request.
-									newDistrictsOfInterest = unseenTranslatedDistricts.parallelStream().unordered()
+									.collect(Collectors.groupingBy(AreaTranslationProtectionTime::translatedAreaName)), // to know if new (unseen) districts were added from previous request.
+									newDistrictsOfInterest = unseenTranslatedDistricts.values().parallelStream().unordered()
+											.flatMap(translationAndProtectionTimes -> translationAndProtectionTimes.parallelStream().unordered())
 											.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-											.toList(); // for not restarting alert sound unnecessarily
+											.collect(Collectors.groupingBy(AreaTranslationProtectionTime::translatedAreaName)); // for not restarting alert sound unnecessarily
 
 							if (configuration.isMakeSound() && (configuration.isAlertAll() || !newDistrictsOfInterest.isEmpty()))
-								newDistrictsOfInterest.parallelStream().unordered()
-										.mapToInt(TranslationAndProtectionTime::protectionTime)
+								newDistrictsOfInterest.values().parallelStream().unordered()
+										.flatMap(translationAndProtectionTimes -> translationAndProtectionTimes.parallelStream().unordered())
+										.mapToInt(AreaTranslationProtectionTime::protectionTimeInSeconds)
 										.max()
 										.ifPresent(maxProtectionTime ->
 										{
@@ -489,16 +511,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 										contentLength,
 										currAlertsLastModified,
 										redAlertEvent,
-										unseenTranslatedDistricts.parallelStream().unordered()
-												.map(Object::toString),
+										areaAndTranslatedDistrictsToString(unseenTranslatedDistricts),
 										output
 								);
 
 							if (!newDistrictsOfInterest.isEmpty())
 								output.append("ALERT ALERT ALERT:").append(System.lineSeparator())
-										.append('\t').append(newDistrictsOfInterest.parallelStream().unordered()
-												.map(Object::toString)
-												.collect(Collectors.joining(System.lineSeparator() + "\t"))).append(System.lineSeparator());
+										.append('\t').append(areaAndTranslatedDistrictsToString(newDistrictsOfInterest)).append(System.lineSeparator());
 							if (!output.isEmpty())
 								System.out.println(output);
 
@@ -520,7 +539,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 		}
 	}
 
-	private List<TranslationAndProtectionTime> filterPrevAndGetTranslatedData(RedAlertEvent redAlertEvent, Set<String> prevData)
+	private List<AreaTranslationProtectionTime> filterPrevAndGetTranslatedData(RedAlertEvent redAlertEvent, Set<String> prevData)
 	{
 		return redAlertEvent.data().parallelStream().unordered()
 				.filter(Predicate.not(prevData::contains))
@@ -531,15 +550,15 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	private StringBuilder redAlertToString(long contentLength,
 										   TemporalAccessor alertsLastModified,
 										   RedAlertEvent redAlertEvent,
-										   Stream<String> translatedData,
+										   String translatedData,
 										   StringBuilder output)
 	{
 		return output.append("Translated title: ").append(configuration.languageCode().getTitleTranslation(redAlertEvent.cat(), redAlertEvent.title())).append(System.lineSeparator())
 				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified)).append(System.lineSeparator())
 				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(Instant.now())).append(System.lineSeparator())
-				.append("Translated districts:").append(System.lineSeparator())
-				.append('\t').append(translatedData.collect(Collectors.joining(System.lineSeparator() + "\t"))).append(System.lineSeparator());
+				.append("Translated areas and districts:").append(System.lineSeparator())
+				.append(translatedData).append(System.lineSeparator());
 	}
 
 	private void refreshDistrictsTranslation()
@@ -547,7 +566,11 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 		districts = loadRemoteDistricts(
 				configuration.languageCode(),
 				configuration.timeout(),
-				district -> new TranslationAndProtectionTime(district.label(), district.migun_time())
+				district -> new AreaTranslationProtectionTime(
+						district.areaname(),
+						district.label(),
+						district.migun_time()
+				)
 		);
 	}
 
@@ -690,12 +713,14 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 	{
 	}
 
-	private record TranslationAndProtectionTime(String translation, int protectionTime)
+	private record AreaTranslationProtectionTime(String translatedAreaName,
+												 String translation,
+												 int protectionTimeInSeconds)
 	{
 		@Override
 		public String toString()
 		{
-			return translation + " (" + protectionTime + " seconds)";
+			return translation + " (" + protectionTimeInSeconds + " seconds)";
 		}
 	}
 
