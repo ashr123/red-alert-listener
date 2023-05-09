@@ -71,7 +71,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 			Collections.emptySet()
 	);
 	private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
-	//	private static final Pattern
+//		private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 //			BOM = Pattern.compile("﻿");
 	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
