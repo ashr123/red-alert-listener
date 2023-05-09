@@ -137,7 +137,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 				.map(stringListEntry -> stringListEntry.getKey() + ":" + System.lineSeparator() +
 						"\t\t" + stringListEntry.getValue().parallelStream().unordered()
 						.map(Object::toString)
-						.collect(Collectors.joining(System.lineSeparator() + "\t\t")))
+						.collect(Collectors.joining("," + System.lineSeparator() + "\t\t")))
 				.collect(Collectors.joining(System.lineSeparator() + "\t"));
 	}
 
