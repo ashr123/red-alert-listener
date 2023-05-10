@@ -517,7 +517,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 
 							if (!newDistrictsOfInterest.isEmpty())
 								output.append("ALERT ALERT ALERT:").append(System.lineSeparator())
-										.append('\t').append(areaAndTranslatedDistrictsToString(newDistrictsOfInterest)).append(System.lineSeparator());
+										.append(areaAndTranslatedDistrictsToString(newDistrictsOfInterest)).append(System.lineSeparator());
 							if (!output.isEmpty())
 								System.out.println(output);
 
