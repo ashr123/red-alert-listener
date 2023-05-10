@@ -39,8 +39,9 @@ Legal districts (and their translation) can be found by:
 ## Demonstration
 
 ![Operation Guardian of the Walls](pic.png "Operation Guardian of the Walls")
-![demo2](pic2.png "Demo")
-![demo3](pic3.png "Demo")
+![demo1](pic2.png "Demo")
+![demo2](pic3.png "Demo")
 ![Operation Breaking Dawn](pic4.png "Operation Breaking Dawn")
-![demo4](pic5.png "Demo")
+![demo3](pic5.png "Demo")
 ![demo4](pic6.png "Demo")
+![Operation Shield and Arrow](pic7.png "Operation Shield and Arrow")
