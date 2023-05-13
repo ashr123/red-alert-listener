@@ -553,11 +553,11 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 										   String translatedData,
 										   StringBuilder output)
 	{
-		return output.append("Translated title: ").append(configuration.languageCode().getTitleTranslation(redAlertEvent.cat(), redAlertEvent.title())).append(System.lineSeparator())
+		return output.append("Translated Title: ").append(configuration.languageCode().getTitleTranslation(redAlertEvent.cat(), redAlertEvent.title())).append(System.lineSeparator())
 				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified)).append(System.lineSeparator())
 				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(Instant.now())).append(System.lineSeparator())
-				.append("Translated areas and districts:").append(System.lineSeparator())
+				.append("Translated Areas and Districts:").append(System.lineSeparator())
 				.append(translatedData).append(System.lineSeparator());
 	}
 
