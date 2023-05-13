@@ -131,11 +131,11 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 				.collect(Collectors.toSet());
 	}
 
-	private String areaAndTranslatedDistrictsToString(Map<String, List<AreaTranslationProtectionTime>> districts)
+	private String areaAndTranslatedDistrictsToString(Map<String, List<AreaTranslationProtectionTime>> districtsByAreaName)
 	{
-		return "\t" + districts.entrySet().parallelStream().unordered()
-				.map(stringListEntry -> stringListEntry.getKey() + ":" + System.lineSeparator() +
-						"\t\t" + stringListEntry.getValue().parallelStream().unordered()
+		return "\t" + districtsByAreaName.entrySet().parallelStream().unordered()
+				.map(areaNameAndDistricts -> areaNameAndDistricts.getKey() + ":" + System.lineSeparator() +
+						"\t\t" + areaNameAndDistricts.getValue().parallelStream().unordered()
 						.map(areaTranslationProtectionTime -> areaTranslationProtectionTime.translation() + " (" + areaTranslationProtectionTime.protectionTimeInSeconds() + " " + configuration.languageCode().getSecondsTranslation() + ")")
 						.collect(Collectors.joining("," + System.lineSeparator() + "\t\t")))
 				.collect(Collectors.joining(System.lineSeparator() + "\t"));
