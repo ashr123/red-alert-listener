@@ -131,12 +131,12 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 				.collect(Collectors.toSet());
 	}
 
-	private static String areaAndTranslatedDistrictsToString(Map<String, List<AreaTranslationProtectionTime>> districts)
+	private String areaAndTranslatedDistrictsToString(Map<String, List<AreaTranslationProtectionTime>> districts)
 	{
 		return "\t" + districts.entrySet().parallelStream().unordered()
 				.map(stringListEntry -> stringListEntry.getKey() + ":" + System.lineSeparator() +
 						"\t\t" + stringListEntry.getValue().parallelStream().unordered()
-						.map(Object::toString)
+						.map(areaTranslationProtectionTime -> areaTranslationProtectionTime.translation() + " (" + areaTranslationProtectionTime.protectionTimeInSeconds() + " " + configuration.languageCode().getSecondsTranslation() + ")")
 						.collect(Collectors.joining("," + System.lineSeparator() + "\t\t")))
 				.collect(Collectors.joining(System.lineSeparator() + "\t"));
 	}
@@ -574,6 +574,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 		);
 	}
 
+	// https://www.oref.org.il/Shared/ClientScripts/WarningMessages/WarningMessages.js catVsImageAudioAlertName
 	@SuppressWarnings("unused")
 	private enum LanguageCode
 	{
@@ -582,7 +583,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 						Map.entry("בדיקה", "בדיקה"),
 						Map.entry("בדיקה מחזורית", "בדיקה מחזורית")
 				),
-				null
+				null,
+				"שניות"
 		),
 		EN(
 				Map.ofEntries(
@@ -604,7 +606,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 						Map.entry(106, "Home Front Command drill"),
 						Map.entry(107, "Hazardous Materials drill"),
 						Map.entry(113, "Terrorist infiltration drill")
-				)
+				),
+				"seconds"
 		),
 		AR(
 				Map.ofEntries(
@@ -626,7 +629,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 						Map.entry(106, "قيادة الجبهة الداخلية تدريب"),
 						Map.entry(107, "تمرين مواد خطرة"),
 						Map.entry(113, "تمرين تسلل مخربين")
-				)
+				),
+				"ثواني"
 		),
 		RU(
 				Map.ofEntries(
@@ -648,15 +652,18 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 						Map.entry(106, "Командование тыла - военные учения"),
 						Map.entry(107, "Учения на случай утечки опасных веществ"),
 						Map.entry(113, "Учения на случай проникновения террористов")
-				)
+				),
+				"Секунды"
 		);
 		private final Map<String, String> testDistrictTranslations;
 		private final Map<Integer, String> titleTranslations;
+		private final String secondsTranslation;
 
-		LanguageCode(Map<String, String> testDistrictTranslations, Map<Integer, String> titleTranslations)
+		LanguageCode(Map<String, String> testDistrictTranslations, Map<Integer, String> titleTranslations, String secondsTranslation)
 		{
 			this.testDistrictTranslations = testDistrictTranslations;
 			this.titleTranslations = titleTranslations;
+			this.secondsTranslation = secondsTranslation;
 		}
 
 		public boolean containsTestKey(String key)
@@ -675,6 +682,11 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 					defaultTitleTranslation :
 					Optional.ofNullable(titleTranslations.get(categoryCode))
 							.orElseGet(() -> defaultTitleTranslation + " (translation doesn't exist)");
+		}
+
+		public String getSecondsTranslation()
+		{
+			return secondsTranslation;
 		}
 	}
 
@@ -717,11 +729,6 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 												 String translation,
 												 int protectionTimeInSeconds)
 	{
-		@Override
-		public String toString()
-		{
-			return translation + " (" + protectionTimeInSeconds + " seconds)";
-		}
 	}
 
 	private static class LoggerLevelConverter implements CommandLine.ITypeConverter<Level>
