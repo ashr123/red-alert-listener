@@ -653,7 +653,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 						Map.entry(107, "Учения на случай утечки опасных веществ"),
 						Map.entry(113, "Учения на случай проникновения террористов")
 				),
-				"Секунды"
+				"секунды"
 		);
 		private final Map<String, String> testDistrictTranslations;
 		private final Map<Integer, String> titleTranslations;
