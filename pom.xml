@@ -8,7 +8,7 @@
 	<artifactId>red-alert-listener</artifactId>
 	<version>5.2.10</version>
 
-	<name>Red Alert</name>
+	<name>Red Alert Listener</name>
 	<description>A stand alone terminal app that can get "red alert"s from IDF's Home Front Command</description>
 	<url>https://github.com/ashr123/${project.artifactId}</url>
 
