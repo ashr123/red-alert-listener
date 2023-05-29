@@ -464,9 +464,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 											contentLength,
 											currAlertsLastModified,
 											redAlertEvent,
-											redAlertEvent.data().parallelStream().unordered()
+											"\t" + redAlertEvent.data().parallelStream().unordered()
 													.map(configuration.languageCode()::getTestTranslation)
-													.collect(Collectors.joining(System.lineSeparator())),
+													.collect(Collectors.joining("," + System.lineSeparator() + "\t")),
 											new StringBuilder("Test Alert").append(System.lineSeparator())
 									));
 								continue;
@@ -489,13 +489,15 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 									.filter(Objects::nonNull)
 									.collect(Collectors.groupingBy(AreaTranslationProtectionTime::translatedAreaName)), // to know if new (unseen) districts were added from previous request.
 									newDistrictsOfInterest = unseenTranslatedDistricts.values().parallelStream().unordered()
-											.flatMap(translationAndProtectionTimes -> translationAndProtectionTimes.parallelStream().unordered())
+											.map(Collection::parallelStream)
+											.flatMap(Stream::unordered)
 											.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
 											.collect(Collectors.groupingBy(AreaTranslationProtectionTime::translatedAreaName)); // for not restarting alert sound unnecessarily
 
 							if (configuration.isMakeSound() && (configuration.isAlertAll() || !newDistrictsOfInterest.isEmpty()))
 								newDistrictsOfInterest.values().parallelStream().unordered()
-										.flatMap(translationAndProtectionTimes -> translationAndProtectionTimes.parallelStream().unordered())
+										.map(Collection::parallelStream)
+										.flatMap(Stream::unordered)
 										.mapToInt(AreaTranslationProtectionTime::protectionTimeInSeconds)
 										.max()
 										.ifPresent(maxProtectionTime ->
