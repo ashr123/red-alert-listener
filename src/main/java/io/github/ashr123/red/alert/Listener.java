@@ -267,7 +267,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 			Function<District, T> districtMapper
 	)
 	{
-		LOGGER.info("Getting remote districts from IDF's Home Front Command's server...");
+		LOGGER.info("Getting districts from IDF's Home Front Command's server...");
 		while (isContinue)
 		{
 			try
