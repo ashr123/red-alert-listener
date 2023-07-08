@@ -131,14 +131,14 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 				.collect(Collectors.toSet());
 	}
 
-	private String areaAndTranslatedDistrictsToString(Map<String, List<AreaTranslationProtectionTime>> districtsByAreaName)
+	private String areaAndTranslatedDistrictsToString(Map<String, List<AreaTranslationProtectionTime>> districtsByAreaName, int cat)
 	{
 		return "\t" + districtsByAreaName.entrySet().parallelStream().unordered()
 				.map(areaNameAndDistricts -> areaNameAndDistricts.getKey() + ":" + System.lineSeparator() +
 						"\t\t" + areaNameAndDistricts.getValue().parallelStream().unordered()
-						.map(areaTranslationProtectionTime -> areaTranslationProtectionTime.translation() + " (" + areaTranslationProtectionTime.protectionTimeInSeconds() + " " + configuration.languageCode().getSecondsTranslation() + ")")
+						.map(areaTranslationProtectionTime -> areaTranslationProtectionTime.translation() + (cat == 1 || cat == 101 ? " (" + areaTranslationProtectionTime.protectionTimeInSeconds() + " " + configuration.languageCode().getSecondsTranslation() + ")" : ""))
 						.collect(Collectors.joining("," + System.lineSeparator() + "\t\t")))
-				.collect(Collectors.joining(System.lineSeparator() + "\t"));
+				.collect(Collectors.joining("," + System.lineSeparator() + "\t"));
 	}
 
 	@CommandLine.Command(name = "get-remote-districts-as-json",
@@ -513,13 +513,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 										contentLength,
 										currAlertsLastModified,
 										redAlertEvent,
-										areaAndTranslatedDistrictsToString(unseenTranslatedDistricts),
+										areaAndTranslatedDistrictsToString(unseenTranslatedDistricts, redAlertEvent.cat()),
 										output
 								);
 
 							if (!newDistrictsOfInterest.isEmpty())
 								output.append("ALERT ALERT ALERT:").append(System.lineSeparator())
-										.append(areaAndTranslatedDistrictsToString(newDistrictsOfInterest)).append(System.lineSeparator());
+										.append(areaAndTranslatedDistrictsToString(newDistrictsOfInterest, redAlertEvent.cat())).append(System.lineSeparator());
 							if (!output.isEmpty())
 								System.out.println(output);
 
