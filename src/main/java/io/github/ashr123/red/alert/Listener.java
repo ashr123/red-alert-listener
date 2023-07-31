@@ -71,7 +71,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 			Collections.emptySet()
 	);
 	private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
-//		private static final Pattern
+	//		private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 //			BOM = Pattern.compile("﻿");
 	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
@@ -133,12 +133,19 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 
 	private String areaAndTranslatedDistrictsToString(Map<String, List<AreaTranslationProtectionTime>> districtsByAreaName, int cat)
 	{
-		return "\t" + districtsByAreaName.entrySet().parallelStream().unordered()
-				.map(areaNameAndDistricts -> areaNameAndDistricts.getKey() + ":" + System.lineSeparator() +
-						"\t\t" + areaNameAndDistricts.getValue().parallelStream().unordered()
+		return  districtsByAreaName.entrySet().parallelStream().unordered()
+				.map(areaNameAndDistricts -> areaNameAndDistricts.getValue().parallelStream().unordered()
 						.map(areaTranslationProtectionTime -> areaTranslationProtectionTime.translation() + (cat == 1 || cat == 101 ? " (" + areaTranslationProtectionTime.protectionTimeInSeconds() + " " + configuration.languageCode().getSecondsTranslation() + ")" : ""))
-						.collect(Collectors.joining("," + System.lineSeparator() + "\t\t")))
-				.collect(Collectors.joining("," + System.lineSeparator() + "\t"));
+						.collect(Collectors.joining(
+								"," + System.lineSeparator() + "\t\t",
+								areaNameAndDistricts.getKey() + ":" + System.lineSeparator() + "\t\t",
+								""
+						)))
+				.collect(Collectors.joining(
+						"," + System.lineSeparator() + "\t",
+						"\t",
+						""
+				));
 	}
 
 	@CommandLine.Command(name = "get-remote-districts-as-json",
@@ -464,9 +471,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider
 											contentLength,
 											currAlertsLastModified,
 											redAlertEvent,
-											"\t" + redAlertEvent.data().parallelStream().unordered()
+											redAlertEvent.data().parallelStream().unordered()
 													.map(configuration.languageCode()::getTestTranslation)
-													.collect(Collectors.joining("," + System.lineSeparator() + "\t")),
+													.collect(Collectors.joining(
+															"," + System.lineSeparator() + "\t",
+															"\t",
+															""
+													)),
 											new StringBuilder("Test Alert").append(System.lineSeparator())
 									));
 								continue;
