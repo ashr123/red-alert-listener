@@ -1,19 +1,26 @@
 {
-  "configuration": {
-	"appenders": {
-	  "console": {
+  "Configuration": {
+	"Appenders": {
+	  "Console": {
 		"name": "Console-Appender",
 		"target": "SYSTEM_ERR",
-		"patternLayout": {
+		"PatternLayout": {
 		  "pattern": "%d{DEFAULT} [%level] - %msg%n"
 		}
+	  },
+	  "Async": {
+		"name": "Async-Console-Appender",
+		"AppenderRef": {
+		  "ref": "Console-Appender"
+		},
+		"LinkedTransferQueue": {}
 	  }
 	},
-	"loggers": {
-	  "asyncRoot": {
+	"Loggers": {
+	  "AsyncRoot": {
 		"level": "INFO",
-		"appenderRef": {
-		  "ref": "Console-Appender"
+		"AppenderRef": {
+		  "ref": "Async-Console-Appender"
 		}
 	  }
 	}
