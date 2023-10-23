@@ -24,7 +24,7 @@ jobs:
         run: native-image -jar target/red-alert-listener-*-jar-with-dependencies.jar
       
       - name: Upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: red-alert-listener-${{ matrix.os }}
           path: red-alert-listener*
