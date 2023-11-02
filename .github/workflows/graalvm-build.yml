@@ -19,8 +19,8 @@ jobs:
             architecture: aarch64
           - os: ubuntu
             architecture: amd64
-          - os: ubuntu
-            architecture: riscv64
+#          - os: ubuntu-latest
+#            architecture: riscv64
     steps:
       - uses: actions/checkout@v4.1.1
 
