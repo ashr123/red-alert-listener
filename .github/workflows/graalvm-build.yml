@@ -19,8 +19,8 @@ jobs:
             architecture: aarch64
           - os: ubuntu
             architecture: amd64
-#          - os: ubuntu-latest
-#            architecture: riscv64
+          - os: ubuntu-latest
+            architecture: riscv64
     steps:
       - uses: actions/checkout@v4.1.1
 
@@ -35,7 +35,7 @@ jobs:
         run: mvn package
 
       - name: Creating native image
-        run: native-image --target=${{ matrix.os }}-${{ matrix.architecture }} -jar target/red-alert-listener-*-jar-with-dependencies.jar
+        run: native-image -H:+UnlockExperimentalVMOptions --target=${{ matrix.os }}-${{ matrix.architecture }} -jar target/red-alert-listener-*-jar-with-dependencies.jar
 
       - name: Upload binary
         uses: actions/upload-artifact@v2
