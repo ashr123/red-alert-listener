@@ -2,25 +2,11 @@ name: GraalVM Native Image builds
 on: [ push, pull_request ]
 jobs:
   build:
-    name: Red Alert Listener Builder on ${{ matrix.os }}-${{ matrix.architecture }}
-    runs-on: ${{ matrix.os }}
+    name: Target ${{ matrix.target }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - os: macos-latest
-            architecture: AARCH64
-          - os: macos-latest
-            architecture: AMD64
-          - os: windows-latest
-            architecture: AARCH64
-          - os: windows-latest
-            architecture: AMD64
-          - os: ubuntu-latest
-            architecture: AARCH64
-          - os: ubuntu-latest
-            architecture: AMD64
-          - os: ubuntu-latest
-            architecture: RISCV64
+        target: [ macos-aarch64, macos-amd64, windows-aarch64, windows-amd64, ubuntu-aarch64, ubuntu-amd64, ubuntu-riscv64 ]
     steps:
       - uses: actions/checkout@v4.1.1
 
@@ -35,10 +21,10 @@ jobs:
         run: mvn package
 
       - name: Creating native image
-        run: native-image -jar target/red-alert-listener-*-jar-with-dependencies.jar
+        run: native-image --target=${{ matrix.target }} -jar target/red-alert-listener-*-jar-with-dependencies.jar
 
       - name: Upload binary
         uses: actions/upload-artifact@v2
         with:
-          name: red-alert-listener-${{ matrix.os }}-${{ matrix.architecture }}
+          name: red-alert-listener-${{ matrix.target }}
           path: red-alert-listener*
