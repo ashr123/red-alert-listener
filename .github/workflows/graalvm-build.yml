@@ -44,6 +44,6 @@ jobs:
           path: red-alert-listener*
 
       - name: Create Release
-        uses: ncipollo/release-action@1.13.0
+        uses: ncipollo/release-action@v1.13.0
         with:
           artifacts: red-alert-listener*
