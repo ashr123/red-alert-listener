@@ -1,9 +1,5 @@
 name: GraalVM Native Image builds
-on:
-  push:
-    tags:
-      - '*'
-  pull_request:
+on: [ push, pull_request ]
 jobs:
   build:
     name: Target ${{ matrix.os }}-${{ matrix.architecture }}
