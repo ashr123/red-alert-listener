@@ -2,6 +2,7 @@
 	"isMakeSound" : true,
 	"isAlertAll" : false,
 	"isDisplayResponse" : true,
+	"isDisplayUntranslatedDistricts" : true,
 	"isShowTestAlerts" : false,
 	"timeout" : 10000,
 	"languageCode" : "HE",
