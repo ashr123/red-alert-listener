@@ -27,7 +27,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.text.Collator;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -73,7 +72,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	//		private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 //			BOM = Pattern.compile("﻿");
-	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
+//	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
 	@CommandLine.Option(names = {"-c", "--configuration-file"},
 			paramLabel = "configuration file",
 			defaultValue = "red-alert-listener.conf.json",
@@ -157,7 +156,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			@CommandLine.Option(names = {"-t", "--timeout"},
 					paramLabel = "timeout",
 					defaultValue = "10000",
-					description = "Timeout for connecting to IDF's Home Front Command's server.")
+					description = "Timeout for connecting to IDF's Home Front Command's server in milliseconds.")
 			long timeout,
 			@CommandLine.Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
@@ -193,7 +192,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			@CommandLine.Option(names = {"-t", "--timeout"},
 					paramLabel = "timeout",
 					defaultValue = "10000",
-					description = "Timeout for connecting to IDF's Home Front Command's server.")
+					description = "Timeout for connecting to IDF's Home Front Command's server in milliseconds.")
 			long timeout,
 			@CommandLine.Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
@@ -339,10 +338,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	@Override
 	public void run() {
 		System.err.println("Preparing Red Alert Listener v" + getClass().getPackage().getImplementationVersion() + "...");
-		try (Clip clip = AudioSystem.getClip(Stream.of(AudioSystem.getMixerInfo()).parallel().unordered()
+		try (Clip clip = AudioSystem.getClip(/*Stream.of(AudioSystem.getMixerInfo()).parallel().unordered()
 				.filter(mixerInfo -> COLLATOR.equals(mixerInfo.getName(), "default [default]"))
 				.findAny()
-				.orElse(null));
+				.orElse(null)*/);
 			 AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/alarmSound.wav"))));
 			 ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor()) {
 			clip.open(audioInputStream);
@@ -374,7 +373,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
 			loadConfiguration();
 			final URI uri = URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-			Set<String> prevData = Collections.emptySet();
+			Map<Integer, Set<String>> prevData = new HashMap<>();
 			Instant currAlertsLastModified = Instant.MIN;
 			final int minRedAlertEventContentLength = """
 					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
@@ -402,7 +401,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						final Instant alertsLastModified;
 						final long contentLength = httpResponse.headers().firstValueAsLong("Content-Length").orElse(-1);
 						if (contentLength < minRedAlertEventContentLength)
-							prevData = Collections.emptySet();
+							prevData.clear();
 						else if ((alertsLastModified = httpResponse.headers().firstValue("Last-Modified")
 								.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from))
 								.filter(currAlertsLastModified::isBefore)
@@ -435,13 +434,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 								continue;
 							}
 
-							List<? extends IAreaTranslationProtectionTime> translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
+							List<? extends IAreaTranslationProtectionTime> translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData.getOrDefault(redAlertEvent.cat(), Collections.emptySet()));
 
 							boolean isContainsMissingTranslations = translatedData.parallelStream().unordered().anyMatch(MissingAreaTranslationProtectionTime.class::isInstance);
 							if (isContainsMissingTranslations) {
 								LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
 								refreshDistrictsTranslation();
-								translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
+								translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData.getOrDefault(redAlertEvent.cat(), Collections.emptySet()));
 								//noinspection AssignmentUsedAsCondition
 								if (isContainsMissingTranslations = translatedData.parallelStream().unordered().anyMatch(MissingAreaTranslationProtectionTime.class::isInstance))
 									LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
@@ -500,7 +499,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 								System.out.println(output);
 
 							printDistrictsNotFoundWarning();
-							prevData = new HashSet<>(redAlertEvent.data());
+							prevData.put(redAlertEvent.cat(), new HashSet<>(redAlertEvent.data()));
 						}
 					}
 				} catch (JsonParseException e) {

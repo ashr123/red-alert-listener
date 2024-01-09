@@ -1759,11 +1759,6 @@
     "translation" : "Gizo",
     "protectionTimeInSeconds" : 90
   },
-  "גילון צורית" : {
-    "translatedAreaName" : "Upper Galilee",
-    "translation" : "Gilon Tzurit",
-    "protectionTimeInSeconds" : 30
-  },
   "גילת" : {
     "translatedAreaName" : "West Negev",
     "translation" : "Gilat",
@@ -2089,11 +2084,6 @@
     "translation" : "Hoshaya",
     "protectionTimeInSeconds" : 60
   },
-  "הזורע ויקנעם המושבה" : {
-    "translatedAreaName" : "Wadi Ara",
-    "translation" : "HaZoreah",
-    "protectionTimeInSeconds" : 90
-  },
   "הזורעים" : {
     "translatedAreaName" : "Lower Galilee",
     "translation" : "HaZor'im",
@@ -2178,11 +2168,6 @@
     "translatedAreaName" : "HaAmakim",
     "translation" : "Harduf",
     "protectionTimeInSeconds" : 60
-  },
-  "הרצליה - גליל ים ומרכז" : {
-    "translatedAreaName" : "Dan",
-    "translation" : "Herzeliya - Glil Yam and Center",
-    "protectionTimeInSeconds" : 90
   },
   "הרצליה - מערב" : {
     "translatedAreaName" : "Dan",
@@ -2537,11 +2522,6 @@
   "חפץ חיים" : {
     "translatedAreaName" : "Lachish",
     "translation" : "Hafetz Haim",
-    "protectionTimeInSeconds" : 60
-  },
-  "חפציבה ובית אלפא" : {
-    "translatedAreaName" : "Beit She'an Valley",
-    "translation" : "Heftziba and Beit Alfa",
     "protectionTimeInSeconds" : 60
   },
   "חצב" : {
@@ -2901,7 +2881,7 @@
   },
   "יקנעם המושבה והזורע" : {
     "translatedAreaName" : "Wadi Ara",
-    "translation" : "Yokneam Moshava",
+    "translation" : "Yokneam Moshava and HaZoreah",
     "protectionTimeInSeconds" : 90
   },
   "יקנעם עילית" : {
@@ -3132,11 +3112,6 @@
   "כעביה טבאש" : {
     "translatedAreaName" : "HaAmakim",
     "translation" : "Ka'abiyye Tabbash",
-    "protectionTimeInSeconds" : 60
-  },
-  "כעביה-טבאש-חג'אג'רה" : {
-    "translatedAreaName" : "HaAmakim",
-    "translation" : "Ka'abiyye-Tabbash-Hajajre",
     "protectionTimeInSeconds" : 60
   },
   "כפר אביב" : {
@@ -5698,11 +5673,6 @@
     "translatedAreaName" : "Shfelat Yehuda",
     "translation" : "Tzuba",
     "protectionTimeInSeconds" : 90
-  },
-  "צוחר" : {
-    "translatedAreaName" : "Gaza Envelope",
-    "translation" : "Tzohar",
-    "protectionTimeInSeconds" : 15
   },
   "צוחר, אוהד" : {
     "translatedAreaName" : "Gaza Envelope",
