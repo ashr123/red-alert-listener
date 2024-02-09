@@ -41,7 +41,7 @@ jobs:
         uses: actions/upload-artifact@v4.3.1
         with:
           name: red-alert-listener-${{ matrix.os }}-${{ matrix.architecture }}
-          path: red-alert-listener-*-jar-with-dependencies
+          path: red-alert-listener-*-jar-with-dependencies*
           compression-level: 9
 
   create-release:
@@ -54,7 +54,7 @@ jobs:
         name: Downloading artifacts
 
       - name: Display structure of downloaded files
-        run: ls -R
+        run: ls -lGFhR
 
       - name: Create Release
         uses: ncipollo/release-action@v1.14.0
