@@ -35,7 +35,7 @@ jobs:
         run: mvn package
 
       - name: Creating native image
-        run: native-image -jar target/red-alert-listener-*-jar-with-dependencies.jar
+        run: native-image -jar target/red-alert-listener-*-jar-with-dependencies.jar && mv -v red-alert-listener-*-jar-with-dependencies red-alert-listener-${{ matrix.os }}-${{ matrix.architecture }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v4.3.1
