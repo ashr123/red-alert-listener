@@ -6,7 +6,7 @@
 
 	<groupId>io.github.ashr123</groupId>
 	<artifactId>red-alert-listener</artifactId>
-	<version>5.2.15</version>
+	<version>5.2.16</version>
 
 	<name>Red Alert Listener</name>
 	<description>A stand alone terminal app that can get "red alert"s from IDF's Home Front Command</description>
@@ -105,6 +105,16 @@
 				<version>3.12.1</version>
 				<configuration>
 					<release>21</release>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>info.picocli</groupId>
+							<artifactId>picocli-codegen</artifactId>
+							<version>4.7.5</version>
+						</path>
+					</annotationProcessorPaths>
+					<compilerArgs>
+						<arg>-Aproject=${project.groupId}/${project.artifactId}</arg>
+					</compilerArgs>
 				</configuration>
 			</plugin>
 			<!-- this is for preventing the creation of jar without its dependencies -->

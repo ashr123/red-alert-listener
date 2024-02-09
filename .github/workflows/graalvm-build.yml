@@ -38,10 +38,21 @@ jobs:
         run: native-image -jar target/red-alert-listener-*-jar-with-dependencies.jar
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.3.1
         with:
-          name: red-alert-listener-${{ matrix.os }}-${{ matrix.architecture }}
-          path: red-alert-listener*
+          path: red-alert-listener-${{ matrix.os }}-${{ matrix.architecture }}
+          compression-level: 9
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4.1.2
+        name: Downloading artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R
 
       - name: Create Release
         uses: ncipollo/release-action@v1.14.0

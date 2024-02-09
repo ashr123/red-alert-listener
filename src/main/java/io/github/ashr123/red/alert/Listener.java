@@ -2,7 +2,6 @@ package io.github.ashr123.red.alert;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -55,7 +54,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	private static final ObjectMapper JSON_MAPPER = new JsonMapper()
 			.enable(SerializationFeature.INDENT_OUTPUT)
 			.enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
-			.disable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
+//			.disable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
 			.findAndRegisterModules();
 	private static final Configuration DEFAULT_CONFIGURATION = new Configuration(
 			false,
@@ -63,7 +62,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			true,
 			true,
 			false,
-			Duration.ofMillis(10000),
+			Duration.ofSeconds(10),
 			LanguageCode.HE,
 			Level.INFO,
 			Collections.emptySet()
@@ -121,7 +120,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				.collect(Collectors.toSet());
 	}
 
-	private String areaAndTranslatedDistrictsToString(CharSequence headline, Map<String, List<AreaTranslationProtectionTime>> districtsByAreaName, int cat) {
+	private String areaAndTranslatedDistrictsToString(CharSequence headline,
+													  Map<String, List<AreaTranslationProtectionTime>> districtsByAreaName,
+													  int cat) {
 		final Function<AreaTranslationProtectionTime, String> toString = cat == 1 || cat == 101 ?
 				areaTranslationProtectionTime -> areaTranslationProtectionTime.translation() + " (" + configuration.languageCode().getTimeTranslation(areaTranslationProtectionTime.protectionTimeInSeconds()) + ")" :
 				AreaTranslationProtectionTime::translation;
@@ -155,9 +156,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			LanguageCode languageCode,
 			@CommandLine.Option(names = {"-t", "--timeout"},
 					paramLabel = "timeout",
-					defaultValue = "10000",
-					description = "Timeout for connecting to IDF's Home Front Command's server in milliseconds.")
-			long timeout,
+					defaultValue = "PT10S",
+					description = "Timeout for connecting to IDF's Home Front Command's server in ISO 8601 (Duration) format, see https://en.wikipedia.org/wiki/ISO_8601#Durations.")
+			Duration timeout,
 			@CommandLine.Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
 					defaultValue = "INFO",
@@ -191,9 +192,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			LanguageCode languageCode,
 			@CommandLine.Option(names = {"-t", "--timeout"},
 					paramLabel = "timeout",
-					defaultValue = "10000",
-					description = "Timeout for connecting to IDF's Home Front Command's server in milliseconds.")
-			long timeout,
+					defaultValue = "PT10S",
+					description = "Timeout for connecting to IDF's Home Front Command's server in ISO 8601 (Duration) format, see https://en.wikipedia.org/wiki/ISO_8601#Durations.")
+			Duration timeout,
 			@CommandLine.Option(names = {"-L", "--logger-level"},
 					paramLabel = "logger level",
 					defaultValue = "INFO",
@@ -216,12 +217,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		);
 	}
 
-	private <D> Map<String, D> startSubcommandInputThread(
-			LanguageCode languageCode,
-			long timeout,
-			Level level,
-			Function<District, D> districtMapper
-	) throws InterruptedException {
+	private <D> Map<String, D> startSubcommandInputThread(LanguageCode languageCode,
+														  Duration timeout,
+														  Level level,
+														  Function<District, D> districtMapper) throws InterruptedException {
 		final CountDownLatch startSignal = new CountDownLatch(1);
 		Thread.startVirtualThread(() -> {
 			try (Scanner scanner = new Scanner(System.in, StandardCharsets.UTF_8)) {
@@ -244,14 +243,12 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		});
 		setLoggerLevel(level);
 		startSignal.await();
-		return loadRemoteDistricts(languageCode, Duration.ofMillis(timeout), districtMapper);
+		return loadRemoteDistricts(languageCode, timeout, districtMapper);
 	}
 
-	private <T> Map<String, T> loadRemoteDistricts(
-			LanguageCode languageCode,
-			Duration timeout,
-			Function<District, T> districtMapper
-	) {
+	private <T> Map<String, T> loadRemoteDistricts(LanguageCode languageCode,
+												   Duration timeout,
+												   Function<District, T> districtMapper) {
 		LOGGER.info("Getting districts from IDF's Home Front Command's server...");
 		while (isContinue) {
 			try {
@@ -513,7 +510,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		}
 	}
 
-	private List<? extends IAreaTranslationProtectionTime> filterPrevAndGetTranslatedData(RedAlertEvent redAlertEvent, Set<String> prevData) {
+	private List<? extends IAreaTranslationProtectionTime> filterPrevAndGetTranslatedData(RedAlertEvent redAlertEvent,
+																						  Set<String> prevData) {
 		return redAlertEvent.data().parallelStream().unordered()
 				.filter(Predicate.not(prevData::contains))
 				.map(key -> {

@@ -1,20 +1,24 @@
 {
   "Configuration": {
 	"Appenders": {
-	  "Console": {
-		"name": "Console-Appender",
-		"target": "SYSTEM_ERR",
-		"PatternLayout": {
-		  "pattern": "%d{DEFAULT} [%level] - %msg%n"
-		}
-	  },
-	  "Async": {
-		"name": "Async-Console-Appender",
-		"AppenderRef": {
-		  "ref": "Console-Appender"
+	  "Appender": [
+		{
+		  "type": "Console",
+		  "name": "Console-Appender",
+		  "target": "SYSTEM_ERR",
+		  "PatternLayout": {
+			"pattern": "%d{DEFAULT} [%level] - %msg%n"
+		  }
 		},
-		"LinkedTransferQueue": {}
-	  }
+		{
+		  "type": "Async",
+		  "name": "Async-Console-Appender",
+		  "AppenderRef": {
+			"ref": "Console-Appender"
+		  },
+		  "LinkedTransferQueue": {}
+		}
+	  ]
 	},
 	"Loggers": {
 	  "AsyncRoot": {

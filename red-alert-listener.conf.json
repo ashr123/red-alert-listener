@@ -1,16 +1,16 @@
 {
-	"isMakeSound" : true,
-	"isAlertAll" : false,
-	"isDisplayResponse" : true,
-	"isDisplayUntranslatedDistricts" : true,
-	"isShowTestAlerts" : false,
-	"timeout" : 10000,
-	"languageCode" : "HE",
-	"logLevel" : "INFO",
-	"districtsOfInterest" : [
-		"נהריה",
-		"רמת גן - מערב",
-		"תל אביב - מרכז העיר",
-		"קריית אונו"
-	]
+  "isMakeSound": true,
+  "isAlertAll": false,
+  "isDisplayResponse": true,
+  "isDisplayUntranslatedDistricts": true,
+  "isShowTestAlerts": false,
+  "timeout": "PT10S",
+  "languageCode": "HE",
+  "logLevel": "INFO",
+  "districtsOfInterest": [
+	"נהריה",
+	"רמת גן - מערב",
+	"תל אביב - מרכז העיר",
+	"קריית אונו"
+  ]
 }
