@@ -1,5 +1,8 @@
 name: GraalVM Native Image builds
-on: [ push, pull_request ]
+on:
+  push:
+    tags:
+      - v*
 jobs:
   build:
     name: Target ${{ matrix.os }}-${{ matrix.architecture }}
@@ -50,6 +53,7 @@ jobs:
     needs: build
 
     steps:
+      - uses: actions/checkout@v4.1.1
       - uses: actions/download-artifact@v4.1.2
         name: Downloading artifacts
 
