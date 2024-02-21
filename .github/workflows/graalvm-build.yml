@@ -63,4 +63,4 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1.14.0
         with:
-          artifacts: red-alert-listener*
+          artifacts: red-alert-listener*/*
