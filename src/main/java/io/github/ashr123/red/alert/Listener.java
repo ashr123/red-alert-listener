@@ -26,6 +26,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.text.Collator;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -71,7 +72,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	//		private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 //			BOM = Pattern.compile("﻿");
-//	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
+	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
 	@CommandLine.Option(names = {"-c", "--configuration-file"},
 			paramLabel = "configuration file",
 			defaultValue = "red-alert-listener.conf.json",

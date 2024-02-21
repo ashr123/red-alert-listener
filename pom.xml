@@ -6,7 +6,7 @@
 
 	<groupId>io.github.ashr123</groupId>
 	<artifactId>red-alert-listener</artifactId>
-	<version>5.2.16</version>
+	<version>5.2.17</version>
 
 	<name>Red Alert Listener</name>
 	<description>A stand alone terminal app that can get "red alert"s from IDF's Home Front Command</description>
@@ -60,7 +60,6 @@
 			<groupId>com.lmax</groupId>
 			<artifactId>disruptor</artifactId>
 			<version>4.0.0</version>
-<!--			<version>4.0.0</version>-->
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/info.picocli/picocli -->
 		<dependency>
