@@ -537,7 +537,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	}
 
 	private void refreshDistrictsTranslation() {
-		districts = loadRemoteDistricts(
+		final Map<String, AreaTranslationProtectionTime> updatedDistricts = loadRemoteDistricts(
 				configuration.languageCode(),
 				configuration.timeout(),
 				district -> new AreaTranslationProtectionTime(
@@ -546,6 +546,19 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						district.migun_time()
 				)
 		);
+		if (LOGGER.isDebugEnabled()) {
+			final Map<String, AreaTranslationProtectionTime> newAndModifiedDistricts = updatedDistricts.entrySet().parallelStream().unordered()
+					.filter(Predicate.not(districts.entrySet()::contains))
+					.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+			if (!newAndModifiedDistricts.isEmpty())
+				LOGGER.debug("New or modified districts: {}", newAndModifiedDistricts);
+			final Map<String, AreaTranslationProtectionTime> deletedDistricts = districts.entrySet().parallelStream().unordered()
+					.filter(Predicate.not(updatedDistricts.entrySet()::contains))
+					.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+			if (!deletedDistricts.isEmpty())
+				LOGGER.debug("Deleted districts: {}", deletedDistricts);
+		}
+		districts = updatedDistricts;
 	}
 
 	private static class LoggerLevelConverter implements CommandLine.ITypeConverter<Level> {

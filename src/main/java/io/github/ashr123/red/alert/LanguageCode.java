@@ -1,7 +1,10 @@
 package io.github.ashr123.red.alert;
 
+import io.github.ashr123.option.None;
+import io.github.ashr123.option.Option;
+import io.github.ashr123.option.Some;
+
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Taken from <a href=https://www.oref.org.il/Shared/ClientScripts/WarningMessages/WarningMessages.js>https://www.oref.org.il/Shared/ClientScripts/WarningMessages/WarningMessages.js</a>
@@ -134,8 +137,10 @@ public enum LanguageCode {
 	}
 
 	public String getTimeTranslation(int time) {
-		return Optional.ofNullable(timeTranslation.get(time))
-				.orElseGet(() -> time + " " + secondsTranslation);
+		return switch (Option.of(timeTranslation.get(time))) {
+			case Some(String translation) -> translation;
+			case None() -> time + " " + secondsTranslation;
+		};
 	}
 
 	public boolean containsTestKey(String key) {
@@ -149,7 +154,9 @@ public enum LanguageCode {
 	public String getTitleTranslation(int categoryCode, String defaultTitleTranslation) {
 		return titleTranslations == null ?
 				defaultTitleTranslation :
-				Optional.ofNullable(titleTranslations.get(categoryCode))
-						.orElseGet(() -> defaultTitleTranslation + " (translation doesn't exist)");
+				switch (Option.of(titleTranslations.get(categoryCode))) {
+					case Some(String translation) -> translation;
+					case None() -> defaultTitleTranslation + " (translation doesn't exist)";
+				};
 	}
 }

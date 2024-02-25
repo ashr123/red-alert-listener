@@ -18,6 +18,7 @@ jobs:
 #            architecture: aarch64
           - os: windows
             architecture: amd64
+
 #          - os: ubuntu
 #            architecture: aarch64
           - os: ubuntu
@@ -38,7 +39,7 @@ jobs:
         run: mvn package
 
       - name: Creating native image
-        run: native-image -jar target/red-alert-listener-*-jar-with-dependencies.jar
+        run: native-image -jar target/red-alert-listener-*-jar-with-dependencies.jar && file=$(echo red-alert-listener*-with-dependencies*) base="red-alert-listener"; [[ $file == *.* ]] && ext=".${file##*.}" || ext=''; mv "$file" "${base}${ext}"
 
       - name: Upload binary
         uses: actions/upload-artifact@v4.3.1
