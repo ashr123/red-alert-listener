@@ -5,6 +5,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import io.github.ashr123.option.None;
+import io.github.ashr123.option.Option;
+import io.github.ashr123.option.Some;
 import io.github.ashr123.timeMeasurement.Result;
 import io.github.ashr123.timeMeasurement.TimeMeasurement;
 import org.apache.logging.log4j.Level;
@@ -515,11 +518,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																						  Set<String> prevData) {
 		return redAlertEvent.data().parallelStream().unordered()
 				.filter(Predicate.not(prevData::contains))
-				.map(key -> {
-					final AreaTranslationProtectionTime areaTranslationProtectionTime = districts.get(key);
-					return areaTranslationProtectionTime == null ?
-							new MissingAreaTranslationProtectionTime(key) :
+				.map(key -> switch (Option.of(districts.get(key))) {
+					case Some(AreaTranslationProtectionTime areaTranslationProtectionTime) ->
 							areaTranslationProtectionTime;
+					case None() -> new MissingAreaTranslationProtectionTime(key);
 				})
 				.toList();
 	}
