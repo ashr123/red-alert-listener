@@ -1,6 +1,5 @@
 package io.github.ashr123.red.alert;
 
-import io.github.ashr123.option.None;
 import io.github.ashr123.option.Option;
 import io.github.ashr123.option.Some;
 
@@ -124,23 +123,22 @@ public enum LanguageCode {
 	/**
 	 * Search for {@code var tl}
 	 */
-	private final Map<Integer, String> timeTranslation;
+	private final Map<Integer, String> timeTranslations;
 
 	LanguageCode(Map<String, String> testDistrictTranslations,
 				 Map<Integer, String> titleTranslations,
 				 String secondsTranslation,
-				 Map<Integer, String> timeTranslation) {
+				 Map<Integer, String> timeTranslations) {
 		this.testDistrictTranslations = testDistrictTranslations;
 		this.titleTranslations = titleTranslations;
 		this.secondsTranslation = secondsTranslation;
-		this.timeTranslation = timeTranslation;
+		this.timeTranslations = timeTranslations;
 	}
 
 	public String getTimeTranslation(int time) {
-		return switch (Option.of(timeTranslation.get(time))) {
-			case Some(String translation) -> translation;
-			case None() -> time + " " + secondsTranslation;
-		};
+		return Option.of(timeTranslations.get(time)) instanceof Some(String timeTranslation) ?
+				timeTranslation :
+				time + " " + secondsTranslation;
 	}
 
 	public boolean containsTestKey(String key) {
@@ -154,9 +152,8 @@ public enum LanguageCode {
 	public String getTitleTranslation(int categoryCode, String defaultTitleTranslation) {
 		return titleTranslations == null ?
 				defaultTitleTranslation :
-				switch (Option.of(titleTranslations.get(categoryCode))) {
-					case Some(String translation) -> translation;
-					case None() -> defaultTitleTranslation + " (translation doesn't exist)";
-				};
+				Option.of(titleTranslations.get(categoryCode)) instanceof Some(String titleTranslation) ?
+						titleTranslation :
+						defaultTitleTranslation + " (translation doesn't exist)";
 	}
 }

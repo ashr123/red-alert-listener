@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import io.github.ashr123.option.None;
 import io.github.ashr123.option.Option;
 import io.github.ashr123.option.Some;
 import io.github.ashr123.timeMeasurement.Result;
@@ -435,13 +434,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 								continue;
 							}
 
-							List<? extends IAreaTranslationProtectionTime> translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData.getOrDefault(redAlertEvent.cat(), Collections.emptySet()));
+							List<? extends IAreaTranslationProtectionTime> translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
 
 							boolean isContainsMissingTranslations = translatedData.parallelStream().unordered().anyMatch(MissingAreaTranslationProtectionTime.class::isInstance);
 							if (isContainsMissingTranslations) {
 								LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
 								refreshDistrictsTranslation();
-								translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData.getOrDefault(redAlertEvent.cat(), Collections.emptySet()));
+								translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
 								//noinspection AssignmentUsedAsCondition
 								if (isContainsMissingTranslations = translatedData.parallelStream().unordered().anyMatch(MissingAreaTranslationProtectionTime.class::isInstance))
 									LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
@@ -515,14 +514,14 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	}
 
 	private List<? extends IAreaTranslationProtectionTime> filterPrevAndGetTranslatedData(RedAlertEvent redAlertEvent,
-																						  Set<String> prevData) {
+																						  Map<Integer, Set<String>> prevData) {
 		return redAlertEvent.data().parallelStream().unordered()
-				.filter(Predicate.not(prevData::contains))
-				.map(key -> switch (Option.of(districts.get(key))) {
-					case Some(AreaTranslationProtectionTime areaTranslationProtectionTime) ->
-							areaTranslationProtectionTime;
-					case None() -> new MissingAreaTranslationProtectionTime(key);
-				})
+				.filter(Predicate.not(prevData.getOrDefault(redAlertEvent.cat(), Collections.emptySet())::contains))
+				.map(key -> Option.of(districts.get(key)) instanceof Some(
+						AreaTranslationProtectionTime areaTranslationProtectionTime
+				) ?
+						areaTranslationProtectionTime :
+						new MissingAreaTranslationProtectionTime(key))
 				.toList();
 	}
 
