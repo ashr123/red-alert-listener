@@ -105,7 +105,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	}
 
 	private static void printHelpMsg() {
-		System.err.println("Enter \"t\" for sound test, \"c\" for clearing the screen, \"r\" for refresh the districts translation dictionary, \"q\" to quit or \"h\" for displaying this help massage.");
+		System.err.println("""
+				\t• Enter "t" to perform sound test.
+				\t• Enter "c" to clear the screen.
+				\t• Enter "r" to refresh the districts translation dictionary.
+				\t• Enter "l" to reload configuration file.
+				\t• Enter "q" to quit.
+				\t• Enter "h" to display this help massage.""");
 	}
 
 	private static void sleep() {
@@ -117,7 +123,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		}
 	}
 
-	private static Set<String> getTranslations(Collection<IAreaTranslationProtectionTime> translatedData) {
+	private static Set<String> getTranslations(Collection<AreaTranslationProtectionTime> translatedData) {
 		return translatedData.parallelStream().unordered()
 				.map(IAreaTranslationProtectionTime::translation)
 				.collect(Collectors.toSet());
@@ -361,6 +367,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
 							case "r", "refresh", "refresh-districts" -> refreshDistrictsTranslation();
 							case "h", "help" -> printHelpMsg();
+							case "l", "load-configuration" -> {
+								try {
+									loadConfiguration();
+								} catch (IOException e) {
+									LOGGER.info("Configuration error: {}", e.toString());
+								}
+							}
 							default -> {
 								System.err.println("Unrecognized command!");
 								printHelpMsg();
@@ -381,7 +394,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			System.err.println("Listening...");
 			while (isContinue)
 				try {
-					loadConfiguration();
+//					loadConfiguration();
 					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
 							HttpRequest.newBuilder(uri)
 									.header("Accept", "application/json")
