@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.github.ashr123.option.Option;
+import io.github.ashr123.option.OptionInt;
 import io.github.ashr123.option.Some;
+import io.github.ashr123.option.SomeInt;
 import io.github.ashr123.timeMeasurement.Result;
 import io.github.ashr123.timeMeasurement.TimeMeasurement;
 import org.apache.logging.log4j.Level;
@@ -349,7 +351,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				.findAny()
 				.orElse(null)*/);
 			 AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/alarmSound.wav"))));
-			 ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor()) {
+			 ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory())) {
 			clip.open(audioInputStream);
 			Thread.startVirtualThread(() -> {
 				try (Scanner scanner = new Scanner(System.in, StandardCharsets.UTF_8)) {
@@ -449,13 +451,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 							List<? extends IAreaTranslationProtectionTime> translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
 
-							boolean isContainsMissingTranslations = translatedData.parallelStream().unordered().anyMatch(MissingAreaTranslationProtectionTime.class::isInstance);
+							boolean isContainsMissingTranslations = translatedData.parallelStream().unordered().anyMatch(MissingTranslation.class::isInstance);
 							if (isContainsMissingTranslations) {
 								LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
 								refreshDistrictsTranslation();
 								translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
 								//noinspection AssignmentUsedAsCondition
-								if (isContainsMissingTranslations = translatedData.parallelStream().unordered().anyMatch(MissingAreaTranslationProtectionTime.class::isInstance))
+								if (isContainsMissingTranslations = translatedData.parallelStream().unordered().anyMatch(MissingTranslation.class::isInstance))
 									LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
 							}
 
@@ -477,7 +479,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							if (configuration.isDisplayUntranslatedDistricts() && isContainsMissingTranslations) {
 								output.append(translatedData.parallelStream().unordered()
 										.distinct() // TODO think about
-										.filter(MissingAreaTranslationProtectionTime.class::isInstance)
+										.filter(MissingTranslation.class::isInstance)
 										.map(IAreaTranslationProtectionTime::translation)
 										.sorted()
 										.collect(Collectors.joining(
@@ -494,16 +496,15 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 										.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
 										.collect(Collectors.groupingBy(AreaTranslationProtectionTime::translatedAreaName)); // for not restarting alert sound unnecessarily
 								if (!districtsForAlert.isEmpty()) {
-									districtsForAlert.values().parallelStream().unordered()
+									if (OptionInt.of(districtsForAlert.values().parallelStream().unordered()
 											.map(Collection::parallelStream)
 											.flatMap(Stream::unordered)
 											.mapToInt(AreaTranslationProtectionTime::protectionTimeInSeconds)
-											.max()
-											.ifPresent(maxProtectionTime -> {
-												clip.setFramePosition(0);
-												//noinspection NumericCastThatLosesPrecision
-												clip.loop(Math.max(1, (int) Math.round(maxProtectionTime / alarmSoundSecondLength)));
-											});
+											.max()) instanceof SomeInt(int maxProtectionTime)) {
+										clip.setFramePosition(0);
+										//noinspection NumericCastThatLosesPrecision
+										clip.loop(Math.max(1, (int) Math.round(maxProtectionTime / alarmSoundSecondLength)));
+									}
 									output.append(areaAndTranslatedDistrictsToString("ALERT ALERT ALERT", districtsForAlert, redAlertEvent.cat()));
 								}
 							}
@@ -534,7 +535,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						AreaTranslationProtectionTime areaTranslationProtectionTime
 				) ?
 						areaTranslationProtectionTime :
-						new MissingAreaTranslationProtectionTime(key))
+						new MissingTranslation(key))
 				.toList();
 	}
 
