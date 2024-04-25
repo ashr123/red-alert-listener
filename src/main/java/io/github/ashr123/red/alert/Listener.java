@@ -386,7 +386,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			final URI uri = URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			Map<Integer, Set<String>> prevData = new HashMap<>();
 			Instant currAlertsLastModified = Instant.MIN;
-			final int minRedAlertEventContentLength = """
+			final long minRedAlertEventContentLength = """
 					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
 			final double alarmSoundSecondLength = clip.getMicrosecondLength() / 1E6;
 			System.err.println("Listening...");
