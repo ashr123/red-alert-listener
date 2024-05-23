@@ -6,5 +6,5 @@ public record District(String label,
 					   int areaid,
 					   String areaname,
 					   String label_he,
-					   int migun_time) {
+					   long migun_time) {
 }
