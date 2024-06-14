@@ -21,15 +21,15 @@
    interface District {
        translation: string;
        protectionTimeInSeconds: number;
-   };
+   }
 
    interface AreaDistricts {
        [districtNameInHebrew: string]: District;
-   };
+   }
 
    interface AreaData {
        [translatedAreaName: string]: AreaDistricts;
-   };
+   }
 
    const data: AreaData = require('districts-en.json');
    ```
