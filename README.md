@@ -45,9 +45,9 @@
    import java.io.IOException;
    import java.time.Duration;
 
-   record Districts(String translation,
-                    @JsonDeserialize(converter = DurationDeserializer.class)
-                    Duration protectionTimeInSeconds) { 
+   record District(String translation,
+                   @JsonDeserialize(converter = DurationDeserializer.class)
+                   Duration protectionTimeInSeconds) { 
        private static class DurationDeserializer extends StdConverter<Long, Duration> { 
            @Override
            public Duration convert(Long value) {
