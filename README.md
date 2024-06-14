@@ -37,6 +37,7 @@
    Or in Java terms:
    ```java
    import com.fasterxml.jackson.core.type.TypeReference;
+   import com.fasterxml.jackson.annotation.JsonProperty;
    import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
    import com.fasterxml.jackson.databind.annotation.JsonSerialize;
    import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -46,8 +47,9 @@
    import java.time.Duration;
 
    record District(String translation,
+                   @JsonProperty("protectionTimeInSeconds")
                    @JsonDeserialize(converter = DurationDeserializer.class)
-                   Duration protectionTimeInSeconds) { 
+                   Duration protectionTime) { 
        private static class DurationDeserializer extends StdConverter<Long, Duration> { 
            @Override
            public Duration convert(Long value) {
