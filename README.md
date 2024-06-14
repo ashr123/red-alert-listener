@@ -16,7 +16,7 @@
 	- English (code `EN`)
 	- Russian (code `RU`)
 	- Arabic (code `AR`)
-4. `districts.json` (like `districts-en.json` example) created from `get-remote-districts-as-json-to-file` command is of the following shape (in TypeScript terms):
+4. `districts.json` (like [districts-en.json](districts-en.json "districts") example) created from `get-remote-districts-as-json-to-file` command is of the following shape (in TypeScript terms):
    ```ts
    interface District {
        translation: string;
