@@ -42,6 +42,7 @@
    import com.fasterxml.jackson.databind.json.JsonMapper;
    import com.fasterxml.jackson.databind.util.StdConverter;
 
+   import java.io.IOException;
    import java.time.Duration;
 
    record Districts(String translation,
@@ -55,12 +56,15 @@
        }
    }
 
-   public static void main(String... args) {
-       final Map<String /*translated area name*/, Map<String /*district name in Hebrew*/, District>> data = new JsonMapper().readValue(
-             new File("districts-en.json"),
-             new TypeReference<>() {
-             }
-       );
+   public static void main(String... args) throws IOException {
+       final Map<String /*translated area name*/,
+               Map<String /*district name in Hebrew*/,
+                       District>> data = new JsonMapper()
+               .readValue(
+                       new File("districts-en.json"),
+                       new TypeReference<>() {
+                       }
+               );
    }
    ```
 
