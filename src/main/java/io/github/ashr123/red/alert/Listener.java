@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.util.StdConverter;
 import io.github.ashr123.option.*;
 import io.github.ashr123.timeMeasurement.Result;
 import io.github.ashr123.timeMeasurement.TimeMeasurement;
@@ -40,7 +42,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @CommandLine.Command(name = "java -jar red-alert-listener.jar",
 		mixinStandardHelpOptions = true,
@@ -128,12 +129,14 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	}
 
 	private String areaAndTranslatedDistrictsToString(CharSequence headline,
-													  Map<String, List<AreaTranslationProtectionTime>> districtsByAreaName,
+													  List<AreaTranslationProtectionTime> districtsByAreaName,
 													  int cat) {
 		final Function<AreaTranslationProtectionTime, String> toString = cat == 1 || cat == 101 ?
 				areaTranslationProtectionTime -> areaTranslationProtectionTime.translation() + " (" + configuration.languageCode().getTimeTranslation(areaTranslationProtectionTime.protectionTime()) + ")" :
 				AreaTranslationProtectionTime::translation;
-		return districtsByAreaName.entrySet().parallelStream().unordered()
+		return districtsByAreaName.parallelStream().unordered()
+				.collect(Collectors.groupingByConcurrent(AreaTranslationProtectionTime::translatedAreaName))
+				.entrySet().parallelStream().unordered()
 				.sorted(Map.Entry.comparingByKey())
 				.map(areaNameAndDistricts -> areaNameAndDistricts.getValue().parallelStream().unordered()
 						.map(toString)
@@ -221,6 +224,17 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 								CommonProtectionTimes.getProtectionTime(district.migun_time())
 						)
 				)
+						.entrySet().parallelStream().unordered()
+						.collect(Collectors.groupingByConcurrent(
+								entry -> entry.getValue().translatedAreaName(),
+								Collectors.toConcurrentMap(
+										Map.Entry::getKey,
+										entry -> new DistrictsToFile(
+												entry.getValue().translation(),
+												entry.getValue().protectionTime()
+										)
+								)
+						))
 		);
 	}
 
@@ -274,7 +288,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 											LIST_TYPE_REFERENCE
 									)
 									.parallelStream().unordered()
-									.collect(Collectors.toMap(
+									.collect(Collectors.toConcurrentMap(
 											District::label_he,
 											districtMapper,
 											(value1, value2) -> {
@@ -384,7 +398,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
 			loadConfiguration();
 			final URI uri = URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-			Map<Integer, Set<String>> prevData = new HashMap<>();
+			final Map<Integer, Set<String>> prevData = new HashMap<>();
 			final var ref = new Object() {
 				Instant currAlertsLastModified = Instant.MIN;
 			};
@@ -412,15 +426,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							continue;
 						}
 						switch (OptionLong.of(httpResponse.headers().firstValueAsLong("Content-Length"))) {
-							case NoneLong() -> {
-								LOGGER.error("Couldn't get content length");
-								prevData.clear();
-							}
-							case SomeLong(long contentLength) when contentLength < minRedAlertEventContentLength -> prevData.clear();
-							case SomeLong(long contentLength) -> {
+							case SomeLong(long contentLength) when contentLength > minRedAlertEventContentLength -> {
 								switch (Option.of(httpResponse.headers().firstValue("Last-Modified")
 										.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from)))) {
-									case None() -> LOGGER.error("Couldn't get last modified date");
 									case Some(Instant lastModified) when ref.currAlertsLastModified.isBefore(lastModified) -> {
 										ref.currAlertsLastModified = lastModified;
 
@@ -462,12 +470,11 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 												LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
 										}
 
-										final Map<String, List<AreaTranslationProtectionTime>> unseenTranslatedDistricts = translatedData.parallelStream().unordered()
+										final List<AreaTranslationProtectionTime> unseenTranslatedDistricts = translatedData.parallelStream().unordered()
 												.distinct() // TODO think about
 												.filter(AreaTranslationProtectionTime.class::isInstance)
 												.map(AreaTranslationProtectionTime.class::cast)
-												.collect(Collectors.groupingBy(AreaTranslationProtectionTime::translatedAreaName)); // to know if new (unseen) districts were added from previous request
-
+												.toList(); // to know if new (unseen) districts were added from previous request.
 
 										final StringBuilder output = new StringBuilder();
 										if (configuration.isDisplayResponse() && !unseenTranslatedDistricts.isEmpty())
@@ -491,24 +498,18 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 													)));
 										}
 
-										if (configuration.isMakeSound() || configuration.isAlertAll()) {
-											final Map<String, List<AreaTranslationProtectionTime>> districtsForAlert = unseenTranslatedDistricts.values().parallelStream().unordered()
-													.map(Collection::parallelStream)
-													.flatMap(Stream::unordered)
-													.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-													.collect(Collectors.groupingBy(AreaTranslationProtectionTime::translatedAreaName)); // for not restarting alert sound unnecessarily
-											if (!districtsForAlert.isEmpty()) {
-												if (Option.of(districtsForAlert.values().parallelStream().unordered()
-														.map(Collection::parallelStream)
-														.flatMap(Stream::unordered)
-														.map(AreaTranslationProtectionTime::protectionTime)
-														.max(Comparator.naturalOrder())) instanceof Some(Duration maxProtectionTime)) {
-													clip.setFramePosition(0);
-													//noinspection NumericCastThatLosesPrecision
-													clip.loop(Math.max(1, (int) maxProtectionTime.dividedBy(alarmSoundDuration)));
-												}
-												output.append(areaAndTranslatedDistrictsToString("ALERT ALERT ALERT", districtsForAlert, redAlertEvent.cat()));
+										final List<AreaTranslationProtectionTime> districtsForAlert = unseenTranslatedDistricts.parallelStream().unordered()
+												.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
+												.toList(); // for not restarting alert sound unnecessary
+										if (Option.of(districtsForAlert.parallelStream().unordered()
+												.map(AreaTranslationProtectionTime::protectionTime)
+												.max(Comparator.naturalOrder())) instanceof Some(Duration maxProtectionTime)) {
+											if (configuration.isMakeSound() || configuration.isAlertAll()) {
+												clip.setFramePosition(0);
+												//noinspection NumericCastThatLosesPrecision
+												clip.loop(Math.max(1, (int) maxProtectionTime.dividedBy(alarmSoundDuration)));
 											}
+											output.append(areaAndTranslatedDistrictsToString("ALERT ALERT ALERT", districtsForAlert, redAlertEvent.cat()));
 										}
 
 										if (!output.isEmpty())
@@ -519,7 +520,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 									}
 									case Some<Instant> ignored -> {
 									}
+									case None<Instant> ignored -> LOGGER.error("Couldn't get last modified date");
 								}
+							}
+							case SomeLong ignored -> prevData.clear();
+							case NoneLong ignored -> {
+								LOGGER.error("Couldn't get content length");
+								prevData.clear();
 							}
 						}
 					}
@@ -569,12 +576,12 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		if (LOGGER.isDebugEnabled()) {
 			final Map<String, AreaTranslationProtectionTime> newAndModifiedDistricts = updatedDistricts.entrySet().parallelStream().unordered()
 					.filter(Predicate.not(districts.entrySet()::contains))
-					.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+					.collect(Collectors.toConcurrentMap(Map.Entry::getKey, Map.Entry::getValue));
 			if (!newAndModifiedDistricts.isEmpty())
 				LOGGER.debug("New or modified districts: {}", newAndModifiedDistricts);
 			final Map<String, AreaTranslationProtectionTime> deletedDistricts = districts.entrySet().parallelStream().unordered()
 					.filter(Predicate.not(updatedDistricts.entrySet()::contains))
-					.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+					.collect(Collectors.toConcurrentMap(Map.Entry::getKey, Map.Entry::getValue));
 			if (!deletedDistricts.isEmpty())
 				LOGGER.debug("Deleted districts: {}", deletedDistricts);
 		}
@@ -585,6 +592,16 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		@Override
 		public Level convert(String value) {
 			return Level.valueOf(value);
+		}
+	}
+
+	private record DistrictsToFile(String translation,
+								   @JsonSerialize(converter = DurationConverter.class) Duration protectionTimeInSeconds) {
+		private static class DurationConverter extends StdConverter<Duration, Long> {
+			@Override
+			public Long convert(Duration value) {
+				return value.toSeconds();
+			}
 		}
 	}
 }

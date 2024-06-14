@@ -16,6 +16,33 @@
 	- English (code `EN`)
 	- Russian (code `RU`)
 	- Arabic (code `AR`)
+4. `districts.json` (like `districts-en.json` example) created from `get-remote-districts-as-json-to-file` command is of the following shape (in TypeScript terms):
+   ```ts
+   interface District {
+       translation: string;
+       protectionTimeInSeconds: number;
+   }
+
+   interface AreaDistricts {
+       [districtNameInHebrew: string]: District;
+   }
+
+   interface AreaData {
+       [translatedAreaName: string]: AreaDistricts;
+   }
+   ```
+   
+   Or in Java terms:
+   ```java
+   record District(String translation, long protectionTimeInSeconds) {
+   }
+   
+   interface AreaDistricts extends Map<String /*district name in Hebrew*/, District> {
+   }
+   
+   interface AreaData extends Map<String /*translated area name*/, AreaDistricts> {
+   }
+   ```
 
 [comment]: <> (   Got it by running the following code on the DevTools console window on chrome)
 
