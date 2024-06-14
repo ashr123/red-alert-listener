@@ -4,9 +4,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.util.StdConverter;
 import io.github.ashr123.option.*;
 import io.github.ashr123.timeMeasurement.Result;
 import io.github.ashr123.timeMeasurement.TimeMeasurement;
@@ -229,7 +227,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 								entry -> entry.getValue().translatedAreaName(),
 								Collectors.toConcurrentMap(
 										Map.Entry::getKey,
-										entry -> new DistrictsToFile(
+										entry -> new DistrictsFile(
 												entry.getValue().translation(),
 												entry.getValue().protectionTime()
 										)
@@ -592,16 +590,6 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		@Override
 		public Level convert(String value) {
 			return Level.valueOf(value);
-		}
-	}
-
-	private record DistrictsToFile(String translation,
-								   @JsonSerialize(converter = DurationConverter.class) Duration protectionTimeInSeconds) {
-		private static class DurationConverter extends StdConverter<Duration, Long> {
-			@Override
-			public Long convert(Duration value) {
-				return value.toSeconds();
-			}
 		}
 	}
 }

@@ -21,26 +21,46 @@
    interface District {
        translation: string;
        protectionTimeInSeconds: number;
-   }
+   };
 
    interface AreaDistricts {
        [districtNameInHebrew: string]: District;
-   }
+   };
 
    interface AreaData {
        [translatedAreaName: string]: AreaDistricts;
-   }
+   };
+
+   const data: AreaData = require('districts-en.json');
    ```
    
    Or in Java terms:
    ```java
-   record District(String translation, long protectionTimeInSeconds) {
+   import com.fasterxml.jackson.core.type.TypeReference;
+   import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+   import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+   import com.fasterxml.jackson.databind.json.JsonMapper;
+   import com.fasterxml.jackson.databind.util.StdConverter;
+
+   import java.time.Duration;
+
+   record Districts(String translation,
+                    @JsonDeserialize(converter = DurationDeserializer.class)
+                    Duration protectionTimeInSeconds) { 
+       private static class DurationDeserializer extends StdConverter<Long, Duration> { 
+           @Override
+           public Duration convert(Long value) {
+               return Duration.ofSeconds(value);
+           }
+       }
    }
-   
-   interface AreaDistricts extends Map<String /*district name in Hebrew*/, District> {
-   }
-   
-   interface AreaData extends Map<String /*translated area name*/, AreaDistricts> {
+
+   public static void main(String... args) {
+       final Map<String /*translated area name*/, Map<String /*district name in Hebrew*/, District>> data = new JsonMapper().readValue(
+             new File("districts-en.json"),
+             new TypeReference<>() {
+             }
+       );
    }
    ```
 
