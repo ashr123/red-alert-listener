@@ -122,7 +122,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 	private static Set<String> getTranslations(Collection<AreaTranslationProtectionTime> translatedData) {
 		return translatedData.parallelStream().unordered()
-				.map(IAreaTranslationProtectionTime::translation)
+				.map(AreaTranslationProtectionTime::translation)
 				.collect(Collectors.toSet());
 	}
 
@@ -137,8 +137,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				.entrySet().parallelStream().unordered()
 				.sorted(Map.Entry.comparingByKey())
 				.map(areaNameAndDistricts -> areaNameAndDistricts.getValue().parallelStream().unordered()
+						.sorted(Comparator.comparing(AreaTranslationProtectionTime::translation))
 						.map(toString)
-						.sorted()
 						.collect(Collectors.joining(
 								"," + System.lineSeparator() + "\t\t",
 								areaNameAndDistricts.getKey() + ":" + System.lineSeparator() + "\t\t",
@@ -353,7 +353,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 	@Override
 	public void run() {
-		System.err.println("Preparing Red Alert Listener v" + getClass().getPackage().getImplementationVersion() + "...");
+		System.err.println("Preparing " + getVersion()[0] + "...");
 		try (Clip clip = AudioSystem.getClip(/*Stream.of(AudioSystem.getMixerInfo()).parallel().unordered()
 				.filter(mixerInfo -> COLLATOR.equals(mixerInfo.getName(), "default [default]"))
 				.findAny()
@@ -487,7 +487,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 											output.append(translatedData.parallelStream().unordered()
 													.distinct() // TODO think about
 													.filter(MissingTranslation.class::isInstance)
-													.map(IAreaTranslationProtectionTime::translation)
+													.map(MissingTranslation.class::cast)
+													.map(MissingTranslation::untranslatedName)
 													.sorted()
 													.collect(Collectors.joining(
 															"," + System.lineSeparator() + "\t",
