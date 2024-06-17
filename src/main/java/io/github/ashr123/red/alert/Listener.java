@@ -49,7 +49,11 @@ import java.util.stream.Collectors;
 public class Listener implements Runnable, CommandLine.IVersionProvider {
 	private static final TypeReference<List<District>> LIST_TYPE_REFERENCE = new TypeReference<>() {
 	};
-	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(FixedDateFormat.FixedFormat.DEFAULT.getPattern(), Locale.getDefault(Locale.Category.FORMAT)).withZone(ZoneId.systemDefault());
+	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(
+					FixedDateFormat.FixedFormat.DEFAULT.getPattern(),
+					Locale.getDefault(Locale.Category.FORMAT)
+			)
+			.withZone(ZoneId.systemDefault());
 	private static final Logger LOGGER = LogManager.getLogger();
 	private static final ObjectMapper JSON_MAPPER = new JsonMapper()
 			.enable(SerializationFeature.INDENT_OUTPUT)
@@ -219,7 +223,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						district -> new AreaTranslationProtectionTime(
 								district.areaname(),
 								district.label(),
-								CommonProtectionTimes.getProtectionTime(district.migun_time())
+								district.migun_time()
 						)
 				)
 						.entrySet().parallelStream().unordered()
@@ -569,7 +573,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				district -> new AreaTranslationProtectionTime(
 						district.areaname(),
 						district.label(),
-						CommonProtectionTimes.getProtectionTime(district.migun_time())
+						district.migun_time()
 				)
 		);
 		if (LOGGER.isDebugEnabled()) {

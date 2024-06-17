@@ -18,11 +18,4 @@ public record DistrictsFile(String translation,
 			return value.toSeconds();
 		}
 	}
-
-	private static class DurationDeserializer extends StdConverter<Long, Duration> {
-		@Override
-		public Duration convert(Long value) {
-			return CommonProtectionTimes.getProtectionTime(value);
-		}
-	}
 }
