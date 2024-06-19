@@ -220,20 +220,16 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						languageCode,
 						timeout,
 						loggerLevel,
-						district -> new AreaTranslationProtectionTime(
-								district.areaname(),
-								district.label(),
-								district.migun_time()
-						)
+						Function.identity()
 				)
 						.entrySet().parallelStream().unordered()
 						.collect(Collectors.groupingByConcurrent(
-								entry -> entry.getValue().translatedAreaName(),
+								entry -> entry.getValue().areaname(),
 								Collectors.toConcurrentMap(
 										Map.Entry::getKey,
-										entry -> new DistrictsFile(
-												entry.getValue().translation(),
-												entry.getValue().protectionTime()
+										entry -> new FileDistrictData(
+												entry.getValue().label(),
+												entry.getValue().migun_time()
 										)
 								)
 						))

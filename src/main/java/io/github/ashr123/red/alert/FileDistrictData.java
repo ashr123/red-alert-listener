@@ -7,11 +7,11 @@ import com.fasterxml.jackson.databind.util.StdConverter;
 
 import java.time.Duration;
 
-public record DistrictsFile(String translation,
-							@JsonProperty("protectionTimeInSeconds")
-							@JsonSerialize(converter = DurationSerializer.class)
-							@JsonDeserialize(converter = DurationDeserializer.class)
-							Duration protectionTime) {
+public record FileDistrictData(String translation,
+							   @JsonProperty("protectionTimeInSeconds")
+							   @JsonSerialize(converter = DurationSerializer.class)
+							   @JsonDeserialize(converter = DurationDeserializer.class)
+							   Duration protectionTime) {
 	private static class DurationSerializer extends StdConverter<Duration, Long> {
 		@Override
 		public Long convert(Duration value) {
