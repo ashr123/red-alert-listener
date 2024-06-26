@@ -33,7 +33,7 @@
 
    const data: AreaData = require('districts-en.json');
    ```
-   
+
    Or in Java terms:
    ```java
    import com.fasterxml.jackson.core.type.TypeReference;
@@ -49,8 +49,8 @@
    record District(String translation,
                    @JsonProperty("protectionTimeInSeconds")
                    @JsonDeserialize(converter = DurationDeserializer.class)
-                   Duration protectionTime) { 
-       private static class DurationDeserializer extends StdConverter<Long, Duration> { 
+                   Duration protectionTime) {
+       private static class DurationDeserializer extends StdConverter<Long, Duration> {
            @Override
            public Duration convert(Long value) {
                return Duration.ofSeconds(value);

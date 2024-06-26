@@ -425,6 +425,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						}
 						switch (OptionLong.of(httpResponse.headers().firstValueAsLong("Content-Length"))) {
 							case SomeLong(long contentLength) when contentLength > minRedAlertEventContentLength -> {
+								//noinspection NestedSwitchStatement
 								switch (Option.of(httpResponse.headers().firstValue("Last-Modified")
 										.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from)))) {
 									case Some(Instant lastModified) when ref.currAlertsLastModified.isBefore(lastModified) -> {
