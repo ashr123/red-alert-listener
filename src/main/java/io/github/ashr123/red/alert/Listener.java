@@ -47,7 +47,9 @@ import java.util.stream.Collectors;
 		showDefaultValues = true,
 		description = "An App that can get \"red alert\"s from IDF's Home Front Command.")
 public class Listener implements Runnable, CommandLine.IVersionProvider {
-	private static final TypeReference<List<District>> LIST_TYPE_REFERENCE = new TypeReference<>() {
+	private static final TypeReference<List<District>> DISTRICTS_TYPE_REFERENCE = new TypeReference<>() {
+	};
+	private static final TypeReference<List<AlertTranslation>> ALERTS_TRANSLATION_TYPE_REFERENCE = new TypeReference<>() {
 	};
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(
 					FixedDateFormat.FixedFormat.DEFAULT.getPattern(),
@@ -267,6 +269,60 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		return loadRemoteDistricts(languageCode, timeout, districtMapper);
 	}
 
+	private Map<Integer, AlertTranslation> loadAlertsTranslation(Duration timeout) {
+		LOGGER.info("Getting alerts translation from IDF's Home Front Command's server...");
+		while (isContinue) {
+			try {
+				final Result<Map<Integer, AlertTranslation>> result = TimeMeasurement.measureAndExecuteCallable(() -> {
+					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
+							HttpRequest.newBuilder(URI.create("https://www.oref.org.il/alerts/alertsTranslation.json"))
+									.header("Accept", "application/json")
+									.timeout(timeout)
+									.build(),
+							HttpResponse.BodyHandlers.ofInputStream()
+					);
+					try (InputStream body = httpResponse.body()) {
+						if (httpResponse.statusCode() >= 200 && httpResponse.statusCode() < 300)
+							return JSON_MAPPER.readValue(
+											/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
+											ALERTS_TRANSLATION_TYPE_REFERENCE
+									)
+									.parallelStream().unordered()
+									.filter(alertTranslation -> alertTranslation.catId() != 0)
+									.collect(Collectors.toConcurrentMap(
+											AlertTranslation::catId,
+											Function.identity(),
+											(value1, value2) -> {
+												LOGGER.trace("value1: {}, value2: {}", value1, value2);
+												return value2;
+											}
+									));
+					}
+					LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
+					return Collections.emptyMap();
+				});
+				if (result.getResult().isEmpty()) {
+					sleep();
+					continue;
+				}
+				LOGGER.info("Done (took {} milliseconds)", result.getTimeTaken());
+				return result.getResult();
+			} catch (JsonParseException e) {
+				LOGGER.error("JSON parsing error: {}", e.toString());
+			} catch (Exception e) {
+				LOGGER.debug("Failed to get alerts translation for: {}. Trying again...", e.toString());
+			}
+			sleep();
+		}
+		return Collections.emptyMap();
+	}
+
+	/**
+	 * <li><a href=https://www.oref.org.il/districts/districts_heb.json>districts_heb.json</a></li>
+	 * <li><a href=https://www.oref.org.il/districts/districts_eng.json>districts_eng.json</a></li>
+	 * <li><a href=https://www.oref.org.il/districts/districts_rus.json>districts_rus.json</a></li>
+	 * <li><a href=https://www.oref.org.il/districts/districts_arb.json>districts_arb.json</a></li>
+	 */
 	private <T> Map<String, T> loadRemoteDistricts(LanguageCode languageCode,
 												   Duration timeout,
 												   Function<District, T> districtMapper) {
@@ -285,7 +341,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						if (httpResponse.statusCode() >= 200 && httpResponse.statusCode() < 300)
 							return JSON_MAPPER.readValue(
 											/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
-											LIST_TYPE_REFERENCE
+											DISTRICTS_TYPE_REFERENCE
 									)
 									.parallelStream().unordered()
 									.collect(Collectors.toConcurrentMap(
@@ -397,6 +453,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			});
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
 			loadConfiguration();
+			Map<Integer, AlertTranslation> alertsTranslation = loadAlertsTranslation(configuration.timeout());
 			final URI uri = URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final Map<Integer, Set<String>> prevData = new HashMap<>();
 			final var ref = new Object() {
@@ -445,7 +502,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 												System.out.println(redAlertToString(
 														contentLength,
 														lastModified,
-														redAlertEvent,
+														alertsTranslation.get(redAlertEvent.cat()),
 														redAlertEvent.data().parallelStream().unordered()
 																.map(configuration.languageCode()::getTestTranslation)
 																.sorted()
@@ -482,7 +539,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 											redAlertToString(
 													contentLength,
 													lastModified,
-													redAlertEvent,
+													alertsTranslation.get(redAlertEvent.cat()),
 													areaAndTranslatedDistrictsToString("Translated Areas and Districts", unseenTranslatedDistricts, redAlertEvent.cat()),
 													output
 											);
@@ -555,10 +612,11 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 	private StringBuilder redAlertToString(long contentLength,
 										   TemporalAccessor alertsLastModified,
-										   RedAlertEvent redAlertEvent,
+										   AlertTranslation alertTranslation,
 										   String translatedData,
 										   StringBuilder output) {
-		return output.append("Translated Title: ").append(configuration.languageCode().getTitleTranslation(redAlertEvent.cat(), redAlertEvent.title())).append(System.lineSeparator())
+		return output.append("Translated Title: ").append(alertTranslation.getAlertTitle(configuration.languageCode())).append(System.lineSeparator())
+				.append("Translated Description").append(alertTranslation.getAlertText(configuration.languageCode())).append(System.lineSeparator())
 				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified)).append(System.lineSeparator())
 				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(Instant.now())).append(System.lineSeparator())
