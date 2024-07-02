@@ -6,99 +6,99 @@
     },
     "אליפז ומכרות תמנע" : {
       "translation" : "Elipaz and Timna Mines",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "באר אורה" : {
       "translation" : "Be'er Ora",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "גרופית" : {
       "translation" : "Grofit",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "חוות ערנדל" : {
       "translation" : "Ardanel Ranch",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "חי-בר יטבתה" : {
       "translation" : "Yotvata Hai Bar Nature Reserve",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "חצבה" : {
       "translation" : "Hatzeva",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "יהל" : {
       "translation" : "Yahel",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "יטבתה" : {
       "translation" : "Yotvata",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "כושי רמון" : {
       "translation" : "Kushi Rimon",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "לוטן" : {
       "translation" : "Lotan",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "נאות סמדר" : {
       "translation" : "Neot Smadar",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "נווה חריף" : {
       "translation" : "Neveh Harif",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "סמר" : {
       "translation" : "Samar",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "ספיר" : {
       "translation" : "Sapir",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "עידן" : {
       "translation" : "Idan",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "עין חצבה" : {
       "translation" : "Ein Hatzeva",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "עין יהב" : {
       "translation" : "Ein Yahav",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "עיר אובות" : {
       "translation" : "Ir Ovot",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "פארן" : {
       "translation" : "Paran",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "צופר" : {
       "translation" : "Tzofar",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "צוקים" : {
       "translation" : "Tzukim",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "קטורה" : {
       "translation" : "Ktura",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "שחרות" : {
       "translation" : "Shachrut",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "שיטים" : {
       "translation" : "Shitim",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     }
   },
   "Beit She'an Valley" : {
@@ -892,7 +892,7 @@
     },
     "נהריה" : {
       "translation" : "Nahariya",
-      "protectionTimeInSeconds" : 0
+      "protectionTimeInSeconds" : 15
     },
     "נווה זיו" : {
       "translation" : "Neveh Ziv",
@@ -1064,6 +1064,10 @@
       "translation" : "Yehud-Monosson",
       "protectionTimeInSeconds" : 90
     },
+    "כל הארץ" : {
+      "translation" : "Entire country",
+      "protectionTimeInSeconds" : 0
+    },
     "כפר סירקין" : {
       "translation" : "Kfar Sirkin",
       "protectionTimeInSeconds" : 90
@@ -1180,7 +1184,7 @@
     },
     "נאות הכיכר" : {
       "translation" : "Neot HaKikar",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "נווה זוהר" : {
       "translation" : "Neveh Zohar",
@@ -1196,7 +1200,7 @@
     },
     "עין תמר" : {
       "translation" : "Ein Tamar",
-      "protectionTimeInSeconds" : 180
+      "protectionTimeInSeconds" : 90
     },
     "קליה" : {
       "translation" : "Kalia",
@@ -2492,7 +2496,7 @@
     },
     "חצור" : {
       "translation" : "Hatzor",
-      "protectionTimeInSeconds" : 60
+      "protectionTimeInSeconds" : 45
     },
     "יבנה" : {
       "translation" : "Yavne",
@@ -2544,7 +2548,7 @@
     },
     "לכיש" : {
       "translation" : "Lakhish",
-      "protectionTimeInSeconds" : 60
+      "protectionTimeInSeconds" : 45
     },
     "מישר" : {
       "translation" : "Meishar",
@@ -3710,7 +3714,7 @@
     },
     "גלאון" : {
       "translation" : "Galon",
-      "protectionTimeInSeconds" : 60
+      "protectionTimeInSeconds" : 45
     },
     "גפן" : {
       "translation" : "Geffen",
@@ -4197,7 +4201,7 @@
       "protectionTimeInSeconds" : 0
     },
     "אשדות יעקב איחוד" : {
-      "translation" : "Ashdod Yacov Ichud",
+      "translation" : "Ashdot Yacov Ichud",
       "protectionTimeInSeconds" : 60
     },
     "אשדות יעקב מאוחד" : {
@@ -4786,7 +4790,7 @@
     },
     "שבי ציון" : {
       "translation" : "Shavei Zion",
-      "protectionTimeInSeconds" : 0
+      "protectionTimeInSeconds" : 30
     },
     "שדה אליעזר" : {
       "translation" : "Sdeh Eliezer",

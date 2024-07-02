@@ -71,7 +71,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			Level.INFO,
 			Collections.emptySet()
 	);
-	private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+			.followRedirects(HttpClient.Redirect.NORMAL)
+			.build();
 	//		private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 //			BOM = Pattern.compile("﻿");
@@ -273,7 +275,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			try {
 				final Result<Map<String, T>> result = TimeMeasurement.measureAndExecuteCallable(() -> {
 					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
-							HttpRequest.newBuilder(URI.create("https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase(Locale.ROOT)))
+							HttpRequest.newBuilder(URI.create("https://alerts-history.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase(Locale.ROOT)))
 									.header("Accept", "application/json")
 									.timeout(timeout)
 									.build(),
