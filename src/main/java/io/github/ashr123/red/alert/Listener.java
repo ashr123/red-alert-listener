@@ -469,8 +469,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
 							HttpRequest.newBuilder(uri)
 									.header("Accept", "application/json")
-									.header("X-Requested-With", "XMLHttpRequest")
-									.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase(Locale.ROOT) + "/Pakar.aspx")
+//									.header("X-Requested-With", "XMLHttpRequest")
+//									.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase(Locale.ROOT) + "/Pakar.aspx")
 									.timeout(configuration.timeout())
 									.build(),
 							HttpResponse.BodyHandlers.ofInputStream()
