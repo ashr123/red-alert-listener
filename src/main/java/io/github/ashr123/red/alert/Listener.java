@@ -619,7 +619,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 										   String translatedData,
 										   StringBuilder output) {
 		return output.append("Translated Title: ").append(alertTranslation.getAlertTitle(configuration.languageCode())).append(System.lineSeparator())
-				.append("Translated Description").append(alertTranslation.getAlertText(configuration.languageCode())).append(System.lineSeparator())
+				.append("Translated Description: ").append(alertTranslation.getAlertText(configuration.languageCode())).append(System.lineSeparator())
 				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
 				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified)).append(System.lineSeparator())
 				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(Instant.now())).append(System.lineSeparator())
