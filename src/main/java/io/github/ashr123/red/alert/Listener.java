@@ -592,9 +592,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				} catch (JsonParseException e) {
 					LOGGER.error("JSON parsing error: {}", e.toString());
 				} catch (IOException e) {
-                    if (Option.of(e.getMessage()) instanceof Some(String message) && message.contains("GOAWAY received"))
+					if (Option.of(e.getMessage()) instanceof Some(String message) && message.contains("GOAWAY received"))
 						LOGGER.trace("Got GOAWAY: {}", e.toString());
-                    else
+					else
 						LOGGER.debug("Got exception: {}", e.toString());
 					sleep();
 				}
