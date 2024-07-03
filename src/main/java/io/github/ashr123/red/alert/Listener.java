@@ -74,7 +74,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			Collections.emptySet()
 	);
 	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-			.followRedirects(HttpClient.Redirect.NORMAL)
+			.followRedirects(HttpClient.Redirect.NORMAL) // ?
 			.build();
 	//		private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
@@ -269,7 +269,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		return loadRemoteDistricts(languageCode, timeout, districtMapper);
 	}
 
-	private Map<Integer, AlertTranslation> loadAlertsTranslation(Duration timeout) {
+	private Map<Integer, AlertTranslation> loadAlertsTranslation() {
 		LOGGER.info("Getting alerts translation from IDF's Home Front Command's server...");
 		while (isContinue) {
 			try {
@@ -277,7 +277,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
 							HttpRequest.newBuilder(URI.create("https://www.oref.org.il/alerts/alertsTranslation.json"))
 									.header("Accept", "application/json")
-									.timeout(timeout)
+									.timeout(configuration.timeout())
 									.build(),
 							HttpResponse.BodyHandlers.ofInputStream()
 					);
@@ -453,7 +453,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			});
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
 			loadConfiguration();
-			Map<Integer, AlertTranslation> alertsTranslation = loadAlertsTranslation(configuration.timeout());
+			Map<Integer, AlertTranslation> alertsTranslation = loadAlertsTranslation();
 			final URI uri = URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json");
 			final Map<Integer, Set<String>> prevData = new HashMap<>();
 			final var ref = new Object() {
@@ -592,7 +592,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				} catch (JsonParseException e) {
 					LOGGER.error("JSON parsing error: {}", e.toString());
 				} catch (IOException e) {
-					LOGGER.debug("Got exception: {}", e.toString());
+					if (!e.getMessage().contains("GOAWAY received"))
+						LOGGER.debug("Got exception: {}", e.toString());
+					else
+						LOGGER.trace("Got GOAWAY: {}", e.toString());
 					sleep();
 				}
 		} catch (Throwable e) {
