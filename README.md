@@ -99,3 +99,4 @@ Legal districts (and their translation) can be found by:
 ![demo4](pic6.png "Demo")
 ![Operation Shield and Arrow](pic7.png "Operation Shield and Arrow")
 ![Swords of Iron War](pic8.png "Swords of Iron War")
+![Swords of Iron War](pic9.png "Swords of Iron War")
