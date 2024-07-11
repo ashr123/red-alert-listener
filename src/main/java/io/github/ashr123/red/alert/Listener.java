@@ -599,8 +599,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 										}
 
 										final List<AreaTranslationProtectionTime> districtsForAlert = unseenTranslatedDistricts.parallelStream().unordered()
-														.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-														.toList(); // for not restarting alert sound unnecessarily
+												.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
+												.toList(); // for not restarting alert sound unnecessarily
 										if (Option.of((configuration.isAlertAll() ? unseenTranslatedDistricts : districtsForAlert).parallelStream().unordered()
 												.map(AreaTranslationProtectionTime::protectionTime)
 												.min(Comparator.naturalOrder())) instanceof Some(Duration minProtectionTime)) {
