@@ -269,52 +269,18 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		return loadRemoteDistricts(languageCode, timeout, districtMapper);
 	}
 
-	private Map<Integer, AlertTranslation> loadAlertsTranslation() {
-		LOGGER.info("Getting alerts translation from IDF's Home Front Command's server...");
-		while (isContinue) {
-			try {
-				final Result<Map<Integer, AlertTranslation>> result = TimeMeasurement.measureAndExecuteCallable(() -> {
-					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
-							HttpRequest.newBuilder(URI.create("https://www.oref.org.il/alerts/alertsTranslation.json"))
-									.header("Accept", "application/json")
-									.timeout(configuration.timeout())
-									.build(),
-							HttpResponse.BodyHandlers.ofInputStream()
-					);
-					try (InputStream body = httpResponse.body()) {
-						if (httpResponse.statusCode() >= 200 && httpResponse.statusCode() < 300)
-							return JSON_MAPPER.readValue(
-											/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
-											ALERTS_TRANSLATION_TYPE_REFERENCE
-									)
-									.parallelStream().unordered()
-									.filter(alertTranslation -> alertTranslation.catId() != 0)
-									.collect(Collectors.toConcurrentMap(
-											AlertTranslation::catId,
-											Function.identity(),
-											(value1, value2) -> {
-												LOGGER.trace("value1: {}, value2: {}", value1, value2);
-												return value2;
-											}
-									));
-					}
-					LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
-					return Collections.emptyMap();
-				});
-				if (result.getResult().isEmpty()) {
-					sleep();
-					continue;
-				}
-				LOGGER.info("Done (took {} milliseconds)", result.getTimeTaken());
-				return result.getResult();
-			} catch (JsonParseException e) {
-				LOGGER.error("JSON parsing error: {}", e.toString());
-			} catch (Exception e) {
-				LOGGER.debug("Failed to get alerts translation for: {}. Trying again...", e.toString());
-			}
-			sleep();
-		}
-		return Collections.emptyMap();
+	private static StringBuilder redAlertToString(long contentLength,
+												  TemporalAccessor alertsLastModified,
+												  String translatedTitle,
+												  String translatedDescription,
+												  String translatedData,
+												  StringBuilder output) {
+		return output.append("Translated Title: ").append(translatedTitle).append(System.lineSeparator())
+				.append("Translated Description: ").append(translatedDescription).append(System.lineSeparator())
+				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
+				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified)).append(System.lineSeparator())
+				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(Instant.now())).append(System.lineSeparator())
+				.append(translatedData);
 	}
 
 	/**
@@ -409,6 +375,64 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		}
 	}
 
+	private Map<Integer, AlertTranslation> loadAlertsTranslation() {
+		LOGGER.info("Getting alerts translation from IDF's Home Front Command's server...");
+		while (isContinue) {
+			try {
+				final Result<Map<Integer, AlertTranslation>> result = TimeMeasurement.measureAndExecuteCallable(() -> {
+					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
+							HttpRequest.newBuilder(URI.create("https://www.oref.org.il/alerts/alertsTranslation.json"))
+									.header("Accept", "application/json")
+									.timeout(configuration.timeout())
+									.build(),
+							HttpResponse.BodyHandlers.ofInputStream()
+					);
+					try (InputStream body = httpResponse.body()) {
+						if (httpResponse.statusCode() >= 200 && httpResponse.statusCode() < 300)
+							return JSON_MAPPER.readValue(
+											/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
+											ALERTS_TRANSLATION_TYPE_REFERENCE
+									)
+									.parallelStream().unordered()
+									.filter(alertTranslation -> alertTranslation.matrixCatId() != 0)
+									.collect(Collectors.toConcurrentMap(
+											AlertTranslation::matrixCatId,
+											Function.identity(),
+											(value1, value2) -> {
+												LOGGER.trace("value1: {}, value2: {}", value1, value2);
+												return value2;
+											}
+									));
+					}
+					LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
+					return Collections.emptyMap();
+				});
+				if (result.getResult().isEmpty()) {
+					sleep();
+					continue;
+				}
+				LOGGER.info("Done (took {} milliseconds)", result.getTimeTaken());
+				return result.getResult();
+			} catch (JsonParseException e) {
+				LOGGER.error("JSON parsing error: {}", e.toString());
+			} catch (Exception e) {
+				LOGGER.debug("Failed to get alerts translation for: {}. Trying again...", e.toString());
+			}
+			sleep();
+		}
+		return Collections.emptyMap();
+	}
+
+	private List<? extends IAreaTranslationProtectionTime> filterPrevAndGetTranslatedData(RedAlertEvent redAlertEvent,
+																						  Map<Integer, Set<String>> prevData) {
+		return redAlertEvent.data().parallelStream().unordered()
+				.filter(Predicate.not(prevData.getOrDefault(redAlertEvent.cat(), Collections.emptySet())::contains))
+				.map(key -> Option.of(districts.get(key)) instanceof Some(AreaTranslationProtectionTime areaTranslationProtectionTime) ?
+						areaTranslationProtectionTime :
+						new MissingTranslation(key))
+				.toList();
+	}
+
 	@Override
 	public void run() {
 		System.err.println("Preparing " + getVersion()[0] + "...");
@@ -495,6 +519,21 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 												RedAlertEvent.class
 										);
 										LOGGER.debug("Original event data: {}", redAlertEvent);
+
+										AlertTranslation alertTranslation = alertsTranslation.get(redAlertEvent.cat());
+										if (alertTranslation == null) {
+											LOGGER.warn("Couldn't find translation for cat: {} ({}), trying again...", redAlertEvent.cat(), redAlertEvent.title());
+											alertsTranslation = loadAlertsTranslation();
+											alertTranslation = alertsTranslation.get(redAlertEvent.cat());
+										}
+										final String
+												title = alertTranslation == null ?
+														redAlertEvent.title() + " (didn't find translation)" :
+														alertTranslation.getAlertTitle(configuration.languageCode()),
+												description = alertTranslation == null ?
+														redAlertEvent.desc() + " (didn't find translation)" :
+														alertTranslation.getAlertText(configuration.languageCode());
+
 										// TODO rethink of what defines a drill alert
 										if (redAlertEvent.data().parallelStream().unordered()
 												.allMatch(LanguageCode.HE::containsTestKey)) {
@@ -502,7 +541,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 												System.out.println(redAlertToString(
 														contentLength,
 														lastModified,
-														alertsTranslation.get(redAlertEvent.cat()),
+														title,
+														description,
 														redAlertEvent.data().parallelStream().unordered()
 																.map(configuration.languageCode()::getTestTranslation)
 																.sorted()
@@ -539,7 +579,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 											redAlertToString(
 													contentLength,
 													lastModified,
-													alertsTranslation.get(redAlertEvent.cat()),
+													title,
+													description,
 													areaAndTranslatedDistrictsToString("Translated Areas and Districts", unseenTranslatedDistricts, redAlertEvent.cat()),
 													output
 											);
@@ -558,15 +599,15 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 										}
 
 										final List<AreaTranslationProtectionTime> districtsForAlert = unseenTranslatedDistricts.parallelStream().unordered()
-												.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-												.toList(); // for not restarting alert sound unnecessary
-										if (Option.of(districtsForAlert.parallelStream().unordered()
+														.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
+														.toList(); // for not restarting alert sound unnecessarily
+										if (Option.of((configuration.isAlertAll() ? unseenTranslatedDistricts : districtsForAlert).parallelStream().unordered()
 												.map(AreaTranslationProtectionTime::protectionTime)
-												.max(Comparator.naturalOrder())) instanceof Some(Duration maxProtectionTime)) {
-											if (configuration.isMakeSound() || configuration.isAlertAll()) {
+												.min(Comparator.naturalOrder())) instanceof Some(Duration minProtectionTime)) {
+											if (configuration.isMakeSound()) {
 												clip.setFramePosition(0);
 												//noinspection NumericCastThatLosesPrecision
-												clip.loop(Math.max(1, (int) maxProtectionTime.dividedBy(alarmSoundDuration)));
+												clip.loop(Math.max(1, (int) minProtectionTime.dividedBy(alarmSoundDuration)));
 											}
 											output.append(areaAndTranslatedDistrictsToString("ALERT ALERT ALERT", districtsForAlert, redAlertEvent.cat()));
 										}
@@ -601,29 +642,6 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		} catch (Throwable e) {
 			LOGGER.fatal("Closing connection and exiting...", e);
 		}
-	}
-
-	private List<? extends IAreaTranslationProtectionTime> filterPrevAndGetTranslatedData(RedAlertEvent redAlertEvent,
-																						  Map<Integer, Set<String>> prevData) {
-		return redAlertEvent.data().parallelStream().unordered()
-				.filter(Predicate.not(prevData.getOrDefault(redAlertEvent.cat(), Collections.emptySet())::contains))
-				.map(key -> Option.of(districts.get(key)) instanceof Some(AreaTranslationProtectionTime areaTranslationProtectionTime) ?
-						areaTranslationProtectionTime :
-						new MissingTranslation(key))
-				.toList();
-	}
-
-	private StringBuilder redAlertToString(long contentLength,
-										   TemporalAccessor alertsLastModified,
-										   AlertTranslation alertTranslation,
-										   String translatedData,
-										   StringBuilder output) {
-		return output.append("Translated Title: ").append(alertTranslation.getAlertTitle(configuration.languageCode())).append(System.lineSeparator())
-				.append("Translated Description: ").append(alertTranslation.getAlertText(configuration.languageCode())).append(System.lineSeparator())
-				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
-				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified)).append(System.lineSeparator())
-				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(Instant.now())).append(System.lineSeparator())
-				.append(translatedData);
 	}
 
 	private void refreshDistrictsTranslation() {
