@@ -73,10 +73,11 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			Level.INFO,
 			Collections.emptySet()
 	);
+	public static final HttpResponse.BodyHandler<InputStream> RESPONSE_BODY_HANDLER = HttpResponse.BodyHandlers.ofInputStream();
 	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-			.followRedirects(HttpClient.Redirect.NORMAL) // ?
+			.followRedirects(HttpClient.Redirect.NORMAL) //?
 			.build();
-	//		private static final Pattern
+//	private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 //			BOM = Pattern.compile("﻿");
 //	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
@@ -93,6 +94,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
 	private volatile Map<String, AreaTranslationProtectionTime> districts;
+	private volatile HttpRequest httpRequest;
 
 	private Listener() {
 	}
@@ -124,7 +126,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			Thread.sleep(1000);
 		} catch (InterruptedException interruptedException) {
 			//noinspection CallToPrintStackTrace
-			interruptedException.printStackTrace(); // TODO think about
+			interruptedException.printStackTrace(); //TODO think about
 		}
 	}
 
@@ -301,7 +303,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 									.header("Accept", "application/json")
 									.timeout(timeout)
 									.build(),
-							HttpResponse.BodyHandlers.ofInputStream()
+							RESPONSE_BODY_HANDLER
 					);
 					try (InputStream body = httpResponse.body()) {
 						if (httpResponse.statusCode() >= 200 && httpResponse.statusCode() < 300)
@@ -353,6 +355,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		final LanguageCode oldLanguageCode = configuration.languageCode();
 		if (configurationLastModifiedTemp > configurationLastModified) {
 			LOGGER.info("(Re)Loading configuration from file \"{}\"", configurationFile);
+			final Duration oldTimeout = configuration.timeout();
 			configuration = JSON_MAPPER.readValue(configurationFile, Configuration.class);
 			configurationLastModified = configurationLastModifiedTemp;
 			if (districts == null || !oldLanguageCode.equals(configuration.languageCode()))
@@ -364,6 +367,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					.toList();
 			printDistrictsNotFoundWarning();
 			setLoggerLevel(configuration.logLevel());
+			if (!oldTimeout.equals(configuration.timeout()))
+				httpRequest = HttpRequest.newBuilder(URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json"))
+						.header("Accept", "application/json")
+//						.header("X-Requested-With", "XMLHttpRequest")
+//						.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase(Locale.ROOT) + "/Pakar.aspx")
+						.timeout(configuration.timeout())
+						.build();
 		} else if (configurationLastModifiedTemp == 0 && configurationLastModified != 0) {
 			LOGGER.warn("couldn't find \"{}\", using default configuration", configurationFile);
 			configuration = DEFAULT_CONFIGURATION;
@@ -385,7 +395,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 									.header("Accept", "application/json")
 									.timeout(configuration.timeout())
 									.build(),
-							HttpResponse.BodyHandlers.ofInputStream()
+							RESPONSE_BODY_HANDLER
 					);
 					try (InputStream body = httpResponse.body()) {
 						if (httpResponse.statusCode() >= 200 && httpResponse.statusCode() < 300)
@@ -478,11 +488,11 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
 			loadConfiguration();
 			Map<Integer, AlertTranslation> alertsTranslation = loadAlertsTranslation();
-			final URI uri = URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json");
-			final Map<Integer, Set<String>> prevData = new HashMap<>();
+			final Map<Integer, Set<String>> prevData = new HashMap<>(alertsTranslation.size());
 			final var ref = new Object() {
 				Instant currAlertsLastModified = Instant.MIN;
 			};
+			//language=JSON
 			final long minRedAlertEventContentLength = """
 					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
 			final Duration alarmSoundDuration = Duration.ofNanos(clip.getMicrosecondLength() * 1000);
@@ -491,13 +501,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				try {
 //					loadConfiguration();
 					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
-							HttpRequest.newBuilder(uri)
-									.header("Accept", "application/json")
-//									.header("X-Requested-With", "XMLHttpRequest")
-//									.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase(Locale.ROOT) + "/Pakar.aspx")
-									.timeout(configuration.timeout())
-									.build(),
-							HttpResponse.BodyHandlers.ofInputStream()
+							httpRequest,
+							RESPONSE_BODY_HANDLER
 					);
 
 					try (InputStream body = httpResponse.body()) {
@@ -534,7 +539,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 														redAlertEvent.desc() + " (didn't find translation)" :
 														alertTranslation.getAlertText(configuration.languageCode());
 
-										// TODO rethink of what defines a drill alert
+										//TODO rethink of what defines a drill alert
 										if (redAlertEvent.data().parallelStream().unordered()
 												.allMatch(LanguageCode.HE::containsTestKey)) {
 											if (configuration.isShowTestAlerts())
@@ -569,10 +574,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 										}
 
 										final List<AreaTranslationProtectionTime> unseenTranslatedDistricts = translatedData.parallelStream().unordered()
-												.distinct() // TODO think about
+												.distinct() //TODO think about
 												.filter(AreaTranslationProtectionTime.class::isInstance)
 												.map(AreaTranslationProtectionTime.class::cast)
-												.toList(); // to know if new (unseen) districts were added from previous request.
+												.toList(); //to know if new (unseen) districts were added from previous request.
 
 										final StringBuilder output = new StringBuilder();
 										if (configuration.isDisplayResponse() && !unseenTranslatedDistricts.isEmpty())
@@ -586,7 +591,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 											);
 										if (configuration.isDisplayUntranslatedDistricts() && isContainsMissingTranslations) {
 											output.append(translatedData.parallelStream().unordered()
-													.distinct() // TODO think about
+													.distinct() //TODO think about
 													.filter(MissingTranslation.class::isInstance)
 													.map(MissingTranslation.class::cast)
 													.map(MissingTranslation::untranslatedName)
@@ -600,7 +605,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 										final List<AreaTranslationProtectionTime> districtsForAlert = unseenTranslatedDistricts.parallelStream().unordered()
 												.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-												.toList(); // for not restarting alert sound unnecessarily
+												.toList(); //for not restarting alert sound unnecessarily
 										if (Option.of((configuration.isAlertAll() ? unseenTranslatedDistricts : districtsForAlert).parallelStream().unordered()
 												.map(AreaTranslationProtectionTime::protectionTime)
 												.min(Comparator.naturalOrder())) instanceof Some(Duration minProtectionTime)) {
