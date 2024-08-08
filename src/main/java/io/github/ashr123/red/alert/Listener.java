@@ -73,7 +73,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			Level.INFO,
 			Collections.emptySet()
 	);
-	public static final HttpResponse.BodyHandler<InputStream> RESPONSE_BODY_HANDLER = HttpResponse.BodyHandlers.ofInputStream();
+	private static final HttpResponse.BodyHandler<InputStream> RESPONSE_BODY_HANDLER = HttpResponse.BodyHandlers.ofInputStream();
 	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
 			.followRedirects(HttpClient.Redirect.NORMAL) //?
 			.build();
@@ -353,9 +353,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	private void loadConfiguration() throws IOException {
 		final long configurationLastModifiedTemp = configurationFile.lastModified();
 		final LanguageCode oldLanguageCode = configuration.languageCode();
+		final Duration oldTimeout = configuration.timeout();
 		if (configurationLastModifiedTemp > configurationLastModified) {
 			LOGGER.info("(Re)Loading configuration from file \"{}\"", configurationFile);
-			final Duration oldTimeout = configuration.timeout();
 			configuration = JSON_MAPPER.readValue(configurationFile, Configuration.class);
 			configurationLastModified = configurationLastModifiedTemp;
 			if (districts == null || !oldLanguageCode.equals(configuration.languageCode()))
@@ -367,7 +367,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					.toList();
 			printDistrictsNotFoundWarning();
 			setLoggerLevel(configuration.logLevel());
-			if (!oldTimeout.equals(configuration.timeout()))
+			if (httpRequest == null || !oldTimeout.equals(configuration.timeout()))
 				httpRequest = HttpRequest.newBuilder(URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json"))
 						.header("Accept", "application/json")
 //						.header("X-Requested-With", "XMLHttpRequest")
@@ -382,6 +382,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			configurationLastModified = 0;
 			districtsNotFound = Collections.emptyList();
 			setLoggerLevel(configuration.logLevel());
+			if (httpRequest == null || !oldTimeout.equals(configuration.timeout()))
+				httpRequest = HttpRequest.newBuilder(URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json"))
+						.header("Accept", "application/json")
+//						.header("X-Requested-With", "XMLHttpRequest")
+//						.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase(Locale.ROOT) + "/Pakar.aspx")
+						.timeout(configuration.timeout())
+						.build();
 		}
 	}
 
