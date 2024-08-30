@@ -42,7 +42,7 @@ jobs:
         run: native-image -jar target/red-alert-listener-*-jar-with-dependencies.jar && file=$(echo red-alert-listener*-with-dependencies*) base="red-alert-listener"; [[ $file == *.* ]] && ext=".${file##*.}" || ext=''; mv "$file" "${base}${ext}"
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4.4.0
         with:
           name: red-alert-listener-${{ matrix.os }}-${{ matrix.architecture }}
           path: red-alert-listener-*-jar-with-dependencies*
