@@ -9,11 +9,11 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-      assignees:
+    assignees:
       - "ashr123"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
-      assignees:
+    assignees:
       - "ashr123"
