@@ -7,3 +7,8 @@ Accept: application/json
 # @no-cookie-jar
 GET https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang={{languageCode}}
 Accept: application/json
+
+### GET request for alerts translation
+# @no-cookie-jar
+GET https://www.oref.org.il/alerts/alertsTranslation.json
+Accept: application/json
