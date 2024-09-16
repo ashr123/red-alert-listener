@@ -9,15 +9,11 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    assignees:
-      - "ashr123"
     reviewers:
       - "ashr123"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
-    assignees:
-      - "ashr123"
     reviewers:
       - "ashr123"
