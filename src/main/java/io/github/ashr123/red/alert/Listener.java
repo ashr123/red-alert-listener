@@ -26,7 +26,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -248,7 +247,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 														  Function<District, D> districtMapper) throws InterruptedException {
 		final CountDownLatch startSignal = new CountDownLatch(1);
 		Thread.startVirtualThread(() -> {
-			try (Scanner scanner = new Scanner(System.in, StandardCharsets.UTF_8)) {
+			try (Scanner scanner = new Scanner(System.in)) {
 				System.err.println("Enter \"q\" to quit");
 				startSignal.countDown();
 				while (isContinue)
@@ -367,13 +366,6 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					.toList();
 			printDistrictsNotFoundWarning();
 			setLoggerLevel(configuration.logLevel());
-			if (httpRequest == null || !oldTimeout.equals(configuration.timeout()))
-				httpRequest = HttpRequest.newBuilder(URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json"))
-						.header("Accept", "application/json")
-//						.header("X-Requested-With", "XMLHttpRequest")
-//						.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase(Locale.ROOT) + "/Pakar.aspx")
-						.timeout(configuration.timeout())
-						.build();
 		} else if (configurationLastModifiedTemp == 0 && configurationLastModified != 0) {
 			LOGGER.warn("couldn't find \"{}\", using default configuration", configurationFile);
 			configuration = DEFAULT_CONFIGURATION;
@@ -382,14 +374,14 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			configurationLastModified = 0;
 			districtsNotFound = Collections.emptyList();
 			setLoggerLevel(configuration.logLevel());
-			if (httpRequest == null || !oldTimeout.equals(configuration.timeout()))
-				httpRequest = HttpRequest.newBuilder(URI.create("https://www.oref.org.il/WarningMessages/alert/alerts.json"))
-						.header("Accept", "application/json")
-//						.header("X-Requested-With", "XMLHttpRequest")
-//						.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase(Locale.ROOT) + "/Pakar.aspx")
-						.timeout(configuration.timeout())
-						.build();
 		}
+		if (httpRequest == null || !oldTimeout.equals(configuration.timeout()))
+			httpRequest = HttpRequest.newBuilder(URI.create("https://www.oref.org.il/warningMessages/alert/Alerts.json"))
+					.header("Accept", "application/json")
+//					.header("X-Requested-With", "XMLHttpRequest")
+//					.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase(Locale.ROOT) + "/Pakar.aspx")
+					.timeout(configuration.timeout())
+					.build();
 	}
 
 	private Map<Integer, AlertTranslation> loadAlertsTranslation() {
@@ -461,7 +453,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			 ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory())) {
 			clip.open(audioInputStream);
 			Thread.startVirtualThread(() -> {
-				try (Scanner scanner = new Scanner(System.in, StandardCharsets.UTF_8)) {
+				try (Scanner scanner = new Scanner(System.in)) {
 					printHelpMsg();
 					while (isContinue)
 						switch (scanner.nextLine().strip()) {
@@ -501,7 +493,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			};
 			//language=JSON
 			final long minRedAlertEventContentLength = """
-					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes(StandardCharsets.UTF_8).length;
+					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes().length;
 			final Duration alarmSoundDuration = Duration.ofNanos(clip.getMicrosecondLength() * 1000);
 			System.err.println("Listening...");
 			while (isContinue)
@@ -613,7 +605,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 										final List<AreaTranslationProtectionTime> districtsForAlert = unseenTranslatedDistricts.parallelStream().unordered()
 												.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
 												.toList(); //for not restarting alert sound unnecessarily
-										if (Option.of((configuration.isAlertAll() ? unseenTranslatedDistricts : districtsForAlert).parallelStream().unordered()
+										if (Option.of((configuration.isAlertAll() ? unseenTranslatedDistricts : districtsForAlert)
+												.parallelStream().unordered()
 												.map(AreaTranslationProtectionTime::protectionTime)
 												.min(Comparator.naturalOrder())) instanceof Some(Duration minProtectionTime)) {
 											if (configuration.isMakeSound()) {
