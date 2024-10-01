@@ -44,6 +44,10 @@
       "translation" : "Lotan",
       "protectionTimeInSeconds" : 90
     },
+    "מלון סיקס סנסס שחרות" : {
+      "translation" : "Six Senses Shaharut Hotel",
+      "protectionTimeInSeconds" : 90
+    },
     "נאות סמדר" : {
       "translation" : "Neot Smadar",
       "protectionTimeInSeconds" : 90
@@ -122,6 +126,10 @@
       "translation" : "Beit She'an",
       "protectionTimeInSeconds" : 60
     },
+    "גני חוגה" : {
+      "translation" : "Ganey Hugga",
+      "protectionTimeInSeconds" : 60
+    },
     "גשר" : {
       "translation" : "Gesher",
       "protectionTimeInSeconds" : 60
@@ -176,6 +184,10 @@
     },
     "מעלה גלבוע" : {
       "translation" : "Ma'aleh Gilboa",
+      "protectionTimeInSeconds" : 60
+    },
+    "מתחם סקי גלבוע" : {
+      "translation" : "Gilboa Ski Resort",
       "protectionTimeInSeconds" : 60
     },
     "נוה איתן" : {
@@ -324,6 +336,10 @@
   "Center Galilee" : {
     "אבטליון" : {
       "translation" : "Avtalion",
+      "protectionTimeInSeconds" : 60
+    },
+    "אזור תעשייה טמרה" : {
+      "translation" : "Tamra Industiral Park",
       "protectionTimeInSeconds" : 60
     },
     "אזור תעשייה תרדיון" : {
@@ -494,7 +510,7 @@
       "translation" : "Arraba",
       "protectionTimeInSeconds" : 60
     },
-    "ערב אל-נעים" : {
+    "ערב אל נעים" : {
       "translation" : "Arab al Na'im",
       "protectionTimeInSeconds" : 30
     },
@@ -628,10 +644,6 @@
       "translation" : "Shoket Junction Center",
       "protectionTimeInSeconds" : 90
     },
-    "נאות חובב" : {
-      "translation" : "Neot Hovav",
-      "protectionTimeInSeconds" : 60
-    },
     "נבטים" : {
       "translation" : "Nevatim",
       "protectionTimeInSeconds" : 90
@@ -643,6 +655,10 @@
     "עומר" : {
       "translation" : "Omer",
       "protectionTimeInSeconds" : 60
+    },
+    "צומת דבירה" : {
+      "translation" : "Dvira Junction",
+      "protectionTimeInSeconds" : 45
     },
     "רהט" : {
       "translation" : "Rahat",
@@ -682,7 +698,7 @@
       "translation" : "Idmit",
       "protectionTimeInSeconds" : 0
     },
-    "אזור תעשייה אכזיב מילואות" : {
+    "אזור תעשייה מילואות צפון" : {
       "translation" : "Achziv Miluot Industrial Zone",
       "protectionTimeInSeconds" : 0
     },
@@ -701,6 +717,10 @@
     "בית הלל" : {
       "translation" : "Beit Hillel",
       "protectionTimeInSeconds" : 0
+    },
+    "בית העלמין החדש נהריה" : {
+      "translation" : "Nahariya Cemetery",
+      "protectionTimeInSeconds" : 30
     },
     "בית ספר שדה מירון" : {
       "translation" : "Sdeh Meron School",
@@ -770,9 +790,17 @@
       "translation" : "Zarit",
       "protectionTimeInSeconds" : 0
     },
+    "חוות אירוח גורן" : {
+      "translation" : "Goren Farm Guesthouse",
+      "protectionTimeInSeconds" : 0
+    },
     "חוסן" : {
       "translation" : "Hossen",
       "protectionTimeInSeconds" : 15
+    },
+    "חוף בצת" : {
+      "translation" : "Betzet Beach",
+      "protectionTimeInSeconds" : 0
     },
     "חורפיש" : {
       "translation" : "Hurfeish",
@@ -824,6 +852,10 @@
     },
     "כרם בן זמרה" : {
       "translation" : "Kerem Ben Zimra",
+      "protectionTimeInSeconds" : 0
+    },
+    "לב החולה" : {
+      "translation" : "Lev Ha-Hula",
       "protectionTimeInSeconds" : 0
     },
     "להבות הבשן" : {
@@ -1020,11 +1052,15 @@
       "translation" : "Azor",
       "protectionTimeInSeconds" : 90
     },
+    "בית עלמין מורשה" : {
+      "translation" : "Morasha Cemetery",
+      "protectionTimeInSeconds" : 90
+    },
     "בני ברק" : {
       "translation" : "Bnei Brak",
       "protectionTimeInSeconds" : 90
     },
-    "בת-ים" : {
+    "בת ים" : {
       "translation" : "Bat Yam",
       "protectionTimeInSeconds" : 90
     },
@@ -1060,7 +1096,7 @@
       "translation" : "Holon",
       "protectionTimeInSeconds" : 90
     },
-    "יהוד-מונוסון" : {
+    "יהוד מונוסון" : {
       "translation" : "Yehud-Monosson",
       "protectionTimeInSeconds" : 90
     },
@@ -1156,6 +1192,10 @@
     },
     "ורד יריחו" : {
       "translation" : "Vered Yericho",
+      "protectionTimeInSeconds" : 90
+    },
+    "חוף קליה" : {
+      "translation" : "Kalia Beach",
       "protectionTimeInSeconds" : 90
     },
     "מלונות ים המלח מרכז" : {
@@ -1262,8 +1302,16 @@
       "translation" : "Zimrat and Shuva",
       "protectionTimeInSeconds" : 15
     },
+    "חוות יזרעם" : {
+      "translation" : "Havat Izra'am",
+      "protectionTimeInSeconds" : 15
+    },
     "חולית" : {
       "translation" : "Holit",
+      "protectionTimeInSeconds" : 15
+    },
+    "חוף זיקים" : {
+      "translation" : "Zikim Beach",
       "protectionTimeInSeconds" : 15
     },
     "יבול" : {
@@ -1334,6 +1382,10 @@
       "translation" : "Nir Oz",
       "protectionTimeInSeconds" : 15
     },
+    "ניר עם" : {
+      "translation" : "Nir Am",
+      "protectionTimeInSeconds" : 15
+    },
     "נירים" : {
       "translation" : "Nirim",
       "protectionTimeInSeconds" : 15
@@ -1374,15 +1426,15 @@
       "translation" : "Reim",
       "protectionTimeInSeconds" : 15
     },
-    "שדה אברהם" : {
-      "translation" : "Sdeh Avraham",
-      "protectionTimeInSeconds" : 15
-    },
     "שדה ניצן" : {
       "translation" : "Sdeh Nitzan",
       "protectionTimeInSeconds" : 15
     },
-    "שדרות, איבים, ניר עם" : {
+    "שדי אברהם" : {
+      "translation" : "Sdeh Avraham",
+      "protectionTimeInSeconds" : 15
+    },
+    "שדרות, איבים" : {
       "translation" : "Sderot, Ivim, Nir Am",
       "protectionTimeInSeconds" : 15
     },
@@ -1405,14 +1457,10 @@
     "תקומה" : {
       "translation" : "Tkuma",
       "protectionTimeInSeconds" : 15
-    },
-    "תקומה וחוות יזרעם" : {
-      "translation" : "Tkuma and Havat Izra'am",
-      "protectionTimeInSeconds" : 15
     }
   },
   "HaAmakim" : {
-    "אום אל-גנם" : {
+    "אום אלג'נם" : {
       "translation" : "Umm al-Ghanam",
       "protectionTimeInSeconds" : 60
     },
@@ -1492,10 +1540,6 @@
       "translation" : "Gvat",
       "protectionTimeInSeconds" : 60
     },
-    "גדיש" : {
-      "translation" : "Gadish",
-      "protectionTimeInSeconds" : 60
-    },
     "גדעונה" : {
       "translation" : "Gidona",
       "protectionTimeInSeconds" : 60
@@ -1550,6 +1594,10 @@
     },
     "חג'אג'רה" : {
       "translation" : "Hajajre",
+      "protectionTimeInSeconds" : 60
+    },
+    "חוואלד" : {
+      "translation" : "Khawaled",
       "protectionTimeInSeconds" : 60
     },
     "טמרה בגלבוע" : {
@@ -1648,10 +1696,6 @@
       "translation" : "Mizra",
       "protectionTimeInSeconds" : 60
     },
-    "מלאה" : {
-      "translation" : "Mle'a",
-      "protectionTimeInSeconds" : 60
-    },
     "מנשית זבדה" : {
       "translation" : "Manshiya Zabda",
       "protectionTimeInSeconds" : 60
@@ -1664,16 +1708,16 @@
       "translation" : "Merhavia Kibbutz",
       "protectionTimeInSeconds" : 60
     },
-    "מרכז אומן" : {
-      "translation" : "Merkaz Omen",
-      "protectionTimeInSeconds" : 60
-    },
     "מרכז חבר" : {
       "translation" : "Hever Settlements",
       "protectionTimeInSeconds" : 60
     },
     "משהד" : {
       "translation" : "Mashhad",
+      "protectionTimeInSeconds" : 60
+    },
+    "נאעורה" : {
+      "translation" : "Na'ura",
       "protectionTimeInSeconds" : 60
     },
     "נהלל" : {
@@ -1694,14 +1738,6 @@
     },
     "נין" : {
       "translation" : "Nin",
-      "protectionTimeInSeconds" : 60
-    },
-    "ניר יפה" : {
-      "translation" : "Nir Yafeh",
-      "protectionTimeInSeconds" : 60
-    },
-    "נעורה" : {
-      "translation" : "Na'ura",
       "protectionTimeInSeconds" : 60
     },
     "נצרת" : {
@@ -1736,10 +1772,6 @@
       "translation" : "Ein Harod",
       "protectionTimeInSeconds" : 60
     },
-    "עין חרוד איחוד" : {
-      "translation" : "Ein Harod (Ihud)",
-      "protectionTimeInSeconds" : 60
-    },
     "עין מאהל" : {
       "translation" : "Ein Mahil",
       "protectionTimeInSeconds" : 60
@@ -1756,7 +1788,7 @@
       "translation" : "Geva",
       "protectionTimeInSeconds" : 60
     },
-    "קריית טבעון-בית זייד" : {
+    "קריית טבעון - בית זייד" : {
       "translation" : "Kiryat Tivon",
       "protectionTimeInSeconds" : 60
     },
@@ -1806,6 +1838,10 @@
     },
     "שריד" : {
       "translation" : "Sarid",
+      "protectionTimeInSeconds" : 60
+    },
+    "תחנת רכבת כפר ברוך" : {
+      "translation" : "Kfar Baruch train station",
       "protectionTimeInSeconds" : 60
     },
     "תחנת רכבת כפר יהושוע" : {
@@ -1948,6 +1984,10 @@
       "translation" : "Usha",
       "protectionTimeInSeconds" : 60
     },
+    "אזור תעשייה קריית ביאליק" : {
+      "translation" : "Kiryat Bialik Industrial Zone",
+      "protectionTimeInSeconds" : 60
+    },
     "איבטין" : {
       "translation" : "Ibtin",
       "protectionTimeInSeconds" : 60
@@ -2000,6 +2040,10 @@
   "HaShfela" : {
     "אזור תעשייה נשר - רמלה" : {
       "translation" : "Nesher Industrial Zone (Ramla)",
+      "protectionTimeInSeconds" : 90
+    },
+    "אזור תעשייה רגמ" : {
+      "translation" : "Ramla, Regional Council Gezer, Regional Council Hevel Modi'in Industrial Park",
       "protectionTimeInSeconds" : 90
     },
     "אחיסמך" : {
@@ -2090,6 +2134,10 @@
       "translation" : "Hemed",
       "protectionTimeInSeconds" : 90
     },
+    "חניון הנתיב מהיר" : {
+      "translation" : "Fast Lane Parking Lot",
+      "protectionTimeInSeconds" : 90
+    },
     "יגל" : {
       "translation" : "Yagel",
       "protectionTimeInSeconds" : 90
@@ -2128,10 +2176,6 @@
     },
     "כפר שמואל" : {
       "translation" : "Kfar Shmuel",
-      "protectionTimeInSeconds" : 90
-    },
-    "כרם בן שמן" : {
-      "translation" : "Kerem BenShemen",
       "protectionTimeInSeconds" : 90
     },
     "כרמי יוסף" : {
@@ -2311,10 +2355,6 @@
     "פנימיית עין כרם" : {
       "translation" : "Ein Kerem Boarding School",
       "protectionTimeInSeconds" : 90
-    },
-    "רמת רחל" : {
-      "translation" : "Ramat Rachel",
-      "protectionTimeInSeconds" : 90
     }
   },
   "Lachish" : {
@@ -2334,6 +2374,10 @@
       "translation" : "Industrial area Be'er Tovia",
       "protectionTimeInSeconds" : 45
     },
+    "אזור תעשייה גדרה" : {
+      "translation" : "Gedera Industrial Area",
+      "protectionTimeInSeconds" : 60
+    },
     "אזור תעשייה כנות" : {
       "translation" : "Kannot Industrial Zone",
       "protectionTimeInSeconds" : 60
@@ -2345,6 +2389,10 @@
     "אזור תעשייה קריית גת" : {
       "translation" : "Industrial area Kiryat Gat",
       "protectionTimeInSeconds" : 45
+    },
+    "אזור תעשייה רבדים" : {
+      "translation" : "Revadim Industrial Zone",
+      "protectionTimeInSeconds" : 60
     },
     "אזור תעשייה תימורים" : {
       "translation" : "Timorimg Industrial Zone",
@@ -2390,7 +2438,7 @@
       "translation" : "Ashdod - Het, Tet, Yod, Yod Gimmel, Yod Dalet, Te*",
       "protectionTimeInSeconds" : 45
     },
-    "אשדוד -יא,יב,טו,יז,מרינה,סיט" : {
+    "אשדוד -יא,יב,טו,יז,מרינה,סיטי" : {
       "translation" : "Ashdod - Yod Alef, Yod Bet, Tet Vav, Yod Zain, Marina, City",
       "protectionTimeInSeconds" : 45
     },
@@ -2562,6 +2610,10 @@
       "translation" : "Maon Tzofia",
       "protectionTimeInSeconds" : 60
     },
+    "מפעל אגריגדה" : {
+      "translation" : "Agrigada Factory",
+      "protectionTimeInSeconds" : 60
+    },
     "מרכז שפירא" : {
       "translation" : "Merkaz Shapira",
       "protectionTimeInSeconds" : 45
@@ -2722,6 +2774,10 @@
       "translation" : "Shtulim",
       "protectionTimeInSeconds" : 45
     },
+    "תחנת רכבת קריית מלאכי - יואב" : {
+      "translation" : "Kiryat Mal'akhi-Yoav train station",
+      "protectionTimeInSeconds" : 60
+    },
     "תימורים" : {
       "translation" : "Timorim",
       "protectionTimeInSeconds" : 45
@@ -2736,10 +2792,6 @@
     }
   },
   "Lower Galilee" : {
-    "אזור תעשייה צמח" : {
-      "translation" : "Tzemach Industrial Zone",
-      "protectionTimeInSeconds" : 30
-    },
     "אזור תעשייה קדמת גליל" : {
       "translation" : "Kidmat Galil Industrial Zone",
       "protectionTimeInSeconds" : 60
@@ -2791,10 +2843,6 @@
     "הזורעים" : {
       "translation" : "HaZor'im",
       "protectionTimeInSeconds" : 60
-    },
-    "המכללה האקדמית כנרת" : {
-      "translation" : "Kinneret Academic College",
-      "protectionTimeInSeconds" : 30
     },
     "ואדי אל חמאם" : {
       "translation" : "Wadi Hamam",
@@ -2852,6 +2900,10 @@
       "translation" : "Mitzpeh",
       "protectionTimeInSeconds" : 60
     },
+    "נבי שועייב" : {
+      "translation" : "Nabi Shu'ayb",
+      "protectionTimeInSeconds" : 60
+    },
     "פוריה כפר עבודה" : {
       "translation" : "Poria - Kfar Avoda",
       "protectionTimeInSeconds" : 60
@@ -2867,6 +2919,10 @@
     "רביד" : {
       "translation" : "Ravid",
       "protectionTimeInSeconds" : 60
+    },
+    "רפטינג נהר הירדן" : {
+      "translation" : "Jordan River Rafting",
+      "protectionTimeInSeconds" : 30
     },
     "שדה אילן" : {
       "translation" : "Sdeh Ilan",
@@ -2958,12 +3014,16 @@
       "translation" : "Hadera - Neveh Haim",
       "protectionTimeInSeconds" : 90
     },
-    "חיפה - כרמל ועיר תחתית" : {
-      "translation" : "Haifa - Carmel and Lower City",
+    "חיפה - כרמל, הדר ועיר תחתית" : {
+      "translation" : "Haifa - Carmel, Hadar and Downtown Lower City",
       "protectionTimeInSeconds" : 60
     },
     "חיפה - מערב" : {
       "translation" : "Haifa - West",
+      "protectionTimeInSeconds" : 60
+    },
+    "חיפה - מפרץ" : {
+      "translation" : "Haifa - Bay",
       "protectionTimeInSeconds" : 60
     },
     "חיפה - נווה שאנן ורמות כרמל" : {
@@ -2972,10 +3032,6 @@
     },
     "חיפה - קריית חיים ושמואל" : {
       "translation" : "Haifa - Kiryat Haim and Shmuel",
-      "protectionTimeInSeconds" : 60
-    },
-    "חיפה-מפרץ" : {
-      "translation" : "Haifa - Bay",
       "protectionTimeInSeconds" : 60
     },
     "טירת כרמל" : {
@@ -3022,6 +3078,10 @@
       "translation" : "Mishmarot",
       "protectionTimeInSeconds" : 90
     },
+    "מתחם שביל התפוזים" : {
+      "translation" : "Shvil HaTapuzim Compound",
+      "protectionTimeInSeconds" : 90
+    },
     "נשר" : {
       "translation" : "Nesher",
       "protectionTimeInSeconds" : 60
@@ -3038,8 +3098,12 @@
       "translation" : "Amikam",
       "protectionTimeInSeconds" : 90
     },
-    "פרדס חנה-כרכור" : {
+    "פרדס חנה כרכור" : {
       "translation" : "Pardes Hana - Karkur",
+      "protectionTimeInSeconds" : 90
+    },
+    "צומת בנימינה" : {
+      "translation" : "Binyamina Junction",
       "protectionTimeInSeconds" : 90
     },
     "קיסריה" : {
@@ -3092,6 +3156,10 @@
       "translation" : "Mas'ade",
       "protectionTimeInSeconds" : 0
     },
+    "מצוק עורבים" : {
+      "translation" : "Matzok Orvim",
+      "protectionTimeInSeconds" : 15
+    },
     "מרום גולן" : {
       "translation" : "Merom Golan",
       "protectionTimeInSeconds" : 0
@@ -3112,8 +3180,8 @@
       "translation" : "Ein Quiniyye",
       "protectionTimeInSeconds" : 0
     },
-    "קלע" : {
-      "translation" : "Kela",
+    "רמת טראמפ" : {
+      "translation" : "Ramat Trump",
       "protectionTimeInSeconds" : 15
     },
     "שעל" : {
@@ -3140,6 +3208,10 @@
     },
     "אזור תעשייה טירה" : {
       "translation" : "Tira Industrial Area",
+      "protectionTimeInSeconds" : 90
+    },
+    "אזור תעשייה כפר יונה" : {
+      "translation" : "Kfar Yona Industrial Zone",
       "protectionTimeInSeconds" : 90
     },
     "אזור תעשייה עמק חפר" : {
@@ -3478,6 +3550,10 @@
       "translation" : "Mishmeret",
       "protectionTimeInSeconds" : 90
     },
+    "מתחם \"חנה וסע\" שפיים" : {
+      "translation" : "Shfayim \"Haneh Ve'sa\" Compound",
+      "protectionTimeInSeconds" : 90
+    },
     "מתן" : {
       "translation" : "Matan",
       "protectionTimeInSeconds" : 90
@@ -3578,7 +3654,7 @@
       "translation" : "Tzur Natan",
       "protectionTimeInSeconds" : 90
     },
-    "קדימה-צורן" : {
+    "קדימה צורן" : {
       "translation" : "Kadima - Zoran",
       "protectionTimeInSeconds" : 90
     },
@@ -3644,7 +3720,7 @@
     }
   },
   "Shfelat Yehuda" : {
-    "אבו-גוש" : {
+    "אבו גוש" : {
       "translation" : "Abu Ghosh",
       "protectionTimeInSeconds" : 90
     },
@@ -3756,6 +3832,10 @@
       "translation" : "Kfar Uriah",
       "protectionTimeInSeconds" : 90
     },
+    "כפר הנוער קריית יערים" : {
+      "translation" : "Kiryat Ye'arim Youth Village",
+      "protectionTimeInSeconds" : 90
+    },
     "כפר זוהרים" : {
       "translation" : "Kfar Zoharim",
       "protectionTimeInSeconds" : 60
@@ -3782,6 +3862,10 @@
     },
     "מטע" : {
       "translation" : "Mata",
+      "protectionTimeInSeconds" : 90
+    },
+    "מיני ישראל - נחשון" : {
+      "translation" : "Mini Israel - Nachshon",
       "protectionTimeInSeconds" : 90
     },
     "מסילת ציון" : {
@@ -3844,6 +3928,10 @@
       "translation" : "Tzuba",
       "protectionTimeInSeconds" : 90
     },
+    "צומת האלה" : {
+      "translation" : "Ha'Ela Junction",
+      "protectionTimeInSeconds" : 60
+    },
     "צור הדסה" : {
       "translation" : "Tzur Hadassa",
       "protectionTimeInSeconds" : 90
@@ -3888,7 +3976,11 @@
       "translation" : "Shoresh",
       "protectionTimeInSeconds" : 90
     },
-    "שריגים - ליאון" : {
+    "שער הגיא" : {
+      "translation" : "Sha’ar HaGai",
+      "protectionTimeInSeconds" : 90
+    },
+    "שריגים - לי-און" : {
       "translation" : "Srigim (Li-On)",
       "protectionTimeInSeconds" : 60
     },
@@ -3910,8 +4002,20 @@
       "translation" : "Avnei Hefetz",
       "protectionTimeInSeconds" : 90
     },
+    "אזור תעשייה אריאל" : {
+      "translation" : "Ariel Industrial Park",
+      "protectionTimeInSeconds" : 90
+    },
     "אזור תעשייה בראון" : {
       "translation" : "Bar On Industrial Zone",
+      "protectionTimeInSeconds" : 90
+    },
+    "אזור תעשייה ברקן" : {
+      "translation" : "Barkan Industrial Park",
+      "protectionTimeInSeconds" : 90
+    },
+    "אזור תעשייה שחק" : {
+      "translation" : "Shahak industrial park",
       "protectionTimeInSeconds" : 90
     },
     "אזור תעשייה שער בנימין" : {
@@ -4026,6 +4130,10 @@
       "translation" : "Kfar Tapuach",
       "protectionTimeInSeconds" : 90
     },
+    "כרם רעים" : {
+      "translation" : "Kerem Reim",
+      "protectionTimeInSeconds" : 90
+    },
     "מבוא דותן" : {
       "translation" : "Mevo Dotan",
       "protectionTimeInSeconds" : 90
@@ -4046,10 +4154,6 @@
       "translation" : "Ma'aleh Michmash",
       "protectionTimeInSeconds" : 90
     },
-    "מעלה שומרון" : {
-      "translation" : "Ma'aleh Shomron",
-      "protectionTimeInSeconds" : 90
-    },
     "נופי נחמיה" : {
       "translation" : "Nofei Nehemiah",
       "protectionTimeInSeconds" : 90
@@ -4062,7 +4166,7 @@
       "translation" : "Nachliel",
       "protectionTimeInSeconds" : 90
     },
-    "ניל''י" : {
+    "נילי" : {
       "translation" : "Nili",
       "protectionTimeInSeconds" : 90
     },
@@ -4200,12 +4304,8 @@
       "translation" : "Afik",
       "protectionTimeInSeconds" : 0
     },
-    "אשדות יעקב איחוד" : {
-      "translation" : "Ashdot Yacov Ichud",
-      "protectionTimeInSeconds" : 60
-    },
-    "אשדות יעקב מאוחד" : {
-      "translation" : "Ashdot Yaakov Meuhad",
+    "אשדות יעקב" : {
+      "translation" : "Ashdot Yacov",
       "protectionTimeInSeconds" : 60
     },
     "בני יהודה וגבעת יואב" : {
@@ -4222,6 +4322,26 @@
     },
     "חד נס" : {
       "translation" : "Had Ness",
+      "protectionTimeInSeconds" : 15
+    },
+    "חוף גולן, צאלון" : {
+      "translation" : "Golan, Tzeelon Beach",
+      "protectionTimeInSeconds" : 15
+    },
+    "חוף גופרה" : {
+      "translation" : "Gofra Beach",
+      "protectionTimeInSeconds" : 15
+    },
+    "חוף כורסי, לבנון, חלוקים" : {
+      "translation" : "Kursi, Lavnun, Halukim Beach",
+      "protectionTimeInSeconds" : 15
+    },
+    "חוף כינר, דוגה, דוגית" : {
+      "translation" : "Kinar, Duga, Dugit Beach",
+      "protectionTimeInSeconds" : 15
+    },
+    "חוף סוסיתא" : {
+      "translation" : "Susita Beach",
       "protectionTimeInSeconds" : 15
     },
     "חמת גדר" : {
@@ -4279,6 +4399,10 @@
     "עין גב" : {
       "translation" : "Ein Gev",
       "protectionTimeInSeconds" : 15
+    },
+    "צמח" : {
+      "translation" : "Tsemach",
+      "protectionTimeInSeconds" : 30
     },
     "קדמת צבי" : {
       "translation" : "Kidmat Zvi",
@@ -4386,6 +4510,10 @@
       "translation" : "Kuseife",
       "protectionTimeInSeconds" : 90
     },
+    "כפר הנוקדים" : {
+      "translation" : "Kfar HaNokdim",
+      "protectionTimeInSeconds" : 90
+    },
     "מדרשת בן גוריון" : {
       "translation" : "Ben Gurion College",
       "protectionTimeInSeconds" : 90
@@ -4414,8 +4542,8 @@
       "translation" : "Nitzana",
       "protectionTimeInSeconds" : 60
     },
-    "סעייה-מולדה" : {
-      "translation" : "Mulada - Sa'wa",
+    "סעווה" : {
+      "translation" : "Sa'wa",
       "protectionTimeInSeconds" : 90
     },
     "עבדת" : {
@@ -4438,7 +4566,7 @@
       "translation" : "Kadesh Barneah",
       "protectionTimeInSeconds" : 60
     },
-    "קצר-א-סיר" : {
+    "קסר א-סר" : {
       "translation" : "Qasr al-Sir",
       "protectionTimeInSeconds" : 90
     },
@@ -4532,6 +4660,10 @@
       "translation" : "Beit Jann",
       "protectionTimeInSeconds" : 30
     },
+    "בית העלמין החדש עכו" : {
+      "translation" : "Akko New Cemetery",
+      "protectionTimeInSeconds" : 30
+    },
     "בית העמק" : {
       "translation" : "Beit HaEmek",
       "protectionTimeInSeconds" : 30
@@ -4564,12 +4696,16 @@
       "translation" : "Deir al-Asad",
       "protectionTimeInSeconds" : 30
     },
-    "הר-חלוץ" : {
+    "הר חלוץ" : {
       "translation" : "Har Chalutz",
       "protectionTimeInSeconds" : 30
     },
     "חולתה" : {
       "translation" : "Hulata",
+      "protectionTimeInSeconds" : 30
+    },
+    "חוף אמנון" : {
+      "translation" : "Amnon Beach",
       "protectionTimeInSeconds" : 30
     },
     "חצור הגלילית" : {
@@ -4580,15 +4716,19 @@
       "translation" : "Harashim",
       "protectionTimeInSeconds" : 30
     },
+    "טבחה" : {
+      "translation" : "Tabgha",
+      "protectionTimeInSeconds" : 60
+    },
     "טובא זנגריה" : {
       "translation" : "Tuba-Zangariyye",
       "protectionTimeInSeconds" : 30
     },
-    "טל-אל" : {
+    "טל - אל" : {
       "translation" : "Tal-El",
       "protectionTimeInSeconds" : 30
     },
-    "ינוח-ג'ת" : {
+    "ינוח ג'ת" : {
       "translation" : "Yanuh-Jat",
       "protectionTimeInSeconds" : 30
     },
@@ -4612,10 +4752,6 @@
       "translation" : "Kahal",
       "protectionTimeInSeconds" : 60
     },
-    "כיסרא סמיע" : {
-      "translation" : "Kisra-Sumei",
-      "protectionTimeInSeconds" : 30
-    },
     "כישור" : {
       "translation" : "Kishor",
       "protectionTimeInSeconds" : 30
@@ -4628,16 +4764,24 @@
       "translation" : "Kamon",
       "protectionTimeInSeconds" : 30
     },
+    "כסרא סמיע" : {
+      "translation" : "Kisra-Sumei",
+      "protectionTimeInSeconds" : 30
+    },
     "כפר הנשיא" : {
       "translation" : "Kfar HaNassi",
       "protectionTimeInSeconds" : 30
     },
-    "כפר יסיף" : {
+    "כפר יאסיף" : {
       "translation" : "Kfar Yassif",
       "protectionTimeInSeconds" : 30
     },
     "כפר מסריק" : {
       "translation" : "Kfar Masaryk",
+      "protectionTimeInSeconds" : 30
+    },
+    "כפר נחום" : {
+      "translation" : "Kfar Nahum",
       "protectionTimeInSeconds" : 30
     },
     "כפר שמאי" : {
@@ -4687,6 +4831,14 @@
     "מכמנים" : {
       "translation" : "Mikhmanim",
       "protectionTimeInSeconds" : 30
+    },
+    "מלון אחוזת ירדן" : {
+      "translation" : "Yarden Estate Boutique Hotel",
+      "protectionTimeInSeconds" : 30
+    },
+    "מלון פרא" : {
+      "translation" : "Pereh Hotel",
+      "protectionTimeInSeconds" : 15
     },
     "מנחת מחניים" : {
       "translation" : "Machanaim landing pad",
@@ -4764,8 +4916,16 @@
       "translation" : "Tzurit Gilon",
       "protectionTimeInSeconds" : 30
     },
-    "צפת" : {
-      "translation" : "Safed",
+    "צפת - נוף כנרת" : {
+      "translation" : "Safed - Nof ha-Kinneret",
+      "protectionTimeInSeconds" : 30
+    },
+    "צפת - עיר" : {
+      "translation" : "Safed - City",
+      "protectionTimeInSeconds" : 30
+    },
+    "צפת - עכברה" : {
+      "translation" : "Safed - 'Akbara",
       "protectionTimeInSeconds" : 30
     },
     "קדיתא" : {
@@ -4850,10 +5010,6 @@
       "translation" : "Megiddo Prison",
       "protectionTimeInSeconds" : 90
     },
-    "בסמ\"ה" : {
-      "translation" : "Basma",
-      "protectionTimeInSeconds" : 90
-    },
     "ברטעה" : {
       "translation" : "Bart'a",
       "protectionTimeInSeconds" : 90
@@ -4930,7 +5086,7 @@
       "translation" : "Mishmar HaEmek",
       "protectionTimeInSeconds" : 90
     },
-    "עין אל-סהלה" : {
+    "עין אל סהלה" : {
       "translation" : "Ein as-Sahla",
       "protectionTimeInSeconds" : 90
     },
@@ -5007,6 +5163,10 @@
     "הודיה" : {
       "translation" : "Hodaya",
       "protectionTimeInSeconds" : 30
+    },
+    "חוף ניצנים" : {
+      "translation" : "Nitzanim Beach",
+      "protectionTimeInSeconds" : 45
     },
     "חלץ" : {
       "translation" : "Heletz",
@@ -5212,6 +5372,10 @@
       "translation" : "Industrial area Hevel Modi'in",
       "protectionTimeInSeconds" : 90
     },
+    "איירפורט סיטי" : {
+      "translation" : "Airport City",
+      "protectionTimeInSeconds" : 90
+    },
     "אלעד" : {
       "translation" : "Elad",
       "protectionTimeInSeconds" : 90
@@ -5242,10 +5406,6 @@
     },
     "גמזו" : {
       "translation" : "Gimzo",
-      "protectionTimeInSeconds" : 90
-    },
-    "גני מודיעין" : {
-      "translation" : "Ganei Modi'in",
       "protectionTimeInSeconds" : 90
     },
     "חדיד" : {
@@ -5288,16 +5448,16 @@
       "translation" : "Mevo Modi'im",
       "protectionTimeInSeconds" : 90
     },
-    "מודיעין" : {
-      "translation" : "Modi'in",
-      "protectionTimeInSeconds" : 90
-    },
     "מודיעין - ישפרו סנטר" : {
       "translation" : "Modi'in - Ishpro Center",
       "protectionTimeInSeconds" : 90
     },
     "מודיעין - ליגד סנטר" : {
       "translation" : "Modi'in - Ligad Center",
+      "protectionTimeInSeconds" : 90
+    },
+    "מודיעין מכבים רעות" : {
+      "translation" : "Modi'in Maccabim Re'ut",
       "protectionTimeInSeconds" : 90
     },
     "מודיעין עילית" : {
@@ -5310,6 +5470,10 @@
     },
     "מתתיהו" : {
       "translation" : "Matityahu",
+      "protectionTimeInSeconds" : 90
+    },
+    "נאות קדומים" : {
+      "translation" : "Neot Kedumim",
       "protectionTimeInSeconds" : 90
     },
     "נוף איילון" : {
@@ -5340,7 +5504,7 @@
       "translation" : "Rinatya",
       "protectionTimeInSeconds" : 90
     },
-    "שהם" : {
+    "שוהם" : {
       "translation" : "Shoham",
       "protectionTimeInSeconds" : 90
     },
@@ -5358,6 +5522,10 @@
     }
   },
   "Yehuda" : {
+    "אבו נוור" : {
+      "translation" : "Abu-Nuwar",
+      "protectionTimeInSeconds" : 90
+    },
     "אדורה" : {
       "translation" : "Adora",
       "protectionTimeInSeconds" : 90
@@ -5398,7 +5566,7 @@
       "translation" : "Efrat",
       "protectionTimeInSeconds" : 90
     },
-    "בית חגי" : {
+    "בית חג\"י" : {
       "translation" : "Beit Hagai",
       "protectionTimeInSeconds" : 90
     },
@@ -5422,20 +5590,16 @@
       "translation" : "Gvaot",
       "protectionTimeInSeconds" : 90
     },
+    "היישוב היהודי חברון" : {
+      "translation" : "Hevron Jewish Settlement",
+      "protectionTimeInSeconds" : 90
+    },
     "הר גילה" : {
       "translation" : "Har Gilo",
       "protectionTimeInSeconds" : 90
     },
     "הר עמשא" : {
       "translation" : "Har Amsha",
-      "protectionTimeInSeconds" : 90
-    },
-    "חברון" : {
-      "translation" : "Hebron",
-      "protectionTimeInSeconds" : 90
-    },
-    "חוות שדה בר" : {
-      "translation" : "Havat Sdeh Bar",
       "protectionTimeInSeconds" : 90
     },
     "טנא עומרים" : {
@@ -5526,7 +5690,7 @@
       "translation" : "Almon",
       "protectionTimeInSeconds" : 90
     },
-    "עשאהל" : {
+    "עשהאל" : {
       "translation" : "Asa-El",
       "protectionTimeInSeconds" : 90
     },
@@ -5534,20 +5698,32 @@
       "translation" : "Otniel",
       "protectionTimeInSeconds" : 90
     },
+    "פארק תעשיות מגדל עוז" : {
+      "translation" : "Industrial Park Migdal Oz",
+      "protectionTimeInSeconds" : 90
+    },
     "פני קדם" : {
       "translation" : "Pnei Kedem",
       "protectionTimeInSeconds" : 90
     },
-    "קדר" : {
+    "צומת הגוש" : {
+      "translation" : "Gush Etzion Junction",
+      "protectionTimeInSeconds" : 90
+    },
+    "קידר" : {
       "translation" : "Kadarim",
       "protectionTimeInSeconds" : 90
     },
-    "קרית ארבע" : {
+    "קריית ארבע" : {
       "translation" : "Kiryat Arba",
       "protectionTimeInSeconds" : 90
     },
     "ראש צורים" : {
       "translation" : "Rosh Tzurim",
+      "protectionTimeInSeconds" : 90
+    },
+    "שדה בר" : {
+      "translation" : "Sdeh Bar",
       "protectionTimeInSeconds" : 90
     },
     "שומריה" : {
