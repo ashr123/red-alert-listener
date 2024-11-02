@@ -91,12 +91,12 @@ Legal districts (and their translation) can be found by:
 
 ## Demonstration
 
-![Operation Guardian of the Walls](pic.png "Operation Guardian of the Walls")
-![demo1](pic2.png "Demo")
-![demo2](pic3.png "Demo")
-![Operation Breaking Dawn](pic4.png "Operation Breaking Dawn")
-![demo3](pic5.png "Demo")
-![demo4](pic6.png "Demo")
-![Operation Shield and Arrow](pic7.png "Operation Shield and Arrow")
-![Swords of Iron War](pic8.png "Swords of Iron War")
-![Swords of Iron War](pic9.png "Swords of Iron War")
+![Operation Guardian of the Walls](pics/pic.png "Operation Guardian of the Walls")
+![demo1](pics/pic2.png "Demo")
+![demo2](pics/pic3.png "Demo")
+![Operation Breaking Dawn](pics/pic4.png "Operation Breaking Dawn")
+![demo3](pics/pic5.png "Demo")
+![demo4](pics/pic6.png "Demo")
+![Operation Shield and Arrow](pics/pic7.png "Operation Shield and Arrow")
+![Swords of Iron War](pics/pic8.png "Swords of Iron War")
+![Swords of Iron War](pics/pic9.png "Swords of Iron War")

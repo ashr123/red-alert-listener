@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import io.github.ashr123.exceptional.functions.ThrowingFunction;
 import io.github.ashr123.option.*;
 import io.github.ashr123.timeMeasurement.Result;
 import io.github.ashr123.timeMeasurement.TimeMeasurement;
@@ -18,18 +19,17 @@ import picocli.CommandLine;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -39,13 +39,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.zip.Deflater;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
+@SuppressWarnings("InstanceVariableMayNotBeInitialized")
 @CommandLine.Command(name = "java -jar red-alert-listener.jar",
 		mixinStandardHelpOptions = true,
 		versionProvider = Listener.class,
 		showDefaultValues = true,
 		description = "An App that can get \"red alert\"s from IDF's Home Front Command.")
 public class Listener implements Runnable, CommandLine.IVersionProvider {
+	private static final Logger LOGGER = LogManager.getLogger();
 	private static final TypeReference<List<District>> DISTRICTS_TYPE_REFERENCE = new TypeReference<>() {
 	};
 	private static final TypeReference<List<AlertTranslation>> ALERTS_TRANSLATION_TYPE_REFERENCE = new TypeReference<>() {
@@ -55,7 +61,6 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					Locale.getDefault(Locale.Category.FORMAT)
 			)
 			.withZone(ZoneId.systemDefault());
-	private static final Logger LOGGER = LogManager.getLogger();
 	private static final ObjectMapper JSON_MAPPER = new JsonMapper()
 			.enable(SerializationFeature.INDENT_OUTPUT)
 			.enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
@@ -76,6 +81,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
 			.followRedirects(HttpClient.Redirect.NORMAL) //?
 			.build();
+	private static final Duration DISTRICTS_UPDATE_CONSTANT = ChronoUnit.HOURS.getDuration();
 //	private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 //			BOM = Pattern.compile("﻿");
@@ -94,6 +100,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	 */
 	private volatile Map<String, AreaTranslationProtectionTime> districts;
 	private volatile HttpRequest httpRequest;
+	private volatile LocalDateTime districtsLastUpdate;
 
 	private Listener() {
 	}
@@ -106,7 +113,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 	private static void setLoggerLevel(Level level) {
 		final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
-		loggerContext.getConfiguration().getLoggerConfig(LOGGER.getName()).setLevel(level);
+		loggerContext.getConfiguration().getRootLogger().setLevel(level);
 		loggerContext.updateLoggers();
 	}
 
@@ -135,29 +142,16 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				.collect(Collectors.toSet());
 	}
 
-	private String areaAndTranslatedDistrictsToString(CharSequence headline,
-													  List<AreaTranslationProtectionTime> districtsByAreaName,
-													  int cat) {
-		final Function<AreaTranslationProtectionTime, String> toString = cat == 1 || cat == 101 ?
-				areaTranslationProtectionTime -> areaTranslationProtectionTime.translation() + " (" + configuration.languageCode().getTimeTranslation(areaTranslationProtectionTime.protectionTime()) + ")" :
-				AreaTranslationProtectionTime::translation;
-		return districtsByAreaName.parallelStream().unordered()
-				.collect(Collectors.groupingByConcurrent(AreaTranslationProtectionTime::translatedAreaName))
-				.entrySet().parallelStream().unordered()
-				.sorted(Map.Entry.comparingByKey())
-				.map(areaNameAndDistricts -> areaNameAndDistricts.getValue().parallelStream().unordered()
-						.sorted(Comparator.comparing(AreaTranslationProtectionTime::translation))
-						.map(toString)
-						.collect(Collectors.joining(
-								"," + System.lineSeparator() + "\t\t",
-								areaNameAndDistricts.getKey() + ":" + System.lineSeparator() + "\t\t",
-								""
-						)))
-				.collect(Collectors.joining(
-						"," + System.lineSeparator() + "\t",
-						headline + ":" + System.lineSeparator() + "\t",
-						System.lineSeparator()
-				));
+	private static StringBuilder addResponseHeader(long contentLength,
+												   TemporalAccessor alertsLastModified,
+												   String translatedTitle,
+												   String translatedDescription,
+												   StringBuilder output) {
+		return output.append("Translated Title: ").append(translatedTitle).append(System.lineSeparator())
+				.append("Translated Description: ").append(translatedDescription).append(System.lineSeparator())
+				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
+				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified)).append(System.lineSeparator())
+				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(Instant.now())).append(System.lineSeparator());
 	}
 
 	@CommandLine.Command(name = "get-remote-districts-as-json",
@@ -189,6 +183,86 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				loggerLevel,
 				District::label
 		)));
+	}
+
+	private static int gzipStringSize(String data) throws IOException {
+		final byte[] bytes = data.getBytes();
+		try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(10 /*for header*/ + 8 /*for trailer*/ + bytes.length)) {
+			try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream) {{
+				def = new Deflater(Deflater.BEST_COMPRESSION, true);
+			}}) {
+				// Write the string data to GZIPOutputStream
+				gzipOutputStream.write(bytes);
+			}
+			// Return the compressed byte array size
+			return byteArrayOutputStream.size();
+		}
+	}
+
+	private <D> Map<String, D> startSubcommandInputThread(LanguageCode languageCode,
+														  Duration timeout,
+														  Level level,
+														  Function<District, D> districtMapper) throws InterruptedException {
+		final CountDownLatch startSignal = new CountDownLatch(1);
+		Thread.startVirtualThread(() -> {
+			try (Scanner scanner = new Scanner(System.in)) {
+				System.err.println("Enter \"q\" to quit");
+				startSignal.countDown();
+				while (isContinue)
+					switch (scanner.nextLine().strip()) {
+						case "" -> {
+						}
+						case "q" -> {
+							System.err.println("Quiting...");
+							isContinue = false;
+						}
+						default -> System.err.println("""
+								Unrecognized command!
+								Enter "q" to quit""");
+					}
+			} catch (NoSuchElementException ignored) {
+			}
+		});
+		setLoggerLevel(level);
+		startSignal.await();
+		return loadRemoteDistricts(languageCode, timeout, districtMapper);
+	}
+
+	private String areaAndTranslatedDistrictsToString(CharSequence headline,
+													  List<AreaTranslationProtectionTime> districtsByAreaName,
+													  int cat) {
+		final Function<AreaTranslationProtectionTime, String> toString = cat == 1 || cat == 101 ?
+				areaTranslationProtectionTime -> areaTranslationProtectionTime.translation() + " (" + configuration.languageCode().getTimeTranslation(areaTranslationProtectionTime.protectionTime()) + ")" :
+				AreaTranslationProtectionTime::translation;
+		return districtsByAreaName.parallelStream().unordered()
+				.collect(Collectors.groupingByConcurrent(AreaTranslationProtectionTime::translatedAreaName))
+				.entrySet()
+				.parallelStream().unordered()
+				.sorted(Map.Entry.comparingByKey())
+				.map(areaNameAndDistricts -> areaNameAndDistricts.getValue()
+						.parallelStream().unordered()
+						.sorted(Comparator.comparing(AreaTranslationProtectionTime::translation))
+						.map(toString)
+						.collect(Collectors.joining(
+								"," + System.lineSeparator() + "\t\t",
+								areaNameAndDistricts.getKey() + ":" + System.lineSeparator() + "\t\t",
+								""
+						)))
+				.collect(Collectors.joining(
+						"," + System.lineSeparator() + "\t",
+						headline + ":" + System.lineSeparator() + "\t",
+						System.lineSeparator()
+				));
+	}
+
+	private void printDistrictsNotFoundWarning() {
+		if (!districtsNotFound.isEmpty())
+			LOGGER.warn("Those districts don't exist: {}", districtsNotFound);
+	}
+
+	@Override
+	public String[] getVersion() {
+		return new String[]{"Red Alert Listener v" + getClass().getPackage().getImplementationVersion()};
 	}
 
 	@CommandLine.Command(name = "get-remote-districts-as-json-to-file",
@@ -227,126 +301,19 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						loggerLevel,
 						Function.identity()
 				)
-						.entrySet().parallelStream().unordered()
+						.entrySet()
+						.parallelStream().unordered()
 						.collect(Collectors.groupingByConcurrent(
-								entry -> entry.getValue().areaname(),
+								entry -> entry.getValue().areaName(),
 								Collectors.toConcurrentMap(
 										Map.Entry::getKey,
 										entry -> new FileDistrictData(
 												entry.getValue().label(),
-												entry.getValue().migun_time()
+												entry.getValue().protectionTime()
 										)
 								)
 						))
 		);
-	}
-
-	private <D> Map<String, D> startSubcommandInputThread(LanguageCode languageCode,
-														  Duration timeout,
-														  Level level,
-														  Function<District, D> districtMapper) throws InterruptedException {
-		final CountDownLatch startSignal = new CountDownLatch(1);
-		Thread.startVirtualThread(() -> {
-			try (Scanner scanner = new Scanner(System.in)) {
-				System.err.println("Enter \"q\" to quit");
-				startSignal.countDown();
-				while (isContinue)
-					switch (scanner.nextLine().strip()) {
-						case "" -> {
-						}
-						case "q" -> {
-							System.err.println("Quiting...");
-							isContinue = false;
-						}
-						default -> System.err.println("""
-								Unrecognized command!
-								Enter "q" to quit""");
-					}
-			} catch (NoSuchElementException ignored) {
-			}
-		});
-		setLoggerLevel(level);
-		startSignal.await();
-		return loadRemoteDistricts(languageCode, timeout, districtMapper);
-	}
-
-	private static StringBuilder redAlertToString(long contentLength,
-												  TemporalAccessor alertsLastModified,
-												  String translatedTitle,
-												  String translatedDescription,
-												  String translatedData,
-												  StringBuilder output) {
-		return output.append("Translated Title: ").append(translatedTitle).append(System.lineSeparator())
-				.append("Translated Description: ").append(translatedDescription).append(System.lineSeparator())
-				.append("Content Length: ").append(contentLength).append(" bytes").append(System.lineSeparator())
-				.append("Last Modified Date: ").append(DATE_TIME_FORMATTER.format(alertsLastModified)).append(System.lineSeparator())
-				.append("Current Date: ").append(DATE_TIME_FORMATTER.format(Instant.now())).append(System.lineSeparator())
-				.append(translatedData);
-	}
-
-	/**
-	 * <li><a href=https://www.oref.org.il/districts/districts_heb.json>districts_heb.json</a></li>
-	 * <li><a href=https://www.oref.org.il/districts/districts_eng.json>districts_eng.json</a></li>
-	 * <li><a href=https://www.oref.org.il/districts/districts_rus.json>districts_rus.json</a></li>
-	 * <li><a href=https://www.oref.org.il/districts/districts_arb.json>districts_arb.json</a></li>
-	 */
-	private <T> Map<String, T> loadRemoteDistricts(LanguageCode languageCode,
-												   Duration timeout,
-												   Function<District, T> districtMapper) {
-		LOGGER.info("Getting districts from IDF's Home Front Command's server...");
-		while (isContinue) {
-			try {
-				final Result<Map<String, T>> result = TimeMeasurement.measureAndExecuteCallable(() -> {
-					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
-							HttpRequest.newBuilder(URI.create("https://alerts-history.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase(Locale.ROOT)))
-									.header("Accept", "application/json")
-									.timeout(timeout)
-									.build(),
-							RESPONSE_BODY_HANDLER
-					);
-					try (InputStream body = httpResponse.body()) {
-						if (httpResponse.statusCode() >= 200 && httpResponse.statusCode() < 300)
-							return JSON_MAPPER.readValue(
-											/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
-											DISTRICTS_TYPE_REFERENCE
-									)
-									.parallelStream().unordered()
-									.collect(Collectors.toConcurrentMap(
-											District::label_he,
-											districtMapper,
-											(value1, value2) -> {
-												LOGGER.trace("value1: {}, value2: {}", value1, value2);
-												return value2;
-											}
-									));
-					}
-					LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
-					return Collections.emptyMap();
-				});
-				if (result.getResult().isEmpty()) {
-					sleep();
-					continue;
-				}
-				LOGGER.info("Done (took {} milliseconds, got {} districts)", result.getTimeTaken(), result.getResult().size());
-				return result.getResult();
-			} catch (JsonParseException e) {
-				LOGGER.error("JSON parsing error: {}", e.toString());
-			} catch (Exception e) {
-				LOGGER.debug("Failed to get data for language code {}: {}. Trying again...", languageCode, e.toString());
-			}
-			sleep();
-		}
-		return Collections.emptyMap();
-	}
-
-	private void printDistrictsNotFoundWarning() {
-		if (!districtsNotFound.isEmpty())
-			LOGGER.warn("Those districts don't exist: {}", districtsNotFound);
-	}
-
-	@Override
-	public String[] getVersion() {
-		return new String[]{"Red Alert Listener v" + getClass().getPackage().getImplementationVersion()};
 	}
 
 	private void loadConfiguration() throws IOException {
@@ -361,7 +328,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				refreshDistrictsTranslation();
 			districtsNotFound = (configuration.districtsOfInterest().size() > 2 ?
 					new ArrayList<>(configuration.districtsOfInterest()) :
-					configuration.districtsOfInterest()).parallelStream().unordered()
+					configuration.districtsOfInterest())
+					.parallelStream().unordered()
 					.filter(Predicate.not(getTranslations(new ArrayList<>(districts.values()))::contains))
 					.toList();
 			printDistrictsNotFoundWarning();
@@ -378,40 +346,81 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		if (httpRequest == null || !oldTimeout.equals(configuration.timeout()))
 			httpRequest = HttpRequest.newBuilder(URI.create("https://www.oref.org.il/warningMessages/alert/Alerts.json"))
 					.header("Accept", "application/json")
+					.header("Accept-Encoding", "gzip")
 //					.header("X-Requested-With", "XMLHttpRequest")
 //					.header("Referer", "https://www.oref.org.il/12481-" + configuration.languageCode().name().toLowerCase(Locale.ROOT) + "/Pakar.aspx")
 					.timeout(configuration.timeout())
 					.build();
 	}
 
+	/**
+	 * @see <a href=https://www.oref.org.il/districts/districts_heb.json>districts_heb.json</a>
+	 * @see <a href=https://www.oref.org.il/districts/districts_eng.json>districts_eng.json</a>
+	 * @see <a href=https://www.oref.org.il/districts/districts_rus.json>districts_rus.json</a>
+	 * @see <a href=https://www.oref.org.il/districts/districts_arb.json>districts_arb.json</a>
+	 */
+	private <T> Map<String, T> loadRemoteDistricts(LanguageCode languageCode,
+												   Duration timeout,
+												   Function<District, T> districtMapper) {
+		return getResource(
+				"districts",
+				HttpRequest.newBuilder(URI.create("https://alerts-history.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase(Locale.ROOT)))
+						.timeout(timeout),
+				(ThrowingFunction<InputStream, List<District>, ?>) body -> JSON_MAPPER.readValue(
+						/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
+						DISTRICTS_TYPE_REFERENCE
+				),
+				districtStream -> districtStream.collect(Collectors.toConcurrentMap(
+						District::hebrewLabel,
+						districtMapper,
+						(value1, value2) -> {
+							LOGGER.trace("value1: {}, value2: {}", value1, value2);
+							return value2;
+						}
+				))
+		);
+	}
+
 	private Map<Integer, AlertTranslation> loadAlertsTranslation() {
-		LOGGER.info("Getting alerts translation from IDF's Home Front Command's server...");
+		return getResource(
+				"alerts translations",
+				HttpRequest.newBuilder(URI.create("https://www.oref.org.il/alerts/alertsTranslation.json"))
+						.timeout(configuration.timeout()),
+				(ThrowingFunction<InputStream, List<AlertTranslation>, ?>) body -> JSON_MAPPER.readValue(
+						/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
+						ALERTS_TRANSLATION_TYPE_REFERENCE
+				),
+				alertTranslationStream -> alertTranslationStream.filter(alertTranslation -> alertTranslation.matrixCatId() != 0)
+						.collect(Collectors.toConcurrentMap(
+								AlertTranslation::matrixCatId,
+								Function.identity(),
+								(value1, value2) -> {
+									LOGGER.trace("value1: {}, value2: {}", value1, value2);
+									return value2;
+								}
+						))
+		);
+	}
+
+	private <T, K, V> Map<K, V> getResource(String headline,
+											HttpRequest.Builder httpRequestBuilder,
+											Function<InputStream, ? extends Collection<T>> jsonMapper,
+											Function<Stream<T>, Map<K, V>> streamMapper) {
+		LOGGER.info("Getting {} from IDF's Home Front Command's server...", headline);
+		final HttpRequest httpRequest = httpRequestBuilder.header("Accept", "application/json")
+				.header("Accept-Encoding", "gzip")
+				.build();
 		while (isContinue) {
 			try {
-				final Result<Map<Integer, AlertTranslation>> result = TimeMeasurement.measureAndExecuteCallable(() -> {
+				final Result<Map<K, V>> result = TimeMeasurement.measureAndExecuteCallable(() -> {
 					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
-							HttpRequest.newBuilder(URI.create("https://www.oref.org.il/alerts/alertsTranslation.json"))
-									.header("Accept", "application/json")
-									.timeout(configuration.timeout())
-									.build(),
+							httpRequest,
 							RESPONSE_BODY_HANDLER
 					);
-					try (InputStream body = httpResponse.body()) {
-						if (httpResponse.statusCode() >= 200 && httpResponse.statusCode() < 300)
-							return JSON_MAPPER.readValue(
-											/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
-											ALERTS_TRANSLATION_TYPE_REFERENCE
-									)
-									.parallelStream().unordered()
-									.filter(alertTranslation -> alertTranslation.matrixCatId() != 0)
-									.collect(Collectors.toConcurrentMap(
-											AlertTranslation::matrixCatId,
-											Function.identity(),
-											(value1, value2) -> {
-												LOGGER.trace("value1: {}, value2: {}", value1, value2);
-												return value2;
-											}
-									));
+					try (InputStream body = new GZIPInputStream(httpResponse.body())) {
+						if (200 <= httpResponse.statusCode() && httpResponse.statusCode() < 300)
+							return streamMapper.apply(jsonMapper.apply(body)
+									.parallelStream().unordered());
 					}
 					LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
 					return Collections.emptyMap();
@@ -420,12 +429,12 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					sleep();
 					continue;
 				}
-				LOGGER.info("Done (took {} milliseconds)", result.getTimeTaken());
+				LOGGER.info("Done (took {} milliseconds, got {} {})", result.getTimeTaken(), result.getResult().size(), headline);
 				return result.getResult();
 			} catch (JsonParseException e) {
 				LOGGER.error("JSON parsing error: {}", e.toString());
 			} catch (Exception e) {
-				LOGGER.debug("Failed to get alerts translation for: {}. Trying again...", e.toString());
+				LOGGER.error("Failed to get alerts translation for: {}. Trying again...", e.toString());
 			}
 			sleep();
 		}
@@ -434,7 +443,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 	private List<? extends IAreaTranslationProtectionTime> filterPrevAndGetTranslatedData(RedAlertEvent redAlertEvent,
 																						  Map<Integer, Set<String>> prevData) {
-		return redAlertEvent.data().parallelStream().unordered()
+		return redAlertEvent.data()
+				.parallelStream().unordered()
 				.filter(Predicate.not(prevData.getOrDefault(redAlertEvent.cat(), Collections.emptySet())::contains))
 				.map(key -> Option.of(districts.get(key)) instanceof Some(AreaTranslationProtectionTime areaTranslationProtectionTime) ?
 						areaTranslationProtectionTime :
@@ -489,12 +499,15 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			Map<Integer, AlertTranslation> alertsTranslation = loadAlertsTranslation();
 			final Map<Integer, Set<String>> prevData = new HashMap<>(alertsTranslation.size());
 			final var ref = new Object() {
-				Instant currAlertsLastModified = Instant.MIN;
+				private Instant currAlertsLastModified = Instant.MIN;
 			};
+//			//language=JSON
+//			final long minRedAlertEventContentLength2 = """
+//					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes().length;
 			//language=JSON
-			final long minRedAlertEventContentLength = """
-					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes().length;
-			final Duration alarmSoundDuration = Duration.ofNanos(clip.getMicrosecondLength() * 1000);
+			final long minRedAlertEventContentLength = gzipStringSize("""
+					{"cat":"1","data":[],"desc":"","id":0,"title":""}""");
+			final Duration alarmSoundDuration = ChronoUnit.MICROS.getDuration().multipliedBy(clip.getMicrosecondLength());
 			System.err.println("Listening...");
 			while (isContinue)
 				try {
@@ -504,8 +517,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							RESPONSE_BODY_HANDLER
 					);
 
-					try (InputStream body = httpResponse.body()) {
-						if (httpResponse.statusCode() < 200 || httpResponse.statusCode() >= 300) {
+					try (InputStream body = new GZIPInputStream(httpResponse.body())) {
+						if (httpResponse.statusCode() < 200 || 300 <= httpResponse.statusCode()) {
 							LOGGER.error("Connection response status code: {}", httpResponse.statusCode());
 							sleep();
 							continue;
@@ -527,8 +540,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 										AlertTranslation alertTranslation = alertsTranslation.get(redAlertEvent.cat());
 										if (alertTranslation == null) {
 											LOGGER.warn("Couldn't find translation for cat: {} ({}), trying again...", redAlertEvent.cat(), redAlertEvent.title());
-											alertsTranslation = loadAlertsTranslation();
-											alertTranslation = alertsTranslation.get(redAlertEvent.cat());
+											alertTranslation = (alertsTranslation = loadAlertsTranslation())
+													.get(redAlertEvent.cat());
 										}
 										final String
 												title = alertTranslation == null ?
@@ -539,72 +552,86 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 														alertTranslation.getAlertText(configuration.languageCode());
 
 										//TODO rethink of what defines a drill alert
-										if (redAlertEvent.data().parallelStream().unordered()
+										if (redAlertEvent.data()
+												.parallelStream().unordered()
 												.allMatch(LanguageCode.HE::containsTestKey)) {
 											if (configuration.isShowTestAlerts())
-												System.out.println(redAlertToString(
+												System.out.println(addResponseHeader(
 														contentLength,
 														lastModified,
 														title,
 														description,
-														redAlertEvent.data().parallelStream().unordered()
+														new StringBuilder()
+												)
+														.append(redAlertEvent.data()
+																.parallelStream().unordered()
 																.map(configuration.languageCode()::getTestTranslation)
 																.sorted()
 																.collect(Collectors.joining(
 																		"," + System.lineSeparator() + "\t",
 																		"Test Alert:" + System.lineSeparator() + "\t",
 																		System.lineSeparator()
-																)),
-														new StringBuilder()
-												));
+																))));
 											continue;
 										}
 
 										List<? extends IAreaTranslationProtectionTime> translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
 
-										boolean isContainsMissingTranslations = translatedData.parallelStream().unordered().anyMatch(MissingTranslation.class::isInstance);
+										boolean isContainsMissingTranslations = translatedData.parallelStream().unordered()
+												.anyMatch(MissingTranslation.class::isInstance);
 										if (isContainsMissingTranslations) {
-											LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
-											refreshDistrictsTranslation();
-											translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
-											//noinspection AssignmentUsedAsCondition
-											if (isContainsMissingTranslations = translatedData.parallelStream().unordered().anyMatch(MissingTranslation.class::isInstance))
-												LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
+											if (Duration.between(districtsLastUpdate, LocalDateTime.now()).compareTo(DISTRICTS_UPDATE_CONSTANT) > 0) {
+												LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
+												refreshDistrictsTranslation();
+												//noinspection AssignmentUsedAsCondition
+												if (isContainsMissingTranslations = (translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData))
+														.parallelStream().unordered()
+														.anyMatch(MissingTranslation.class::isInstance))
+													LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
+											}
+											else
+												LOGGER.warn("There is at least one district that couldn't be translated");
 										}
 
-										final List<AreaTranslationProtectionTime> unseenTranslatedDistricts = translatedData.parallelStream().unordered()
-												.distinct() //TODO think about
-												.filter(AreaTranslationProtectionTime.class::isInstance)
-												.map(AreaTranslationProtectionTime.class::cast)
-												.toList(); //to know if new (unseen) districts were added from previous request.
+										final List<AreaTranslationProtectionTime>
+												unseenTranslatedDistricts = translatedData.parallelStream().unordered()
+														.distinct() //TODO think about
+														.filter(AreaTranslationProtectionTime.class::isInstance)
+														.map(AreaTranslationProtectionTime.class::cast)
+														.toList(), //to know if new (unseen) districts were added from previous request.
+												districtsForAlert = unseenTranslatedDistricts.parallelStream().unordered()
+														.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
+														.toList(); //for not restarting alert sound unnecessarily
 
 										final StringBuilder output = new StringBuilder();
-										if (configuration.isDisplayResponse() && !unseenTranslatedDistricts.isEmpty())
-											redAlertToString(
+
+										if (configuration.isDisplayResponse() &&
+												(!unseenTranslatedDistricts.isEmpty() ||
+														!districtsForAlert.isEmpty() ||
+														(isContainsMissingTranslations && configuration.isDisplayUntranslatedDistricts()))) {
+											addResponseHeader(
 													contentLength,
 													lastModified,
 													title,
 													description,
-													areaAndTranslatedDistrictsToString("Translated Areas and Districts", unseenTranslatedDistricts, redAlertEvent.cat()),
 													output
 											);
-										if (configuration.isDisplayUntranslatedDistricts() && isContainsMissingTranslations) {
-											output.append(translatedData.parallelStream().unordered()
-													.distinct() //TODO think about
-													.filter(MissingTranslation.class::isInstance)
-													.map(MissingTranslation.class::cast)
-													.map(MissingTranslation::untranslatedName)
-													.sorted()
-													.collect(Collectors.joining(
-															"," + System.lineSeparator() + "\t",
-															"Untranslated Districts:" + System.lineSeparator() + "\t",
-															System.lineSeparator()
-													)));
+											if (!unseenTranslatedDistricts.isEmpty())
+												output.append(areaAndTranslatedDistrictsToString("Translated Areas and Districts", unseenTranslatedDistricts, redAlertEvent.cat()));
+											if (isContainsMissingTranslations && configuration.isDisplayUntranslatedDistricts()) {
+												output.append(translatedData.parallelStream().unordered()
+														.distinct() //TODO think about
+														.filter(MissingTranslation.class::isInstance)
+														.map(MissingTranslation.class::cast)
+														.map(MissingTranslation::untranslatedName)
+														.sorted()
+														.collect(Collectors.joining(
+																"," + System.lineSeparator() + "\t",
+																"Untranslated Districts:" + System.lineSeparator() + "\t",
+																System.lineSeparator()
+														)));
+											}
 										}
-
-										final List<AreaTranslationProtectionTime> districtsForAlert = unseenTranslatedDistricts.parallelStream().unordered()
-												.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-												.toList(); //for not restarting alert sound unnecessarily
 										if (Option.of((configuration.isAlertAll() ? unseenTranslatedDistricts : districtsForAlert)
 												.parallelStream().unordered()
 												.map(AreaTranslationProtectionTime::protectionTime)
@@ -654,24 +681,27 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				configuration.languageCode(),
 				configuration.timeout(),
 				district -> new AreaTranslationProtectionTime(
-						district.areaname(),
+						district.areaName(),
 						district.label(),
-						district.migun_time()
+						district.protectionTime()
 				)
 		);
 		if (LOGGER.isDebugEnabled()) {
-			final Map<String, AreaTranslationProtectionTime> newAndModifiedDistricts = updatedDistricts.entrySet().parallelStream().unordered()
+			final Map<String, AreaTranslationProtectionTime> newAndModifiedDistricts = updatedDistricts.entrySet()
+					.parallelStream().unordered()
 					.filter(Predicate.not(districts.entrySet()::contains))
 					.collect(Collectors.toConcurrentMap(Map.Entry::getKey, Map.Entry::getValue));
 			if (!newAndModifiedDistricts.isEmpty())
 				LOGGER.debug("New or modified districts: {}", newAndModifiedDistricts);
-			final Map<String, AreaTranslationProtectionTime> deletedDistricts = districts.entrySet().parallelStream().unordered()
+			final Map<String, AreaTranslationProtectionTime> deletedDistricts = districts.entrySet()
+					.parallelStream().unordered()
 					.filter(Predicate.not(updatedDistricts.entrySet()::contains))
 					.collect(Collectors.toConcurrentMap(Map.Entry::getKey, Map.Entry::getValue));
 			if (!deletedDistricts.isEmpty())
 				LOGGER.debug("Deleted districts: {}", deletedDistricts);
 		}
 		districts = updatedDistricts;
+		districtsLastUpdate = LocalDateTime.now();
 	}
 
 	private static class LoggerLevelConverter implements CommandLine.ITypeConverter<Level> {

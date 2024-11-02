@@ -7,7 +7,7 @@ import java.time.Duration;
 import java.util.Map;
 
 /**
- * Taken from <a href=https://www.oref.org.il/Shared/ClientScripts/WarningMessages/WarningMessages.js>https://www.oref.org.il/Shared/ClientScripts/WarningMessages/WarningMessages.js</a>
+ * @see <a href=https://www.oref.org.il/Shared/ClientScripts/WarningMessages/WarningMessages.js>https://www.oref.org.il/Shared/ClientScripts/WarningMessages/WarningMessages.js</a>
  */
 @SuppressWarnings("unused")
 public enum LanguageCode {
@@ -18,10 +18,10 @@ public enum LanguageCode {
 			),
 			"שניות",
 			Map.ofEntries(
-					Map.entry(CommonProtectionTimes.IMMEDIATELY.getDuration(), "מיידי"),
-					Map.entry(CommonProtectionTimes.ONE_MINUTE.getDuration(), "דקה"),
-					Map.entry(CommonProtectionTimes.ONE_AND_A_HALF_MINUTES.getDuration(), "דקה וחצי"),
-					Map.entry(CommonProtectionTimes.THREE_MINUTES.getDuration(), "3 דקות")
+					Map.entry(CommonProtectionTime.IMMEDIATELY.getDuration(), "מיידי"),
+					Map.entry(CommonProtectionTime.ONE_MINUTE.getDuration(), "דקה"),
+					Map.entry(CommonProtectionTime.ONE_AND_A_HALF_MINUTES.getDuration(), "דקה וחצי"),
+					Map.entry(CommonProtectionTime.THREE_MINUTES.getDuration(), "3 דקות")
 			)
 	),
 	EN(
@@ -31,10 +31,10 @@ public enum LanguageCode {
 			),
 			"seconds",
 			Map.ofEntries(
-					Map.entry(CommonProtectionTimes.IMMEDIATELY.getDuration(), "Immediately"),
-					Map.entry(CommonProtectionTimes.ONE_MINUTE.getDuration(), "1 minute"),
-					Map.entry(CommonProtectionTimes.ONE_AND_A_HALF_MINUTES.getDuration(), "1.5 minutes"),
-					Map.entry(CommonProtectionTimes.THREE_MINUTES.getDuration(), "3 minutes")
+					Map.entry(CommonProtectionTime.IMMEDIATELY.getDuration(), "Immediately"),
+					Map.entry(CommonProtectionTime.ONE_MINUTE.getDuration(), "1 minute"),
+					Map.entry(CommonProtectionTime.ONE_AND_A_HALF_MINUTES.getDuration(), "1.5 minutes"),
+					Map.entry(CommonProtectionTime.THREE_MINUTES.getDuration(), "3 minutes")
 			)
 	),
 	AR(
@@ -44,10 +44,10 @@ public enum LanguageCode {
 			),
 			"ثواني",
 			Map.ofEntries(
-					Map.entry(CommonProtectionTimes.IMMEDIATELY.getDuration(), "بشكل فوري"),
-					Map.entry(CommonProtectionTimes.ONE_MINUTE.getDuration(), "دقيقة"),
-					Map.entry(CommonProtectionTimes.ONE_AND_A_HALF_MINUTES.getDuration(), "دقيقة ونصف"),
-					Map.entry(CommonProtectionTimes.THREE_MINUTES.getDuration(), "3 دقائق")
+					Map.entry(CommonProtectionTime.IMMEDIATELY.getDuration(), "بشكل فوري"),
+					Map.entry(CommonProtectionTime.ONE_MINUTE.getDuration(), "دقيقة"),
+					Map.entry(CommonProtectionTime.ONE_AND_A_HALF_MINUTES.getDuration(), "دقيقة ونصف"),
+					Map.entry(CommonProtectionTime.THREE_MINUTES.getDuration(), "3 دقائق")
 			)
 	),
 	RU(
@@ -57,10 +57,10 @@ public enum LanguageCode {
 			),
 			"секунды",
 			Map.ofEntries(
-					Map.entry(CommonProtectionTimes.IMMEDIATELY.getDuration(), "Hемедленно"),
-					Map.entry(CommonProtectionTimes.ONE_MINUTE.getDuration(), "1 минут"),
-					Map.entry(CommonProtectionTimes.ONE_AND_A_HALF_MINUTES.getDuration(), "1,5 минуты"),
-					Map.entry(CommonProtectionTimes.THREE_MINUTES.getDuration(), "3 минуты")
+					Map.entry(CommonProtectionTime.IMMEDIATELY.getDuration(), "Hемедленно"),
+					Map.entry(CommonProtectionTime.ONE_MINUTE.getDuration(), "1 минут"),
+					Map.entry(CommonProtectionTime.ONE_AND_A_HALF_MINUTES.getDuration(), "1,5 минуты"),
+					Map.entry(CommonProtectionTime.THREE_MINUTES.getDuration(), "3 минуты")
 			)
 	);
 	private final Map<String, String> testDistrictTranslations;

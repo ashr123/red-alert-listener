@@ -7,6 +7,6 @@ import java.time.Duration;
 class DurationDeserializer extends StdConverter<Long, Duration> {
 	@Override
 	public Duration convert(Long value) {
-		return CommonProtectionTimes.getProtectionTime(value);
+		return CommonProtectionTime.getProtectionTime(value);
 	}
 }

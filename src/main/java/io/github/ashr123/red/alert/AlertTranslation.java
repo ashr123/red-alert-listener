@@ -5,10 +5,14 @@ import com.fasterxml.jackson.databind.util.StdConverter;
 
 import java.util.regex.Pattern;
 
-public record AlertTranslation(@JsonDeserialize(converter = AlertDescriptionDeserializer.class) String heb,
-							   @JsonDeserialize(converter = AlertDescriptionDeserializer.class) String eng,
-							   @JsonDeserialize(converter = AlertDescriptionDeserializer.class) String rus,
-							   @JsonDeserialize(converter = AlertDescriptionDeserializer.class) String arb,
+public record AlertTranslation(@JsonDeserialize(converter = AlertDescriptionDeserializer.class)
+							   String heb,
+							   @JsonDeserialize(converter = AlertDescriptionDeserializer.class)
+							   String eng,
+							   @JsonDeserialize(converter = AlertDescriptionDeserializer.class)
+							   String rus,
+							   @JsonDeserialize(converter = AlertDescriptionDeserializer.class)
+							   String arb,
 							   int catId,
 							   int matrixCatId,
 							   String hebTitle,
