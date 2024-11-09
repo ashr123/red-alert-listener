@@ -1,17 +1,17 @@
 ### GET request for red alerts from IDF's home front command with minimal headers
 # @no-cookie-jar
-GET https://www.oref.org.il/WarningMessages/alert/alerts.json
+GET https://www.oref.org.il/WarningMessages/alert/alerts.json HTTP/2
 Accept: application/json
 Accept-Encoding: gzip
 
 ### GET request for IDF's home front command districts per language code
 # @no-cookie-jar
-GET https://www.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang={{languageCode}}
+GET https://alerts-history.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang={{languageCode}} HTTP/2
 Accept: application/json
 Accept-Encoding: gzip
 
 ### GET request for alerts translation
 # @no-cookie-jar
-GET https://www.oref.org.il/alerts/alertsTranslation.json
+GET https://www.oref.org.il/alerts/alertsTranslation.json HTTP/2
 Accept: application/json
 Accept-Encoding: gzip
