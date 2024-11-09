@@ -1,6 +1,6 @@
 ### GET request for red alerts from IDF's home front command with minimal headers
 # @no-cookie-jar
-GET https://www.oref.org.il/WarningMessages/alert/alerts.json HTTP/2
+GET https://www.oref.org.il/warningMessages/alert/Alerts.json HTTP/2
 Accept: application/json
 Accept-Encoding: gzip
 
