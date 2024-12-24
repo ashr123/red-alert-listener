@@ -3,15 +3,18 @@
 GET https://www.oref.org.il/warningMessages/alert/Alerts.json HTTP/2
 Accept: application/json
 Accept-Encoding: gzip
+Cache-Control: no-store
 
 ### GET request for IDF's home front command districts per language code
 # @no-cookie-jar
 GET https://alerts-history.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang={{languageCode}} HTTP/2
 Accept: application/json
 Accept-Encoding: gzip
+Cache-Control: no-store
 
 ### GET request for alerts translation
 # @no-cookie-jar
 GET https://www.oref.org.il/alerts/alertsTranslation.json HTTP/2
 Accept: application/json
 Accept-Encoding: gzip
+Cache-Control: no-store
