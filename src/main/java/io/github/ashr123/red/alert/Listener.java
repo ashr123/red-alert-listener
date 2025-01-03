@@ -117,7 +117,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				\t• Enter "r" to refresh the districts translation dictionary.
 				\t• Enter "l" to reload configuration file.
 				\t• Enter "q" to quit.
-				\t• Enter "h" to display this help massage.""");
+				\t• Enter "h" to display this help message.""");
 	}
 
 	private static void sleep() {
@@ -167,7 +167,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				.execute(args);
 	}
 
-	private String areaAndTranslatedDistrictsToString(CharSequence headline,
+	private String areaAndTranslatedDistrictsToString(String headline,
 													  List<AreaTranslationProtectionTime> districtsByAreaName,
 													  int cat) {
 		final Function<AreaTranslationProtectionTime, String> toString = cat == 1 || cat == 101 ?
@@ -555,8 +555,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						switch (OptionLong.of(httpResponse.headers().firstValueAsLong("Content-Length"))) {
 							case SomeLong(long contentLength) when contentLength > minRedAlertEventContentLength -> {
 								//noinspection NestedSwitchStatement
-								switch (Option.of(httpResponse.headers().firstValue("Last-Modified")
-										.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from)))) {
+								switch (Option.of(httpResponse.headers().firstValue("Last-Modified"))
+										.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from))) {
 									case Some(Instant lastModified) when ref.currAlertsLastModified.isBefore(lastModified) -> {
 										ref.currAlertsLastModified = lastModified;
 
@@ -632,19 +632,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 										final StringBuilder output = new StringBuilder();
 
-//										if (configuration.isDisplayResponse() &&
-//												(!unseenTranslatedDistricts.isEmpty() ||
-//														!districtsForAlert.isEmpty() ||
-//														(isContainsMissingTranslations && configuration.isDisplayUntranslatedDistricts()))) {
-//											addResponseHeader(
-//													contentLength,
-//													lastModified,
-//													title,
-//													description,
-//													output
-//											);
 										if (!unseenTranslatedDistricts.isEmpty())
 											output.append(areaAndTranslatedDistrictsToString("Translated Areas and Districts", unseenTranslatedDistricts, redAlertEvent.cat()));
+
 										if (isContainsMissingTranslations && configuration.isDisplayUntranslatedDistricts())
 											output.append(translatedData.parallelStream().unordered()
 													.distinct() //TODO think about
@@ -657,7 +647,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 															"Untranslated Districts:" + System.lineSeparator() + "\t",
 															System.lineSeparator()
 													)));
-//										}
+
 										if (Option.of((configuration.isAlertAll() ? unseenTranslatedDistricts : districtsForAlert)
 												.parallelStream().unordered()
 												.map(AreaTranslationProtectionTime::protectionTime)
