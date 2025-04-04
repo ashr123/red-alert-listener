@@ -18,50 +18,37 @@
 	- Arabic (code `AR`)
 4. `districts.json` (like [districts-en.json](districts-en.json "districts") example) created from `get-remote-districts-as-json-to-file` command is of the following shape (in TypeScript terms):
    ```ts
-   interface District {
-       translation: string;
-       protectionTimeInSeconds: number;
-   }
-
-   interface AreaDistricts {
-       [districtNameInHebrew: string]: District;
-   }
-
-   interface AreaData {
-       [translatedAreaName: string]: AreaDistricts;
-   }
-
-   const data: AreaData = require('districts-en.json');
+   const data: Record<string /*translated area name*/,
+       Record<string /*duration in seconds to arrive to protected place (as string)*/,
+           Record<string /*district name in Hebrew*/,
+               string /*district translation*/>>> = require('districts-en.json');
    ```
 
    Or in Java terms:
    ```java
    import com.fasterxml.jackson.core.type.TypeReference;
-   import com.fasterxml.jackson.annotation.JsonProperty;
-   import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-   import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+   import com.fasterxml.jackson.databind.DeserializationContext;
+   import com.fasterxml.jackson.databind.KeyDeserializer;
    import com.fasterxml.jackson.databind.json.JsonMapper;
    import com.fasterxml.jackson.databind.util.StdConverter;
 
    import java.io.IOException;
    import java.time.Duration;
 
-   record District(String translation,
-                   @JsonProperty("protectionTimeInSeconds")
-                   @JsonDeserialize(converter = DurationDeserializer.class)
-                   Duration protectionTime) {
-       private static class DurationDeserializer extends StdConverter<Long, Duration> {
-           @Override
-           public Duration convert(Long value) {
-               return Duration.ofSeconds(value);
-           }
+   static class DurationFromSecondsKeyDeserializer extends KeyDeserializer {
+       @Override
+       public Duration deserializeKey(String key, DeserializationContext ctxt) {
+           return Duration.ofSeconds(Long.parseLong(key));
        }
    }
 
    public static void main(String... args) throws IOException {
        final Map<String /*translated area name*/,
-               Map<String /*district name in Hebrew*/,
-                       District>> data = new JsonMapper()
+               Map<Duration /*duration in seconds to arrive to protected place*/,
+                       Map<String /*district name in Hebrew*/,
+                               String /*district translation*/>>> data = new JsonMapper()
+               .registerModule(new SimpleModule()
+                       .addKeyDeserializer(Duration.class, new DurationFromSecondsKeyDeserializer()))
                .readValue(
                        new File("districts-en.json"),
                        new TypeReference<>() {
@@ -100,3 +87,4 @@ Legal districts (and their translation) can be found by:
 ![Operation Shield and Arrow](pics/pic7.png "Operation Shield and Arrow")
 ![Swords of Iron War](pics/pic8.png "Swords of Iron War")
 ![Swords of Iron War](pics/pic9.png "Swords of Iron War")
+![demo4](pics/pic10.png "Demo")

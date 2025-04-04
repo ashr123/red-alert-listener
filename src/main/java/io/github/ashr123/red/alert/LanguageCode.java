@@ -1,8 +1,5 @@
 package io.github.ashr123.red.alert;
 
-import io.github.ashr123.option.Option;
-import io.github.ashr123.option.Some;
-
 import java.time.Duration;
 import java.util.Map;
 
@@ -82,9 +79,10 @@ public enum LanguageCode {
 	}
 
 	public String getTimeTranslation(Duration time) {
-		return Option.of(timeTranslations.get(time)) instanceof Some(String timeTranslation) ?
-				timeTranslation :
-				time.toSeconds() + " " + secondsTranslation;
+		final String translation = timeTranslations.get(time);
+		return translation == null ?
+				time.toSeconds() + " " + secondsTranslation :
+				translation;
 	}
 
 	public boolean containsTestKey(String key) {
