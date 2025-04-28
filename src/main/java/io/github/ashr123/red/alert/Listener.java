@@ -162,6 +162,11 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		}
 	}
 
+	private static <U> U merge(U value1, U value2) {
+		LOGGER.trace("value1: {}, value2: {}", value1, value2);
+		return value2;
+	}
+
 	public static void main(String... args) {
 		new CommandLine(Listener.class)
 				.setCaseInsensitiveEnumValuesAllowed(true)
@@ -253,10 +258,12 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							httpRequest,
 							HttpResponse.BodyHandlers.ofInputStream()
 					);
-					try (InputStream body = new GZIPInputStream(httpResponse.body())) {
+					try (InputStream inputStream = httpResponse.body()) {
 						if (200 <= httpResponse.statusCode() && httpResponse.statusCode() < 300)
-							return streamMapper.apply(jsonMapper.apply(body)
-									.parallelStream().unordered());
+							try (InputStream body = new GZIPInputStream(inputStream)) {
+								return streamMapper.apply(jsonMapper.apply(body)
+										.parallelStream().unordered());
+							}
 					}
 					LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
 					return Collections.emptyMap();
@@ -297,10 +304,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				districtStream -> districtStream.collect(Collectors.toConcurrentMap(
 						District::hebrewLabel,
 						districtMapper,
-						(value1, value2) -> {
-							LOGGER.trace("value1: {}, value2: {}", value1, value2);
-							return value2;
-						}
+						Listener::merge
 				))
 		);
 	}
@@ -318,10 +322,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						.collect(Collectors.toConcurrentMap(
 								AlertTranslation::matrixCatId,
 								Function.identity(),
-								(value1, value2) -> {
-									LOGGER.trace("value1: {}, value2: {}", value1, value2);
-									return value2;
-								}
+								Listener::merge
 						))
 		);
 	}
@@ -347,7 +348,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 								Unrecognized command!
 								Enter "q" to quit""");
 					}
-			} catch (NoSuchElementException ignored) {
+			} catch (NoSuchElementException _) {
 			}
 		});
 		setLoggerLevel(level);
@@ -565,7 +566,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 								printHelpMsg();
 							}
 						}
-				} catch (NoSuchElementException ignored) {
+				} catch (NoSuchElementException _) {
 				}
 				System.err.println("Bye Bye!");
 			});
@@ -592,7 +593,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							HttpResponse.BodyHandlers.ofInputStream()
 					);
 
-					try (InputStream body = new GZIPInputStream(httpResponse.body())) {
+					try (InputStream inputStream = httpResponse.body()) {
 						if (httpResponse.statusCode() < 200 || 300 <= httpResponse.statusCode()) {
 							LOGGER.error("Connection response status code: {}", httpResponse.statusCode());
 							sleep();
@@ -604,143 +605,149 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 								switch (Option.of(httpResponse.headers().firstValue("Last-Modified"))
 										.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from))) {
 									case Some(Instant lastModified) when ref.currAlertsLastModified.isBefore(lastModified) -> {
-										ref.currAlertsLastModified = lastModified;
+										try (InputStream body = new GZIPInputStream(inputStream)) {
+											final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(
+													/*BOM.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
+													RedAlertEvent.class
+											);
 
-										final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(
-												/*BOM.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
-												RedAlertEvent.class
-										);
-										LOGGER.debug(
-												"Original event data: {}, processing took {} milliseconds",
-												redAlertEvent,
-												TimeMeasurement.measureAndExecute((ThrowingRunnable<?>) () -> {
-															final AlertTranslation alertTranslation = alertsTranslation.get(redAlertEvent.cat());
+											ref.currAlertsLastModified = lastModified;
+
+											LOGGER.debug(
+													"Original event data: {}, processing took {} milliseconds",
+													redAlertEvent,
+													TimeMeasurement.measureAndExecute((ThrowingRunnable<?>) () -> {
+																final AlertTranslation alertTranslation = alertsTranslation.get(redAlertEvent.cat());
 //															if (alertTranslation == null) {
 //																LOGGER.warn("Couldn't find translation for cat: {} ({}), trying again...", redAlertEvent.cat(), redAlertEvent.title());
 //																alertTranslation = (alertsTranslation = loadAlertsTranslation())
 //																		.get(redAlertEvent.cat());
 //															}
-															final String
-																	title = alertTranslation == null ?
-																			redAlertEvent.title() + " (didn't find translation)" :
-																			alertTranslation.getAlertTitle(configuration.languageCode()),
-																	description = alertTranslation == null ?
-																			redAlertEvent.desc() + " (didn't find translation)" :
-																			alertTranslation.getAlertText(configuration.languageCode());
+																final String
+																		title = alertTranslation == null ?
+																		redAlertEvent.title() + " (didn't find translation)" :
+																		alertTranslation.getAlertTitle(configuration.languageCode()),
+																		description = alertTranslation == null ?
+																				redAlertEvent.desc() + " (didn't find translation)" :
+																				alertTranslation.getAlertText(configuration.languageCode());
 
-															//TODO rethink of what defines a drill alert
-															if (redAlertEvent.data()
-																	.parallelStream().unordered()
-																	.allMatch(LanguageCode.HE::containsTestKey)) {
-																if (configuration.isShowTestAlerts())
+																//TODO rethink of what defines a drill alert
+																if (redAlertEvent.data()
+																		.parallelStream().unordered()
+																		.allMatch(LanguageCode.HE::containsTestKey)) {
+																	if (configuration.isShowTestAlerts())
+																		printAlert(
+																				contentLength,
+																				lastModified,
+																				title,
+																				description,
+																				redAlertEvent.data()
+																						.parallelStream().unordered()
+																						.map(configuration.languageCode()::getTestTranslation)
+																						.sorted()
+																						.collect(Collectors.joining(
+																								"," + System.lineSeparator() + "\t",
+																								"Test Alert:" + System.lineSeparator() + "\t",
+																								System.lineSeparator()
+																						))
+																		);
+																	return;
+																}
+
+																List<? extends IAreaTranslationProtectionTime> translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
+
+																boolean isContainsMissingTranslations = translatedData.parallelStream().unordered()
+																		.anyMatch(MissingTranslation.class::isInstance);
+																if (isContainsMissingTranslations) {
+																	if (Duration.between(districtsLastUpdate, LocalDateTime.now()).compareTo(DISTRICTS_UPDATE_CONSTANT) > 0) {
+																		LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
+																		refreshDistrictsTranslation();
+																		//noinspection AssignmentUsedAsCondition
+																		if (isContainsMissingTranslations = (translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData))
+																				.parallelStream().unordered()
+																				.anyMatch(MissingTranslation.class::isInstance))
+																			LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
+																	} else
+																		LOGGER.warn("There is at least one district that couldn't be translated");
+																}
+
+																final List<AreaTranslationProtectionTime>
+																		unseenTranslatedDistricts = translatedData.parallelStream().unordered()
+																		.distinct() //TODO think about
+																		.filter(AreaTranslationProtectionTime.class::isInstance)
+																		.map(AreaTranslationProtectionTime.class::cast)
+																		.toList(), //to know if new (unseen) districts were added from previous request.
+																		districtsForAlert = unseenTranslatedDistricts.parallelStream().unordered()
+																				.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
+																				.toList(); //for not restarting alert sound unnecessarily
+
+																final StringBuilder output = new StringBuilder();
+
+																if (!unseenTranslatedDistricts.isEmpty())
+																	output.append(areaAndTranslatedDistrictsToString("Translated Areas and Districts", unseenTranslatedDistricts, redAlertEvent.cat()));
+
+																if (isContainsMissingTranslations && configuration.isDisplayUntranslatedDistricts())
+																	output.append(translatedData.parallelStream().unordered()
+																			.distinct() //TODO think about
+																			.filter(MissingTranslation.class::isInstance)
+																			.map(MissingTranslation.class::cast)
+																			.map(MissingTranslation::untranslatedName)
+																			.sorted()
+																			.collect(Collectors.joining(
+																					"," + System.lineSeparator() + "\t",
+																					"Untranslated Districts:" + System.lineSeparator() + "\t",
+																					System.lineSeparator()
+																			)));
+
+																if (Option.of((configuration.isAlertAll() ? unseenTranslatedDistricts : districtsForAlert)
+																		.parallelStream().unordered()
+																		.map(AreaTranslationProtectionTime::protectionTime)
+																		.min(Comparator.naturalOrder())) instanceof Some(Duration minProtectionTime)) {
+																	if (configuration.isMakeSound()) {
+																		clip.setFramePosition(0);
+																		//noinspection NumericCastThatLosesPrecision
+																		clip.loop(Math.max(1, (int) minProtectionTime.dividedBy(alarmSoundDuration)));
+																	}
+																	output.append(areaAndTranslatedDistrictsToString("ALERT ALERT ALERT", districtsForAlert, redAlertEvent.cat()));
+																}
+
+																if (!output.isEmpty())
 																	printAlert(
 																			contentLength,
 																			lastModified,
 																			title,
 																			description,
-																			redAlertEvent.data()
-																					.parallelStream().unordered()
-																					.map(configuration.languageCode()::getTestTranslation)
-																					.sorted()
-																					.collect(Collectors.joining(
-																							"," + System.lineSeparator() + "\t",
-																							"Test Alert:" + System.lineSeparator() + "\t",
-																							System.lineSeparator()
-																					))
+																			output
 																	);
-																return;
-															}
 
-															List<? extends IAreaTranslationProtectionTime> translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData);
-
-															boolean isContainsMissingTranslations = translatedData.parallelStream().unordered()
-																	.anyMatch(MissingTranslation.class::isInstance);
-															if (isContainsMissingTranslations) {
-																if (Duration.between(districtsLastUpdate, LocalDateTime.now()).compareTo(DISTRICTS_UPDATE_CONSTANT) > 0) {
-																	LOGGER.warn("There is at least one district that couldn't be translated, refreshing districts translations from server...");
-																	refreshDistrictsTranslation();
-																	//noinspection AssignmentUsedAsCondition
-																	if (isContainsMissingTranslations = (translatedData = filterPrevAndGetTranslatedData(redAlertEvent, prevData))
-																			.parallelStream().unordered()
-																			.anyMatch(MissingTranslation.class::isInstance))
-																		LOGGER.warn("There is at least one district that couldn't be translated after districts refreshment");
-																} else
-																	LOGGER.warn("There is at least one district that couldn't be translated");
-															}
-
-															final List<AreaTranslationProtectionTime>
-																	unseenTranslatedDistricts = translatedData.parallelStream().unordered()
-																			.distinct() //TODO think about
-																			.filter(AreaTranslationProtectionTime.class::isInstance)
-																			.map(AreaTranslationProtectionTime.class::cast)
-																			.toList(), //to know if new (unseen) districts were added from previous request.
-																	districtsForAlert = unseenTranslatedDistricts.parallelStream().unordered()
-																			.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-																			.toList(); //for not restarting alert sound unnecessarily
-
-															final StringBuilder output = new StringBuilder();
-
-															if (!unseenTranslatedDistricts.isEmpty())
-																output.append(areaAndTranslatedDistrictsToString("Translated Areas and Districts", unseenTranslatedDistricts, redAlertEvent.cat()));
-
-															if (isContainsMissingTranslations && configuration.isDisplayUntranslatedDistricts())
-																output.append(translatedData.parallelStream().unordered()
-																		.distinct() //TODO think about
-																		.filter(MissingTranslation.class::isInstance)
-																		.map(MissingTranslation.class::cast)
-																		.map(MissingTranslation::untranslatedName)
-																		.sorted()
-																		.collect(Collectors.joining(
-																				"," + System.lineSeparator() + "\t",
-																				"Untranslated Districts:" + System.lineSeparator() + "\t",
-																				System.lineSeparator()
-																		)));
-
-															if (Option.of((configuration.isAlertAll() ? unseenTranslatedDistricts : districtsForAlert)
-																	.parallelStream().unordered()
-																	.map(AreaTranslationProtectionTime::protectionTime)
-																	.min(Comparator.naturalOrder())) instanceof Some(Duration minProtectionTime)) {
-																if (configuration.isMakeSound()) {
-																	clip.setFramePosition(0);
-																	//noinspection NumericCastThatLosesPrecision
-																	clip.loop(Math.max(1, (int) minProtectionTime.dividedBy(alarmSoundDuration)));
-																}
-																output.append(areaAndTranslatedDistrictsToString("ALERT ALERT ALERT", districtsForAlert, redAlertEvent.cat()));
-															}
-
-															if (!output.isEmpty())
-																printAlert(
-																		contentLength,
-																		lastModified,
-																		title,
-																		description,
-																		output
-																);
-
-															printDistrictsNotFoundWarning();
-															prevData.put(redAlertEvent.cat(), new HashSet<>(redAlertEvent.data()));
-														})
-														.getTimeTaken()
-										);
+																printDistrictsNotFoundWarning();
+																prevData.put(redAlertEvent.cat(), new HashSet<>(redAlertEvent.data()));
+															})
+															.getTimeTaken()
+											);
+										}
 									}
-									case Some<Instant> ignored -> {
+									case Some<Instant> _ -> {
 									}
-									case None<Instant> ignored -> LOGGER.error("Couldn't get last modified date");
+									case None<Instant> _ -> LOGGER.error("Couldn't get last modified date");
 								}
 							}
-							case SomeLong ignored -> prevData.clear();
-							case NoneLong ignored -> LOGGER.error("Couldn't get content length");
+							case SomeLong _ when !prevData.isEmpty() -> prevData.clear();
+							case SomeLong _ -> {
+							}
+							case NoneLong _ -> LOGGER.error("Couldn't get content length");
 						}
 					}
 				} catch (JsonParseException e) {
 					LOGGER.error("JSON parsing error: {}", e.toString());
 				} catch (IOException e) {
 					if (Option.of(e.getMessage()) instanceof Some(String message) &&
-							message.contains("GOAWAY received"))
+							message.endsWith("GOAWAY received"))
 						LOGGER.trace("Got GOAWAY: {}", e.toString());
-					else
+					else {
 						LOGGER.debug("Got exception: {}", e.toString());
-					sleep();
+						sleep();
+					}
 				}
 		} catch (Throwable e) {
 			LOGGER.fatal("Closing connection and exiting...", e);

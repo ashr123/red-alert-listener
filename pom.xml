@@ -6,7 +6,7 @@
 
 	<groupId>io.github.ashr123</groupId>
 	<artifactId>red-alert-listener</artifactId>
-	<version>5.4.0</version>
+	<version>5.4.1</version>
 
 	<name>Red Alert Listener</name>
 	<description>A stand alone terminal app that can get "red alert" events from IDF's Home Front Command</description>
@@ -96,7 +96,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.14.0</version>
 				<configuration>
-					<release>21</release>
+					<release>22</release>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>info.picocli</groupId>
