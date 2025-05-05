@@ -179,7 +179,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 //		final Function<AreaTranslationProtectionTime, String> toString = cat == 1 || cat == 101 ?
 //				areaTranslationProtectionTime -> areaTranslationProtectionTime.translation() + " (" + configuration.languageCode().getTimeTranslation(areaTranslationProtectionTime.protectionTime()) + ")" :
 //				AreaTranslationProtectionTime::translation;
-		return cat == 1 || cat == 101 ?
+		return (cat == 1 || cat == 101 ?
 				districtsByAreaName.parallelStream().unordered()
 						.collect(Collectors.groupingByConcurrent(
 								AreaTranslationProtectionTime::translatedAreaName,
@@ -210,12 +210,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 										System.lineSeparator() + "\t\t",
 										areaNameAndDuration.getKey() + ":" + System.lineSeparator() + "\t\t",
 										""
-								)))
-						.collect(Collectors.joining(
-								System.lineSeparator() + "\t",
-								headline + ":" + System.lineSeparator() + "\t",
-								System.lineSeparator()
-						)) :
+								))) :
 				districtsByAreaName.parallelStream().unordered()
 						.collect(Collectors.groupingByConcurrent(
 								AreaTranslationProtectionTime::translatedAreaName,
@@ -234,12 +229,12 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 										"," + System.lineSeparator() + "\t\t",
 										areaNameAndDistricts.getKey() + ":" + System.lineSeparator() + "\t\t",
 										""
-								)))
-						.collect(Collectors.joining(
-								System.lineSeparator() + "\t",
-								headline + ":" + System.lineSeparator() + "\t",
-								System.lineSeparator()
-						));
+								))))
+				.collect(Collectors.joining(
+						System.lineSeparator() + "\t",
+						headline + ":" + System.lineSeparator() + "\t",
+						System.lineSeparator()
+				));
 	}
 
 	private <T, K, V> Map<K, V> getResource(String headline,
@@ -549,7 +544,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							case "t", "test", "test-sound" -> {
 								System.err.println("Testing sound...");
 								clip.setFramePosition(0);
-								clip.start();
+								clip.loop(1);
 							}
 							case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
 							case "r", "refresh", "refresh-districts" -> refreshDistrictsTranslation();
@@ -706,7 +701,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																	if (configuration.isMakeSound()) {
 																		clip.setFramePosition(0);
 																		//noinspection NumericCastThatLosesPrecision
-																		clip.loop(Math.max(1, (int) minProtectionTime.dividedBy(alarmSoundDuration)));
+																		clip.loop(redAlertEvent.cat() == 10 ? // for alert "In a few minutes, alerts are expected in your area"
+																				0 : // same as `clip.start()`, will play the sound once
+																				Math.max(0, (int) minProtectionTime.dividedBy(alarmSoundDuration) - 1));
 																	}
 																	output.append(areaAndTranslatedDistrictsToString("ALERT ALERT ALERT", districtsForAlert, redAlertEvent.cat()));
 																}
