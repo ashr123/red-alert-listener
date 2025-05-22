@@ -34,7 +34,7 @@ public enum CommonProtectionTime {
 		return PROTECTION_TIMES.computeIfAbsent(
 				seconds,
 				key -> {
-					LOGGER.warn("Got uncommon protection time for {} seconds!", key);
+					LOGGER.warn("Got uncommon protection time of {} seconds!", key);
 					return Duration.ofSeconds(key);
 				}
 		);

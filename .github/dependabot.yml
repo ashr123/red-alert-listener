@@ -9,11 +9,7 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    reviewers:
-      - "ashr123"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
-    reviewers:
-      - "ashr123"

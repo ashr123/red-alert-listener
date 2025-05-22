@@ -63,8 +63,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			)
 			.withZone(ZoneId.systemDefault());
 	private static final ObjectMapper JSON_MAPPER = new JsonMapper()
-			.enable(SerializationFeature.INDENT_OUTPUT)
-			.enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+			.enable(
+					SerializationFeature.INDENT_OUTPUT,
+					SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS
+			)
 //			.disable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
 			.findAndRegisterModules();
 	private static final Configuration DEFAULT_CONFIGURATION = new Configuration(
@@ -544,7 +546,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							case "t", "test", "test-sound" -> {
 								System.err.println("Testing sound...");
 								clip.setFramePosition(0);
-								clip.loop(1);
+								clip.start();
 							}
 							case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
 							case "r", "refresh", "refresh-districts" -> refreshDistrictsTranslation();

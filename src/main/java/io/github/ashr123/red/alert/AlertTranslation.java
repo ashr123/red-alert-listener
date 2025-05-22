@@ -15,10 +15,16 @@ public record AlertTranslation(@JsonDeserialize(converter = AlertDescriptionDese
 							   String arb,
 							   int catId,
 							   int matrixCatId,
+							   @JsonDeserialize(converter = StringInternDeserializer.class)
 							   String hebTitle,
+							   @JsonDeserialize(converter = StringInternDeserializer.class)
 							   String engTitle,
+							   @JsonDeserialize(converter = StringInternDeserializer.class)
 							   String rusTitle,
-							   String arbTitle) {
+							   @JsonDeserialize(converter = StringInternDeserializer.class)
+							   String arbTitle,
+							   @JsonDeserialize(converter = StringInternDeserializer.class)
+							   String updateType) {
 	public String getAlertTitle(LanguageCode languageCode) {
 		return switch (languageCode) {
 			case HE -> hebTitle;
@@ -42,7 +48,7 @@ public record AlertTranslation(@JsonDeserialize(converter = AlertDescriptionDese
 
 		@Override
 		public String convert(String value) {
-			final String[] split = PATTERN.split(value);
+			final String[] split = PATTERN.split(value.intern());
 			return split[split.length - 1].strip();
 		}
 	}
