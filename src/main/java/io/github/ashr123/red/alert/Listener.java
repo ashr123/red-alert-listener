@@ -14,10 +14,8 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.util.datetime.FixedDateFormat;
 import picocli.CommandLine;
 
-import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import java.io.*;
@@ -33,12 +31,10 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.Deflater;
@@ -55,10 +51,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	private static final Logger LOGGER = LogManager.getLogger();
 	private static final TypeReference<List<District>> DISTRICTS_TYPE_REFERENCE = new TypeReference<>() {
 	};
-	private static final TypeReference<List<AlertTranslation>> ALERTS_TRANSLATION_TYPE_REFERENCE = new TypeReference<>() {
+	private static final TypeReference<List<AlertTranslations>> ALERTS_TRANSLATION_TYPE_REFERENCE = new TypeReference<>() {
 	};
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(
-					FixedDateFormat.FixedFormat.DEFAULT.getPattern(),
+					"yyyy-MM-dd HH:mm:ss,SSS",
 					Locale.getDefault(Locale.Category.FORMAT)
 			)
 			.withZone(ZoneId.systemDefault());
@@ -242,7 +238,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	private <T, K, V> Map<K, V> getResource(String headline,
 											HttpRequest.Builder httpRequestBuilder,
 											Function<InputStream, ? extends Collection<T>> jsonMapper,
-											Function<Stream<T>, Map<K, V>> streamMapper) {
+											Function<Stream<T>, Map<K, V>> streamMapper,
+											ToIntFunction<Map<?, V>> sizeFunction) {
 		LOGGER.info("Getting {} from IDF's Home Front Command's server...", headline);
 		final HttpRequest httpRequest = httpRequestBuilder.header("Accept", "application/json")
 				.header("Accept-Encoding", "gzip")
@@ -269,7 +266,12 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					sleep();
 					continue;
 				}
-				LOGGER.info("Done (took {} milliseconds, got {} {})", result.getTimeTaken(), result.getResult().size(), headline);
+				LOGGER.info(
+						"Done (took {} milliseconds, got {} {})",
+						result.getTimeTaken(),
+						sizeFunction.applyAsInt(result.getResult()),
+						headline
+				);
 				return result.getResult();
 			} catch (JsonParseException e) {
 				LOGGER.error("JSON parsing error: {}", e.toString());
@@ -302,26 +304,48 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						District::hebrewLabel,
 						districtMapper,
 						Listener::merge
-				))
+				)),
+				Map::size
 		);
 	}
 
-	private Map<Integer, AlertTranslation> loadAlertsTranslation() {
-		return getResource(
+	private Map<Integer, ? extends Map<String, AlertTranslations>> loadAlertsTranslation(Set<String> ignoredTitlesForAlert) {
+		final Map<Integer, ? extends Map<String, AlertTranslations>> alertsTranslations = getResource(
 				"alerts translations",
 				HttpRequest.newBuilder(URI.create("https://www.oref.org.il/alerts/alertsTranslation.json"))
 						.timeout(configuration.timeout()),
-				(ThrowingFunction<InputStream, List<AlertTranslation>, ?>) body -> JSON_MAPPER.readValue(
+				(ThrowingFunction<InputStream, List<AlertTranslations>, ?>) body -> JSON_MAPPER.readValue(
 						/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
 						ALERTS_TRANSLATION_TYPE_REFERENCE
 				),
-				alertTranslationStream -> alertTranslationStream.filter(alertTranslation -> alertTranslation.matrixCatId() != 0)
-						.collect(Collectors.toConcurrentMap(
-								AlertTranslation::matrixCatId,
-								Function.identity(),
-								Listener::merge
-						))
+				alertTranslationStream -> alertTranslationStream.filter(alertTranslations -> alertTranslations.matrixCatId() != 0)
+						.collect(Collectors.groupingByConcurrent(
+								AlertTranslations::matrixCatId,
+								Collectors.toConcurrentMap(
+										AlertTranslations::hebTitle,
+										Function.identity(),
+										Listener::merge
+								)
+						)),
+				map -> map.values()
+						.parallelStream().unordered()
+						.mapToInt(Map::size)
+						.sum()
 		);
+
+		final Set<String> nonExistentTitles = ignoredTitlesForAlert.parallelStream().unordered()
+				.filter(Predicate.not(alertsTranslations.values()
+						.parallelStream().unordered()
+						.map(Map::keySet)
+						.map(Collection::parallelStream)
+						.flatMap(Stream::unordered)
+						.collect(Collectors.toSet())
+						::contains))
+				.collect(Collectors.toSet());
+		if (!nonExistentTitles.isEmpty())
+			LOGGER.warn("Ignored titles for alert that don't exist: {}", nonExistentTitles);
+
+		return alertsTranslations;
 	}
 
 	private <D> Map<String, D> startSubcommandInputThread(LanguageCode languageCode,
@@ -512,10 +536,12 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	}
 
 	private List<? extends IAreaTranslationProtectionTime> filterPrevAndGetTranslatedData(RedAlertEvent redAlertEvent,
-																						  Map<Integer, Set<String>> prevData) {
+																						  Map<Integer, Map<String, Set<String>>> prevData) {
 		return redAlertEvent.data()
 				.parallelStream().unordered()
-				.filter(Predicate.not(prevData.getOrDefault(redAlertEvent.cat(), Collections.emptySet())::contains))
+				.filter(Predicate.not(prevData.getOrDefault(redAlertEvent.cat(), Collections.emptyMap())
+						.getOrDefault(redAlertEvent.title(), Collections.emptySet())
+						::contains))
 				.map(key -> {
 					final AreaTranslationProtectionTime translationProtectionTime = districts.get(key);
 					return translationProtectionTime == null ?
@@ -528,25 +554,23 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	@Override
 	public void run() {
 		System.err.println("Preparing " + getVersion()[0] + "...");
-		try (Clip clip = AudioSystem.getClip(/*Stream.of(AudioSystem.getMixerInfo()).parallel().unordered()
+		try (Clip defaultClip = AudioSystem.getClip(/*Stream.of(AudioSystem.getMixerInfo()).parallel().unordered()
 				.filter(mixerInfo -> COLLATOR.equals(mixerInfo.getName(), "default [default]"))
 				.findAny()
 				.orElse(null)*/);
-			 AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/alarmSound.wav"))));
 			 ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory())) {
-			clip.open(audioInputStream);
 			Thread.startVirtualThread(() -> {
-				try (Scanner scanner = new Scanner(System.in)) {
+				try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in))) {
 					printHelpMsg();
 					while (isContinue)
-						switch (scanner.nextLine().strip()) {
+						switch (bufferedReader.readLine().strip()) {
 							case "" -> {
 							}
 							case "q", "quit", "exit" -> isContinue = false;
 							case "t", "test", "test-sound" -> {
 								System.err.println("Testing sound...");
-								clip.setFramePosition(0);
-								clip.start();
+								defaultClip.setFramePosition(0);
+								defaultClip.start();
 							}
 							case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
 							case "r", "refresh", "refresh-districts" -> refreshDistrictsTranslation();
@@ -563,24 +587,51 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 								printHelpMsg();
 							}
 						}
-				} catch (NoSuchElementException _) {
+				} catch (IOException _) {
 				}
 				System.err.println("Bye Bye!");
 			});
+			defaultClip.open(AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/sounds/alarmSound.wav")))));
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
 			loadConfiguration();
-			Map<Integer, AlertTranslation> alertsTranslation = loadAlertsTranslation();
-			final Map<Integer, Set<String>> prevData = new HashMap<>(alertsTranslation.size());
+
+			final Set<String> ignoredTitlesForAlert = Set.of(
+					"ניתן לצאת מהמרחב המוגן",
+					"ניתן לצאת מהמרחב המוגן אך יש להישאר בקרבתו", // ??
+					"סיום שהייה בסמיכות למרחב המוגן",
+					"חדירת מחבלים -  החשש הוסר",
+					"הסתיים אירוע חדירת מחבלים - ניתן לצאת מהבתים",
+					"חומרים מסוכנים - האירוע הסתיים",
+					"אירוע חומרים מסוכנים - הסכנה באזורכם חלפה",
+					"חדירת כלי טיס עוין - האירוע הסתיים",
+					"סכנת פיצוץ והדף חזק - ניתן לצאת מהמרחב המוגן",
+					"ירי רקטות וטילים -  האירוע הסתיים",
+					"אירוע בקריה למחקר גרעיני בנגב  – ניתן לצאת ממבנים",
+					"אירוע במרכז למחקר גרעיני בשורק  – ניתן לצאת ממבנים",
+					"התרעה על רעידת אדמה - ניתן לחזור לשגרה",
+					"בעקבות רעידת האדמה - הנחיות לחזרה למבנים", // ??
+					"הנחיות בעקבות רעידת האדמה" // ??
+			);
+
 			final var ref = new Object() {
 				private Instant currAlertsLastModified = Instant.MIN;
+				private Map<Integer, ? extends Map<String /*hebTitle*/, AlertTranslations>> alertsTranslations = loadAlertsTranslation(ignoredTitlesForAlert);
 			};
-//			//language=JSON
+
+			final Map<Integer, Map<String /*title*/, Set<String>>> prevData = new ConcurrentHashMap<>(ref.alertsTranslations.size());
+			final Map<Integer, Clip> soundClips = new ConcurrentHashMap<>(ref.alertsTranslations.size());
+
+			Runtime.getRuntime()
+					.addShutdownHook(new Thread(() -> soundClips.values()
+							.forEach(Clip::close)));
+
+// 			language=JSON
 //			final long minRedAlertEventContentLength2 = """
 //					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes().length;
 			//language=JSON
 			final long minRedAlertEventContentLength = gzipSize("""
 					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes());
-			final Duration alarmSoundDuration = ChronoUnit.MICROS.getDuration().multipliedBy(clip.getMicrosecondLength());
+
 			System.err.println("Listening...");
 			while (isContinue)
 				try {
@@ -614,19 +665,23 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 													"Original event data: {}, processing took {} milliseconds",
 													redAlertEvent,
 													TimeMeasurement.measureAndExecute((ThrowingRunnable<?>) () -> {
-																final AlertTranslation alertTranslation = alertsTranslation.get(redAlertEvent.cat());
-//															if (alertTranslation == null) {
-//																LOGGER.warn("Couldn't find translation for cat: {} ({}), trying again...", redAlertEvent.cat(), redAlertEvent.title());
-//																alertTranslation = (alertsTranslation = loadAlertsTranslation())
-//																		.get(redAlertEvent.cat());
-//															}
+																AlertTranslations alertTranslations = Option.of(ref.alertsTranslations.get(redAlertEvent.cat())) instanceof Some(Map<String, AlertTranslations> map) ?
+																		map.get(redAlertEvent.title()) :
+																		null;
+																if (alertTranslations == null) {
+																	LOGGER.warn("Couldn't find translation for cat: {} ({}), trying again...", redAlertEvent.cat(), redAlertEvent.title());
+																	alertTranslations = Option.of((ref.alertsTranslations = loadAlertsTranslation(ignoredTitlesForAlert))
+																			.get(redAlertEvent.cat())) instanceof Some(Map<String, AlertTranslations> map) ?
+																			map.get(redAlertEvent.title()) :
+																			null;
+																}
 																final String
-																		title = alertTranslation == null ?
-																		redAlertEvent.title() + " (didn't find translation)" :
-																		alertTranslation.getAlertTitle(configuration.languageCode()),
-																		description = alertTranslation == null ?
+																		title = alertTranslations == null ?
+																				redAlertEvent.title() + " (didn't find translation)" :
+																				alertTranslations.getAlertTitle(configuration.languageCode()),
+																		description = alertTranslations == null ?
 																				redAlertEvent.desc() + " (didn't find translation)" :
-																				alertTranslation.getAlertText(configuration.languageCode());
+																				alertTranslations.getAlertText(configuration.languageCode());
 
 																//TODO rethink of what defines a drill alert
 																if (redAlertEvent.data()
@@ -670,13 +725,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 																final List<AreaTranslationProtectionTime>
 																		unseenTranslatedDistricts = translatedData.parallelStream().unordered()
-																		.distinct() //TODO think about
-																		.filter(AreaTranslationProtectionTime.class::isInstance)
-																		.map(AreaTranslationProtectionTime.class::cast)
-																		.toList(), //to know if new (unseen) districts were added from previous request.
+																				.distinct() //TODO think about
+																				.filter(AreaTranslationProtectionTime.class::isInstance)
+																				.map(AreaTranslationProtectionTime.class::cast)
+																				.toList(), //to know if new (unseen) districts were added from the previous request.
 																		districtsForAlert = unseenTranslatedDistricts.parallelStream().unordered()
 																				.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-																				.toList(); //for not restarting alert sound unnecessarily
+																				.toList(); //for not restarting alert sound unnecessary
 
 																final StringBuilder output = new StringBuilder();
 
@@ -700,12 +755,25 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																		.parallelStream().unordered()
 																		.map(AreaTranslationProtectionTime::protectionTime)
 																		.min(Comparator.naturalOrder())) instanceof Some(Duration minProtectionTime)) {
-																	if (configuration.isMakeSound()) {
+																	if (configuration.isMakeSound() && !ignoredTitlesForAlert.contains(redAlertEvent.title())) {
+//																		// see https://www.oref.org.il/assets/audios/WarningMessagesSounds/hostileAircraftIntrusion-{lang 3-letter code}.mp4
+																		@SuppressWarnings("resource")
+																		final Clip clip = soundClips.computeIfAbsent(
+																				redAlertEvent.cat(),
+																				(ThrowingFunction<Integer, Clip, ?>) cat -> {
+																					final InputStream resourceAsStream = getClass().getResourceAsStream("/sounds/" + configuration.languageCode().name().toLowerCase() + "/" + cat + ".wav");
+																					if (resourceAsStream == null) {
+																						return defaultClip;
+																					}
+																					final Clip newClip = AudioSystem.getClip();
+																					newClip.open(AudioSystem.getAudioInputStream(new BufferedInputStream(resourceAsStream)));
+																					return newClip;
+																				}
+																		);
 																		clip.setFramePosition(0);
-																		//noinspection NumericCastThatLosesPrecision
-																		clip.loop(redAlertEvent.cat() == 10 ? // for alert "In a few minutes, alerts are expected in your area"
+																		clip.loop(redAlertEvent.cat() == 10 ?
 																				0 : // same as `clip.start()`, will play the sound once
-																				Math.max(0, (int) minProtectionTime.dividedBy(alarmSoundDuration) - 1));
+																				Math.max(0, (int) minProtectionTime.dividedBy(ChronoUnit.MICROS.getDuration().multipliedBy(clip.getMicrosecondLength())) - 1));
 																	}
 																	output.append(areaAndTranslatedDistrictsToString("ALERT ALERT ALERT", districtsForAlert, redAlertEvent.cat()));
 																}
@@ -720,7 +788,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																	);
 
 																printDistrictsNotFoundWarning();
-																prevData.put(redAlertEvent.cat(), new HashSet<>(redAlertEvent.data()));
+																prevData.computeIfAbsent(redAlertEvent.cat(), _ -> new ConcurrentHashMap<>())
+																		.put(redAlertEvent.title(), new HashSet<>(redAlertEvent.data()));
 															})
 															.getTimeTaken()
 											);

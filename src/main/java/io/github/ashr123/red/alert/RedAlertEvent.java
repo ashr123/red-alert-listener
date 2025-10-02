@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.List;
 
+/**
+ * @param data Should be interned by {@link District#hebrewLabel()}
+ */
 public record RedAlertEvent(int cat,
 							List<String> data,
 							@JsonDeserialize(converter = StringInternDeserializer.class)
