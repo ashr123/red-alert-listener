@@ -1,7 +1,7 @@
 package io.github.ashr123.red.alert;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.util.StdConverter;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.util.StdConverter;
 
 import java.util.regex.Pattern;
 

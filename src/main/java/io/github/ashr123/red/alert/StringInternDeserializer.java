@@ -1,6 +1,6 @@
 package io.github.ashr123.red.alert;
 
-import com.fasterxml.jackson.databind.util.StdConverter;
+import tools.jackson.databind.util.StdConverter;
 
 class StringInternDeserializer extends StdConverter<String, String> {
 	@Override

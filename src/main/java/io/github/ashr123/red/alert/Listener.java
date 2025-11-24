@@ -1,12 +1,7 @@
 package io.github.ashr123.red.alert;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.github.ashr123.exceptional.functions.ThrowingFunction;
-import io.github.ashr123.exceptional.functions.ThrowingRunnable;
+import io.github.ashr123.logging.Json3ConfigurationFactory;
 import io.github.ashr123.option.*;
 import io.github.ashr123.timeMeasurement.Result;
 import io.github.ashr123.timeMeasurement.TimeMeasurement;
@@ -15,6 +10,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import picocli.CommandLine;
+import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -48,6 +48,14 @@ import java.util.zip.GZIPOutputStream;
 		showDefaultValues = true,
 		description = "An App that can get \"red alert\" events from IDF's Home Front Command.")
 public class Listener implements Runnable, CommandLine.IVersionProvider {
+	private static final ObjectMapper JSON_MAPPER = JsonMapper.builder()
+			.enable(
+					SerializationFeature.INDENT_OUTPUT,
+					SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS
+			)
+//			.disable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
+			.build();
+
 	private static final Logger LOGGER = LogManager.getLogger();
 	private static final TypeReference<List<District>> DISTRICTS_TYPE_REFERENCE = new TypeReference<>() {
 	};
@@ -58,13 +66,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					Locale.getDefault(Locale.Category.FORMAT)
 			)
 			.withZone(ZoneId.systemDefault());
-	private static final ObjectMapper JSON_MAPPER = new JsonMapper()
-			.enable(
-					SerializationFeature.INDENT_OUTPUT,
-					SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS
-			)
-//			.disable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
-			.findAndRegisterModules();
+
+	static {
+		System.setProperty("log4j.configurationFactory", Json3ConfigurationFactory.class.getName());
+	}
 	private static final Configuration DEFAULT_CONFIGURATION = new Configuration(
 			false,
 			false,
@@ -79,6 +84,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
 			.followRedirects(HttpClient.Redirect.NORMAL) //?
 			.build();
+
+	static {
+		Runtime.getRuntime().addShutdownHook(new Thread(HTTP_CLIENT::close));
+	}
 	private static final Duration DISTRICTS_UPDATE_CONSTANT = ChronoUnit.HOURS.getDuration();
 	//	private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
@@ -89,10 +98,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			defaultValue = "red-alert-listener.conf.json",
 			description = "Enter custom path to configuration file.")
 	private File configurationFile;
-	private volatile boolean isContinue = true;
 	private Configuration configuration = DEFAULT_CONFIGURATION;
 	private long configurationLastModified = 1;
 	private List<String> districtsNotFound = Collections.emptyList();
+	private volatile boolean isContinue = true;
 	/**
 	 * Will be updated once a day from IDF's Home Front Command's server.
 	 */
@@ -111,6 +120,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 	private static void printHelpMsg() {
 		System.err.println("""
+				Available commands:
 				\t• Enter "t" to perform sound test.
 				\t• Enter "c" to clear the screen.
 				\t• Enter "r" to refresh the districts translation dictionary.
@@ -273,7 +283,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						headline
 				);
 				return result.getResult();
-			} catch (JsonParseException e) {
+			} catch (StreamReadException e) {
 				LOGGER.error("JSON parsing error: {}", e.toString());
 			} catch (Exception e) {
 				LOGGER.error("Failed to get alerts translation for: {}. Trying again...", e.toString());
@@ -296,7 +306,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				"districts",
 				HttpRequest.newBuilder(URI.create("https://alerts-history.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase(Locale.ROOT)))
 						.timeout(timeout),
-				(ThrowingFunction<InputStream, List<District>, ?>) body -> JSON_MAPPER.readValue(
+				body -> JSON_MAPPER.readValue(
 						/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
 						DISTRICTS_TYPE_REFERENCE
 				),
@@ -314,7 +324,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				"alerts translations",
 				HttpRequest.newBuilder(URI.create("https://www.oref.org.il/alerts/alertsTranslation.json"))
 						.timeout(configuration.timeout()),
-				(ThrowingFunction<InputStream, List<AlertTranslations>, ?>) body -> JSON_MAPPER.readValue(
+				body -> JSON_MAPPER.readValue(
 						/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
 						ALERTS_TRANSLATION_TYPE_REFERENCE
 				),
@@ -354,23 +364,24 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 														  Function<District, D> districtMapper) throws InterruptedException {
 		final CountDownLatch startSignal = new CountDownLatch(1);
 		Thread.startVirtualThread(() -> {
-			try (Scanner scanner = new Scanner(System.in)) {
-				System.err.println("Enter \"q\" to quit");
-				startSignal.countDown();
-				while (isContinue)
-					switch (scanner.nextLine().strip()) {
-						case "" -> {
-						}
-						case "q" -> {
-							System.err.println("Quiting...");
-							isContinue = false;
-						}
-						default -> System.err.println("""
-								Unrecognized command!
-								Enter "q" to quit""");
+//			try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in))) {
+			System.err.println("Enter \"q\" to quit");
+			startSignal.countDown();
+			while (isContinue)
+//				switch (bufferedReader.readLine().strip()) {
+				switch (IO.readln().strip()) {
+					case "" -> {
 					}
-			} catch (NoSuchElementException _) {
-			}
+					case "q" -> {
+						System.err.println("Quiting...");
+						isContinue = false;
+					}
+					default -> System.err.println("""
+							Unrecognized command!
+							Enter "q" to quit""");
+				}
+//			} catch (IOException _) {
+//			}
 		});
 		setLoggerLevel(level);
 		startSignal.await();
@@ -399,7 +410,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					converter = LoggerLevelConverter.class,
 					description = "Level of logger. Valid values: OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE, ALL (case insensitive).")
 			Level loggerLevel
-	) throws IOException, InterruptedException {
+	) throws InterruptedException {
 		System.out.println(JSON_MAPPER.writeValueAsString(startSubcommandInputThread(
 				languageCode,
 				timeout,
@@ -435,7 +446,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					converter = LoggerLevelConverter.class,
 					description = "Level of logger. Valid values: OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE, ALL (case insensitive).")
 			Level loggerLevel
-	) throws IOException, InterruptedException {
+	) throws InterruptedException {
 		JSON_MAPPER.writeValue(
 				file,
 				startSubcommandInputThread(
@@ -497,7 +508,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		districtsLastUpdate = LocalDateTime.now();
 	}
 
-	private void loadConfiguration() throws IOException {
+	private void loadConfiguration(Clip defaultClip, Map<Integer, Clip> soundClips) throws IOException {
 		final long configurationLastModifiedTemp = configurationFile.lastModified();
 		final LanguageCode oldLanguageCode = configuration.languageCode();
 		final Duration oldTimeout = configuration.timeout();
@@ -505,8 +516,15 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			LOGGER.info("(Re)Loading configuration from file \"{}\"", configurationFile);
 			configuration = JSON_MAPPER.readValue(configurationFile, Configuration.class);
 			configurationLastModified = configurationLastModifiedTemp;
-			if (districts == null || !oldLanguageCode.equals(configuration.languageCode()))
+			if (districts == null || !oldLanguageCode.equals(configuration.languageCode())) {
 				refreshDistrictsTranslation();
+				soundClips.values()
+						.stream()
+						.filter(Predicate.not(defaultClip::equals))
+						.forEach(Clip::close);
+				soundClips.values()
+						.removeIf(Predicate.not(defaultClip::equals));
+			}
 			districtsNotFound = (configuration.districtsOfInterest().size() > 2 ?
 					new ArrayList<>(configuration.districtsOfInterest()) :
 					configuration.districtsOfInterest())
@@ -554,46 +572,51 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	@Override
 	public void run() {
 		System.err.println("Preparing " + getVersion()[0] + "...");
+		printHelpMsg();
 		try (Clip defaultClip = AudioSystem.getClip(/*Stream.of(AudioSystem.getMixerInfo()).parallel().unordered()
 				.filter(mixerInfo -> COLLATOR.equals(mixerInfo.getName(), "default [default]"))
 				.findAny()
 				.orElse(null)*/);
 			 ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory())) {
+			final Map<Integer, Clip> soundClips = new ConcurrentHashMap<>(13); // ref.alertsTranslations.size() on 9/10/2025
+
+			final CountDownLatch startSignal = new CountDownLatch(1);
 			Thread.startVirtualThread(() -> {
-				try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in))) {
-					printHelpMsg();
-					while (isContinue)
-						switch (bufferedReader.readLine().strip()) {
-							case "" -> {
-							}
-							case "q", "quit", "exit" -> isContinue = false;
-							case "t", "test", "test-sound" -> {
-								System.err.println("Testing sound...");
-								defaultClip.setFramePosition(0);
-								defaultClip.start();
-							}
-							case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
-							case "r", "refresh", "refresh-districts" -> refreshDistrictsTranslation();
-							case "h", "help" -> printHelpMsg();
-							case "l", "load-configuration" -> {
-								try {
-									loadConfiguration();
-								} catch (IOException e) {
-									LOGGER.info("Configuration error: {}", e.toString());
-								}
-							}
-							default -> {
-								System.err.println("Unrecognized command!");
-								printHelpMsg();
+//				try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in))) {
+				startSignal.countDown();
+				while (isContinue)
+//					switch (bufferedReader.readLine().strip()) {
+					switch (IO.readln().strip()) {
+						case "" -> {
+						}
+						case "q", "quit", "exit" -> isContinue = false;
+						case "t", "test", "test-sound" -> {
+							System.err.println("Testing sound...");
+							defaultClip.setFramePosition(0);
+							defaultClip.start();
+						}
+						case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
+						case "r", "refresh", "refresh-districts" -> refreshDistrictsTranslation();
+						case "h", "help" -> printHelpMsg();
+						case "l", "load-configuration" -> {
+							try {
+								loadConfiguration(defaultClip, soundClips);
+							} catch (IOException e) {
+								LOGGER.info("Configuration error: {}", e.toString());
 							}
 						}
-				} catch (IOException _) {
-				}
+						default -> {
+							System.err.println("Unrecognized command!");
+							printHelpMsg();
+						}
+					}
+//				} catch (IOException _) {
+//				}
 				System.err.println("Bye Bye!");
 			});
 			defaultClip.open(AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/sounds/alarmSound.wav")))));
 			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
-			loadConfiguration();
+			loadConfiguration(defaultClip, soundClips);
 
 			final Set<String> ignoredTitlesForAlert = Set.of(
 					"ניתן לצאת מהמרחב המוגן",
@@ -619,11 +642,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			};
 
 			final Map<Integer, Map<String /*title*/, Set<String>>> prevData = new ConcurrentHashMap<>(ref.alertsTranslations.size());
-			final Map<Integer, Clip> soundClips = new ConcurrentHashMap<>(ref.alertsTranslations.size());
 
-			Runtime.getRuntime()
-					.addShutdownHook(new Thread(() -> soundClips.values()
-							.forEach(Clip::close)));
+			Runtime.getRuntime().addShutdownHook(new Thread(() -> soundClips.values()
+					.forEach(Clip::close)));
 
 // 			language=JSON
 //			final long minRedAlertEventContentLength2 = """
@@ -632,6 +653,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			final long minRedAlertEventContentLength = gzipSize("""
 					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes());
 
+			startSignal.await();
 			System.err.println("Listening...");
 			while (isContinue)
 				try {
@@ -651,7 +673,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							case SomeLong(long contentLength) when contentLength > minRedAlertEventContentLength -> {
 								//noinspection NestedSwitchStatement
 								switch (Option.of(httpResponse.headers().firstValue("Last-Modified"))
-										.map(lastModifiedStr -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModifiedStr, Instant::from))) {
+										.map(lastModified -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModified, Instant::from))) {
 									case Some(Instant lastModified) when ref.currAlertsLastModified.isBefore(lastModified) -> {
 										try (InputStream body = new GZIPInputStream(inputStream)) {
 											final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(
@@ -664,7 +686,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 											LOGGER.debug(
 													"Original event data: {}, processing took {} milliseconds",
 													redAlertEvent,
-													TimeMeasurement.measureAndExecute((ThrowingRunnable<?>) () -> {
+													TimeMeasurement.measureAndExecute(() -> {
 																AlertTranslations alertTranslations = Option.of(ref.alertsTranslations.get(redAlertEvent.cat())) instanceof Some(Map<String, AlertTranslations> map) ?
 																		map.get(redAlertEvent.title()) :
 																		null;
@@ -728,10 +750,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																				.distinct() //TODO think about
 																				.filter(AreaTranslationProtectionTime.class::isInstance)
 																				.map(AreaTranslationProtectionTime.class::cast)
-																				.toList(), //to know if new (unseen) districts were added from the previous request.
+																				.toList(), //to know if new (unseen) districts were added since the previous request.
 																		districtsForAlert = unseenTranslatedDistricts.parallelStream().unordered()
 																				.filter(translationAndProtectionTime -> configuration.districtsOfInterest().contains(translationAndProtectionTime.translation()))
-																				.toList(); //for not restarting alert sound unnecessary
+																				.toList(); //for not restarting alert sound unnecessarily
 
 																final StringBuilder output = new StringBuilder();
 
@@ -806,7 +828,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							case NoneLong _ -> LOGGER.error("Couldn't get content length");
 						}
 					}
-				} catch (JsonParseException e) {
+				} catch (StreamReadException e) {
 					LOGGER.error("JSON parsing error: {}", e.toString());
 				} catch (IOException e) {
 					if (Option.of(e.getMessage()) instanceof Some(String message) &&

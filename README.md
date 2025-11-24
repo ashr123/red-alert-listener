@@ -3,7 +3,7 @@
 ## Requirements
 
 1. [red-alert-listener.conf.json](red-alert-listener.conf.json) is being searched under current working directory by default (can be changed by stating the path (can be relative) to the configuration file via `-c` flag).
-2. JRE 24 (or newer)
+2. JRE 25 (or newer)
 3. Must have an Israeli IP address.
 4. JAR can be downloaded through `Packages → io.github.ashr123.red-alert-listener → Assets → red-alert-listener-<version>-jar-with-dependencies.jar`
 

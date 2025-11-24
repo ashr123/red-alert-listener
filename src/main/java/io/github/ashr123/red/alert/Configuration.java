@@ -1,8 +1,8 @@
 package io.github.ashr123.red.alert;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.util.StdConverter;
 import org.apache.logging.log4j.Level;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.util.StdConverter;
 
 import java.time.Duration;
 import java.util.Set;
