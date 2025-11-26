@@ -491,15 +491,26 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				)
 		);
 		if (LOGGER.isDebugEnabled()) {
-			final Map<String, AreaTranslationProtectionTime> newAndModifiedDistricts = updatedDistricts.entrySet()
+			final Map<String, AreaTranslationProtectionTime> newDistricts = updatedDistricts.entrySet()
 					.parallelStream().unordered()
-					.filter(Predicate.not(districts.entrySet()::contains))
+					.filter(o -> !districts.containsKey(o.getKey()))
 					.collect(Collectors.toConcurrentMap(Map.Entry::getKey, Map.Entry::getValue));
-			if (!newAndModifiedDistricts.isEmpty())
-				LOGGER.debug("New or modified districts: {}", newAndModifiedDistricts);
+			if (!newDistricts.isEmpty())
+				LOGGER.debug("New districts: {}", newDistricts);
+
+			final Map<String, AreaTranslationProtectionTime> modifiedDistricts = updatedDistricts.entrySet()
+					.parallelStream().unordered()
+					.filter(o -> {
+						final AreaTranslationProtectionTime obj = districts.get(o.getKey());
+						return obj != null && !o.getValue().equals(obj);
+					})
+					.collect(Collectors.toConcurrentMap(Map.Entry::getKey, Map.Entry::getValue));
+			if (!modifiedDistricts.isEmpty())
+				LOGGER.debug("Modified districts: {}", modifiedDistricts);
+
 			final Map<String, AreaTranslationProtectionTime> deletedDistricts = districts.entrySet()
 					.parallelStream().unordered()
-					.filter(Predicate.not(updatedDistricts.entrySet()::contains))
+					.filter(o -> !updatedDistricts.containsKey(o.getKey()))
 					.collect(Collectors.toConcurrentMap(Map.Entry::getKey, Map.Entry::getValue));
 			if (!deletedDistricts.isEmpty())
 				LOGGER.debug("Deleted districts: {}", deletedDistricts);
