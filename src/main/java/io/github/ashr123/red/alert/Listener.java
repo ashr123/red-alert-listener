@@ -48,6 +48,9 @@ import java.util.zip.GZIPOutputStream;
 		showDefaultValues = true,
 		description = "An App that can get \"red alert\" events from IDF's Home Front Command.")
 public class Listener implements Runnable, CommandLine.IVersionProvider {
+	static {
+		System.setProperty("log4j.configurationFactory", Json3ConfigurationFactory.class.getName());
+	}
 	private static final ObjectMapper JSON_MAPPER = JsonMapper.builder()
 			.enable(
 					SerializationFeature.INDENT_OUTPUT,
@@ -66,10 +69,6 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					Locale.getDefault(Locale.Category.FORMAT)
 			)
 			.withZone(ZoneId.systemDefault());
-
-	static {
-		System.setProperty("log4j.configurationFactory", Json3ConfigurationFactory.class.getName());
-	}
 	private static final Configuration DEFAULT_CONFIGURATION = new Configuration(
 			false,
 			false,
