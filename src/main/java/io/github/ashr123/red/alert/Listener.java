@@ -88,7 +88,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		Runtime.getRuntime().addShutdownHook(new Thread(HTTP_CLIENT::close));
 	}
 	private static final Duration DISTRICTS_UPDATE_CONSTANT = ChronoUnit.HOURS.getDuration();
-	//	private static final Pattern
+//	private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 //			BOM = Pattern.compile("﻿");
 //	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
