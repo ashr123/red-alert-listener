@@ -39,7 +39,20 @@ jobs:
         run: mvn package
 
       - name: Creating native image
-        run: native-image -jar target/red-alert-listener-*-jar-with-dependencies.jar && file=$(echo red-alert-listener*-with-dependencies*) base="red-alert-listener"; [[ $file == *.* ]] && ext=".${file##*.}" || ext=''; mv "$file" "${base}${ext}"
+        run: native-image -jar target/red-alert-listener-*-jar-with-dependencies.jar
+
+      - name: Rename native image binary
+        shell: bash
+        run: |
+          file=$(ls red-alert-listener*-with-dependencies* 2>/dev/null || echo "")
+          if [ -n "$file" ]; then
+            if [[ $file == *.* ]]; then
+              ext=".${file##*.}"
+            else
+              ext=""
+            fi
+            mv "$file" "red-alert-listener${ext}"
+          fi
 
       - name: Upload binary
         uses: actions/upload-artifact@v6.0.0
