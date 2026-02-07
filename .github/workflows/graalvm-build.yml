@@ -6,23 +6,21 @@ on:
 jobs:
   build:
     name: Target ${{ matrix.os }}-${{ matrix.architecture }}
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.os }}-${{ matrix.architecture }}
     strategy:
       matrix:
         include:
-#          - os: macos
-#            architecture: aarch64
           - os: macos
-            architecture: amd64
+            architecture: latest
 #          - os: windows
 #            architecture: aarch64
           - os: windows
             architecture: amd64
 
-#          - os: ubuntu
-#            architecture: aarch64
           - os: ubuntu
-            architecture: amd64
+            architecture: 24.04-arm
+          - os: ubuntu
+            architecture: latest
 #          - os: ubuntu-latest
 #            architecture: riscv64
     steps:
