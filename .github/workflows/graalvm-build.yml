@@ -14,8 +14,9 @@ jobs:
             os: macos
           - runner: windows-latest
             os: windows
-          - runner: windows-11-arm
-            os: windows
+#          Failed to download graalvm-jdk-25_windows-aarch64_bin.zip. Are you sure java-version: '25' is correct?
+#          - runner: windows-11-arm
+#            os: windows
           - runner: ubuntu-latest
             os: ubuntu
           - runner: ubuntu-24.04-arm
