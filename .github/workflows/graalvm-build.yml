@@ -35,7 +35,9 @@ jobs:
         run: mvn package
 
       - name: Creating native image
-        run: native-image -jar target/red-alert-listener-*-jar-with-dependencies.jar
+        run: native-image \
+          -Djava.home=${JAVA_HOME} \
+          -jar target/red-alert-listener-*-jar-with-dependencies.jar
 
       - name: Rename native image binary
         shell: bash
