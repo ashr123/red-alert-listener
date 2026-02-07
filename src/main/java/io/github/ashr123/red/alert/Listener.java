@@ -1,6 +1,5 @@
 package io.github.ashr123.red.alert;
 
-import io.github.ashr123.exceptional.functions.ThrowingFunction;
 import io.github.ashr123.logging.Json3ConfigurationFactory;
 import io.github.ashr123.option.*;
 import io.github.ashr123.timeMeasurement.Result;
@@ -10,15 +9,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import picocli.CommandLine;
-import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -80,26 +80,28 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			Level.INFO,
 			Collections.emptySet()
 	);
-	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-			.followRedirects(HttpClient.Redirect.NORMAL) //?
-			.build();
+	private static final ScopedValue<HttpClient> HTTP_CLIENT_SCOPED_VALUE = ScopedValue.newInstance();
+//	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+//			.followRedirects(HttpClient.Redirect.NORMAL) //?
+//			.build();
 
-	static {
-		Runtime.getRuntime().addShutdownHook(new Thread(HTTP_CLIENT::close));
-	}
+//	static {
+//		Runtime.getRuntime().addShutdownHook(new Thread(HTTP_CLIENT::close));
+//	}
 	private static final Duration DISTRICTS_UPDATE_CONSTANT = ChronoUnit.HOURS.getDuration();
 //	private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 //			BOM = Pattern.compile("﻿");
 //	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
+	private static final URI ALERTS_TRANSLATION_URI = URI.create("https://www.oref.org.il/alerts/alertsTranslation.json");
 	@CommandLine.Option(names = {"-c", "--configuration-file"},
 			paramLabel = "configuration file",
 			defaultValue = "red-alert-listener.conf.json",
 			description = "Enter custom path to configuration file.")
 	private File configurationFile;
-	private Configuration configuration = DEFAULT_CONFIGURATION;
-	private long configurationLastModified = 1;
-	private List<String> districtsNotFound = Collections.emptyList();
+	private volatile Configuration configuration = DEFAULT_CONFIGURATION;
+	private volatile long configurationLastModified = 1;
+	private volatile List<String> districtsNotFound = Collections.emptyList();
 	private volatile boolean isContinue = true;
 	/**
 	 * Will be updated once a day from IDF's Home Front Command's server.
@@ -132,6 +134,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException interruptedException) {
+			Thread.currentThread().interrupt(); // Restore interrupted state...
 			//noinspection CallToPrintStackTrace
 			interruptedException.printStackTrace(); //TODO think about
 		}
@@ -157,15 +160,16 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	}
 
 	private static int gzipSize(byte[] bytes) throws IOException {
-		try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(10 /*for header*/ + 8 /*for trailer*/ + bytes.length)) {
-			try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream) {{
+		//noinspection UseOfConcreteClass
+		try (CountingOutputStream countingOutputStream = new CountingOutputStream()) {
+			try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(countingOutputStream) {{
 				def = new Deflater(Deflater.BEST_COMPRESSION, true);
 			}}) {
 				// Write the string data to GZIPOutputStream
 				gzipOutputStream.write(bytes);
 			}
 			// Return the compressed byte array size
-			return byteArrayOutputStream.size();
+			return countingOutputStream.getCount();
 		}
 	}
 
@@ -174,10 +178,15 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		return value2;
 	}
 
-	public static void main(String... args) {
-		new CommandLine(Listener.class)
-				.setCaseInsensitiveEnumValuesAllowed(true)
-				.execute(args);
+	static void main(String... args) {
+		try (HttpClient httpClient = HttpClient.newBuilder()
+				.followRedirects(HttpClient.Redirect.NORMAL) //?
+				.build()) {
+			ScopedValue.where(HTTP_CLIENT_SCOPED_VALUE, httpClient)
+					.run(() -> new CommandLine(Listener.class)
+							.setCaseInsensitiveEnumValuesAllowed(true)
+							.execute(args));
+		}
 	}
 
 	private String areaAndTranslatedDistrictsToString(String headline,
@@ -257,13 +266,15 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		while (isContinue) {
 			try {
 				final Result<Map<K, V>> result = TimeMeasurement.measureAndExecuteCallable(() -> {
-					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
+					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT_SCOPED_VALUE.get().send(
 							httpRequest,
 							HttpResponse.BodyHandlers.ofInputStream()
 					);
 					try (InputStream inputStream = httpResponse.body()) {
 						if (200 <= httpResponse.statusCode() && httpResponse.statusCode() < 300)
-							try (InputStream body = new GZIPInputStream(inputStream)) {
+							try (InputStream body = "gzip".equalsIgnoreCase(httpResponse.headers().firstValue("Content-Encoding").orElse("")) ?
+									new GZIPInputStream(inputStream) :
+									inputStream) {
 								return streamMapper.apply(jsonMapper.apply(body)
 										.parallelStream().unordered());
 							}
@@ -282,7 +293,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						headline
 				);
 				return result.getResult();
-			} catch (StreamReadException e) {
+			} catch (JacksonException e) {
 				LOGGER.error("JSON parsing error: {}", e.toString());
 			} catch (Exception e) {
 				LOGGER.error("Failed to get alerts translation for: {}. Trying again...", e.toString());
@@ -321,7 +332,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	private Map<Integer, ? extends Map<String, AlertTranslations>> loadAlertsTranslation(Set<String> ignoredTitlesForAlert) {
 		final Map<Integer, ? extends Map<String, AlertTranslations>> alertsTranslations = getResource(
 				"alerts translations",
-				HttpRequest.newBuilder(URI.create("https://www.oref.org.il/alerts/alertsTranslation.json"))
+				HttpRequest.newBuilder(ALERTS_TRANSLATION_URI)
 						.timeout(configuration.timeout()),
 				body -> JSON_MAPPER.readValue(
 						/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
@@ -479,7 +490,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		return new String[]{"Red Alert Listener v" + getClass().getPackage().getImplementationVersion()};
 	}
 
-	private void refreshDistrictsTranslation() {
+	private synchronized void refreshDistrictsTranslation() {
 		final Map<String, AreaTranslationProtectionTime> updatedDistricts = loadRemoteDistricts(
 				configuration.languageCode(),
 				configuration.timeout(),
@@ -518,7 +529,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		districtsLastUpdate = LocalDateTime.now();
 	}
 
-	private void loadConfiguration(Clip defaultClip, Map<Integer, Clip> soundClips) throws IOException {
+	@SuppressWarnings("UseOfConcreteClass")
+	private synchronized void loadConfiguration(ClipManager clipManager) {
 		final long configurationLastModifiedTemp = configurationFile.lastModified();
 		final LanguageCode oldLanguageCode = configuration.languageCode();
 		final Duration oldTimeout = configuration.timeout();
@@ -528,12 +540,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			configurationLastModified = configurationLastModifiedTemp;
 			if (districts == null || !oldLanguageCode.equals(configuration.languageCode())) {
 				refreshDistrictsTranslation();
-				soundClips.values()
-						.stream()
-						.filter(Predicate.not(defaultClip::equals))
-						.forEach(Clip::close);
-				soundClips.values()
-						.removeIf(Predicate.not(defaultClip::equals));
+				clipManager.prepareForOtherLanguage();
 			}
 			districtsNotFound = (configuration.districtsOfInterest().size() > 2 ?
 					new ArrayList<>(configuration.districtsOfInterest()) :
@@ -546,8 +553,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		} else if (configurationLastModifiedTemp == 0 && configurationLastModified != 0) {
 			LOGGER.warn("couldn't find \"{}\", using default configuration", configurationFile);
 			configuration = DEFAULT_CONFIGURATION;
-			if (districts == null || !oldLanguageCode.equals(configuration.languageCode()))
+			if (districts == null || !oldLanguageCode.equals(configuration.languageCode())) {
 				refreshDistrictsTranslation();
+				clipManager.prepareForOtherLanguage();
+			}
 			configurationLastModified = 0;
 			districtsNotFound = Collections.emptyList();
 			setLoggerLevel(configuration.logLevel());
@@ -564,13 +573,14 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	}
 
 	private List<? extends IAreaTranslationProtectionTime> filterPrevAndGetTranslatedData(RedAlertEvent redAlertEvent,
-																						  Map<Integer, Map<String, Set<String>>> prevData) {
-		return redAlertEvent.data()
-				.parallelStream().unordered()
-				.filter(Predicate.not(prevData.getOrDefault(redAlertEvent.cat(), Collections.emptyMap())
-						.getOrDefault(redAlertEvent.title(), Collections.emptySet())
-						::contains))
-				.map(key -> {
+																						  Map<Integer, Map<String, Set<String>>> prevDataMap) {
+		final Set<String> prevData = prevDataMap.getOrDefault(redAlertEvent.cat(), Collections.emptyMap())
+				.getOrDefault(redAlertEvent.title(), Collections.emptySet());
+		Stream<String> stream = redAlertEvent.data()
+				.parallelStream().unordered();
+		if (!prevData.isEmpty())
+			stream = stream.filter(Predicate.not(prevData::contains));
+		return stream.map(key -> {
 					final AreaTranslationProtectionTime translationProtectionTime = districts.get(key);
 					return translationProtectionTime == null ?
 							new MissingTranslation(key) :
@@ -583,13 +593,10 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	public void run() {
 		System.err.println("Preparing " + getVersion()[0] + "...");
 		printHelpMsg();
-		try (Clip defaultClip = AudioSystem.getClip(/*Stream.of(AudioSystem.getMixerInfo()).parallel().unordered()
-				.filter(mixerInfo -> COLLATOR.equals(mixerInfo.getName(), "default [default]"))
-				.findAny()
-				.orElse(null)*/);
+		final HttpClient httpClient = HTTP_CLIENT_SCOPED_VALUE.get();
+		//noinspection UseOfConcreteClass
+		try (ClipManager clipManager = new ClipManager();
 			 ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory())) {
-			final Map<Integer, Clip> soundClips = new ConcurrentHashMap<>(13); // ref.alertsTranslations.size() on 9/10/2025
-
 			final CountDownLatch startSignal = new CountDownLatch(1);
 			Thread.startVirtualThread(() -> {
 //				try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in))) {
@@ -602,19 +609,20 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						case "q", "quit", "exit" -> isContinue = false;
 						case "t", "test", "test-sound" -> {
 							System.err.println("Testing sound...");
-							defaultClip.setFramePosition(0);
-							defaultClip.start();
+							clipManager.playDefaultClip();
 						}
 						case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
-						case "r", "refresh", "refresh-districts" -> refreshDistrictsTranslation();
+						case "r", "refresh", "refresh-districts" -> Thread.startVirtualThread(() -> ScopedValue.where(HTTP_CLIENT_SCOPED_VALUE, httpClient)
+								.run(this::refreshDistrictsTranslation));
 						case "h", "help" -> printHelpMsg();
-						case "l", "load-configuration" -> {
-							try {
-								loadConfiguration(defaultClip, soundClips);
-							} catch (IOException e) {
-								LOGGER.info("Configuration error: {}", e.toString());
-							}
-						}
+						case "l", "load-configuration" -> Thread.startVirtualThread(() -> ScopedValue.where(HTTP_CLIENT_SCOPED_VALUE, httpClient)
+								.run(() -> {
+									try {
+										loadConfiguration(clipManager);
+									} catch (JacksonException e) {
+										LOGGER.error("Configuration error: {}", e.toString());
+									}
+								}));
 						default -> {
 							System.err.println("Unrecognized command!");
 							printHelpMsg();
@@ -624,9 +632,14 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 //				}
 				System.err.println("Bye Bye!");
 			});
-			defaultClip.open(AudioSystem.getAudioInputStream(new BufferedInputStream(Objects.requireNonNull(getClass().getResourceAsStream("/sounds/alarmSound.wav")))));
-			scheduledExecutorService.scheduleAtFixedRate(this::refreshDistrictsTranslation, 1, 1, TimeUnit.DAYS);
-			loadConfiguration(defaultClip, soundClips);
+			scheduledExecutorService.scheduleAtFixedRate(
+					() -> ScopedValue.where(HTTP_CLIENT_SCOPED_VALUE, httpClient)
+							.run(this::refreshDistrictsTranslation),
+					1,
+					1,
+					TimeUnit.DAYS
+			);
+			loadConfiguration(clipManager);
 
 			final Set<String> ignoredTitlesForAlert = Set.of(
 					"ניתן לצאת מהמרחב המוגן",
@@ -653,9 +666,6 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 			final Map<Integer, Map<String /*title*/, Set<String>>> prevData = new ConcurrentHashMap<>(ref.alertsTranslations.size());
 
-			Runtime.getRuntime().addShutdownHook(new Thread(() -> soundClips.values()
-					.forEach(Clip::close)));
-
 // 			language=JSON
 //			final long minRedAlertEventContentLength2 = """
 //					{"cat":"1","data":[],"desc":"","id":0,"title":""}""".getBytes().length;
@@ -668,7 +678,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			while (isContinue)
 				try {
 //					loadConfiguration();
-					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT.send(
+					final HttpResponse<InputStream> httpResponse = httpClient.send(
 							httpRequest,
 							HttpResponse.BodyHandlers.ofInputStream()
 					);
@@ -685,7 +695,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 								switch (Option.of(httpResponse.headers().firstValue("Last-Modified"))
 										.map(lastModified -> DateTimeFormatter.RFC_1123_DATE_TIME.parse(lastModified, Instant::from))) {
 									case Some(Instant lastModified) when ref.currAlertsLastModified.isBefore(lastModified) -> {
-										try (InputStream body = new GZIPInputStream(inputStream)) {
+										try (InputStream body = "gzip".equalsIgnoreCase(httpResponse.headers().firstValue("Content-Encoding").orElse("")) ?
+												new GZIPInputStream(inputStream) :
+												inputStream) {
 											final RedAlertEvent redAlertEvent = JSON_MAPPER.readValue(
 													/*BOM.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
 													RedAlertEvent.class
@@ -788,24 +800,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																		.map(AreaTranslationProtectionTime::protectionTime)
 																		.min(Comparator.naturalOrder())) instanceof Some(Duration minProtectionTime)) {
 																	if (configuration.isMakeSound() && !ignoredTitlesForAlert.contains(redAlertEvent.title())) {
-//																		// see https://www.oref.org.il/assets/audios/WarningMessagesSounds/hostileAircraftIntrusion-{lang 3-letter code}.mp4
-																		@SuppressWarnings("resource")
-																		final Clip clip = soundClips.computeIfAbsent(
-																				redAlertEvent.cat(),
-																				(ThrowingFunction<Integer, Clip, ?>) cat -> {
-																					final InputStream resourceAsStream = getClass().getResourceAsStream("/sounds/" + configuration.languageCode().name().toLowerCase() + "/" + cat + ".wav");
-																					if (resourceAsStream == null) {
-																						return defaultClip;
-																					}
-																					final Clip newClip = AudioSystem.getClip();
-																					newClip.open(AudioSystem.getAudioInputStream(new BufferedInputStream(resourceAsStream)));
-																					return newClip;
-																				}
-																		);
-																		clip.setFramePosition(0);
-																		clip.loop(redAlertEvent.cat() == 10 ?
-																				0 : // same as `clip.start()`, will play the sound once
-																				Math.max(0, (int) minProtectionTime.dividedBy(ChronoUnit.MICROS.getDuration().multipliedBy(clip.getMicrosecondLength())) - 1));
+																		clipManager.playClip(redAlertEvent.cat(), configuration.languageCode(), minProtectionTime);
 																	}
 																	output.append(areaAndTranslatedDistrictsToString("ALERT ALERT ALERT", districtsForAlert, redAlertEvent.cat()));
 																}
@@ -838,7 +833,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							case NoneLong _ -> LOGGER.error("Couldn't get content length");
 						}
 					}
-				} catch (StreamReadException e) {
+				} catch (JacksonException e) {
 					LOGGER.error("JSON parsing error: {}", e.toString());
 				} catch (IOException e) {
 					if (Option.of(e.getMessage()) instanceof Some(String message) &&
@@ -858,6 +853,31 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		@Override
 		public Level convert(String value) {
 			return Level.valueOf(value);
+		}
+	}
+
+	private static class CountingOutputStream extends OutputStream {
+		private int count;
+
+		@Override
+		public void write(int b) {
+			++count;
+		}
+
+		@Override
+		public void write(byte[] b, int off, int len) {
+			count += len;
+		}
+
+		public int getCount() {
+			return count;
+		}
+
+		@Override
+		public String toString() {
+			return "CountingOutputStream{" +
+					"count=" + count +
+					'}';
 		}
 	}
 }
