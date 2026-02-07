@@ -40,14 +40,24 @@ jobs:
       - name: Rename native image binary
         shell: bash
         run: |
-          file=$(ls red-alert-listener*-with-dependencies* 2>/dev/null || echo "")
+          file=$(ls red-alert-listener*-jar-with-dependencies* 2>/dev/null || echo "")
           if [ -n "$file" ]; then
-            if [[ $file == *.* ]]; then
-              ext=".${file##*.}"
+            # Extract the platform name and remove everything after it
+            # Examples:
+            # red-alert-listener-macos-aarch64.12-jar-with-dependencies -> red-alert-listener-macos-aarch64
+            # red-alert-listener-windows-x86_64.exe -> red-alert-listener-windows-x86_64.exe
+            # red-alert-listener-ubuntu-aarch64 -> red-alert-listener-ubuntu-aarch64
+            
+            # Check if it's a Windows executable (has .exe at the very end)
+            if [[ $file == *.exe ]]; then
+              # Windows: remove -jar-with-dependencies but keep .exe
+              base="${file%-jar-with-dependencies*}.exe"
             else
-              ext=""
+              # Unix: remove -jar-with-dependencies and any version suffix
+              base="${file%-jar-with-dependencies*}"
             fi
-            mv "$file" "red-alert-listener-${{ matrix.name }}${ext}"
+            
+            mv "$file" "$base"
           fi
 
       - name: Upload binary
