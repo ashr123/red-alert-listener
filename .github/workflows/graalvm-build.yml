@@ -11,7 +11,7 @@ jobs:
       matrix:
         include:
           - runner: macos-latest
-            name: macos-x86_64
+            name: macos-aarch64
           - runner: windows-latest
             name: windows-x86_64
 #          Failed to download graalvm-jdk-25_windows-aarch64_bin.zip. Are you sure java-version: '25' is correct?

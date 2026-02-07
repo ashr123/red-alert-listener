@@ -1,0 +1,84 @@
+{
+  "classes": [
+    {
+      "name": "com.sun.media.sound.JDK13Services",
+      "methods": [
+        {
+          "name": "getDefaultProvider",
+          "parameterTypes": []
+        },
+        {
+          "name": "getDefaultProviderClassName",
+          "parameterTypes": []
+        },
+        {
+          "name": "getProperties",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "name": "com.sun.media.sound.JSSecurityManager",
+      "methods": [
+        {
+          "name": "loadProperties",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "name": "javax.sound.sampled.AudioSystem",
+      "methods": [
+        {
+          "name": "getClip",
+          "parameterTypes": []
+        },
+        {
+          "name": "getClip",
+          "parameterTypes": ["javax.sound.sampled.Mixer$Info"]
+        },
+        {
+          "name": "getAudioInputStream",
+          "parameterTypes": ["java.io.InputStream"]
+        },
+        {
+          "name": "getDefaultMixer",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMixerInfo",
+          "parameterTypes": []
+        },
+        {
+          "name": "getLine",
+          "parameterTypes": ["javax.sound.sampled.Line$Info"]
+        }
+      ]
+    },
+    {
+      "name": "javax.sound.sampled.Clip",
+      "methods": [
+        {
+          "name": "open",
+          "parameterTypes": ["javax.sound.sampled.AudioInputStream"]
+        },
+        {
+          "name": "setFramePosition",
+          "parameterTypes": ["int"]
+        },
+        {
+          "name": "loop",
+          "parameterTypes": ["int"]
+        },
+        {
+          "name": "start",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMicrosecondLength",
+          "parameterTypes": []
+        }
+      ]
+    }
+  ]
+}

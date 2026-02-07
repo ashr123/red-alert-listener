@@ -1,0 +1,8 @@
+{
+  "buildTimeInitializedClasses": [
+    "com.sun.media.sound.JSSecurityManager",
+    "com.sun.media.sound.JDK13Services",
+    "javax.sound.sampled.AudioSystem"
+  ],
+  "runtimeInitializedClasses": []
+}
