@@ -51,7 +51,7 @@ jobs:
             else
               ext=""
             fi
-            mv "$file" "red-alert-listener${ext}"
+            mv "$file" "red-alert-listener-${{ matrix.os }}-${{ matrix.architecture }}${ext}"
           fi
 
       - name: Upload binary
