@@ -6,7 +6,7 @@
 
 	<groupId>io.github.ashr123</groupId>
 	<artifactId>red-alert-listener</artifactId>
-	<version>5.5.5.15</version>
+	<version>5.5.5.16</version>
 
 	<name>Red Alert Listener</name>
 	<description>A stand-alone terminal app that can get "red alert" events from IDF's Home Front Command</description>
