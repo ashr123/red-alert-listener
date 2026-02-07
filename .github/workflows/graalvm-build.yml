@@ -11,16 +11,16 @@ jobs:
       matrix:
         include:
           - runner: macos-latest
-            os: macos
+            name: macos-x86_64
           - runner: windows-latest
-            os: windows
+            name: windows-x86_64
 #          Failed to download graalvm-jdk-25_windows-aarch64_bin.zip. Are you sure java-version: '25' is correct?
 #          - runner: windows-11-arm
-#            os: windows
+#            name: windows-aarch64
           - runner: ubuntu-latest
-            os: ubuntu
+            name: ubuntu-x86_64
           - runner: ubuntu-24.04-arm
-            os: ubuntu
+            name: ubuntu-aarch64
     steps:
       - uses: actions/checkout@v6.0.2
 
@@ -47,13 +47,13 @@ jobs:
             else
               ext=""
             fi
-            mv "$file" "red-alert-listener-${{ matrix.os }}${ext}"
+            mv "$file" "red-alert-listener-${{ matrix.name }}${ext}"
           fi
 
       - name: Upload binary
         uses: actions/upload-artifact@v6.0.0
         with:
-          name: red-alert-listener-${{ matrix.os }}
+          name: red-alert-listener-${{ matrix.name }}
           path: red-alert-listener*
           compression-level: 9
 
