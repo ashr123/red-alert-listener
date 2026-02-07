@@ -3,6 +3,9 @@
     "includes": [
       {
         "pattern": "sounds/.*"
+      },
+      {
+        "pattern": "META-INF/services/.*"
       }
     ]
   }

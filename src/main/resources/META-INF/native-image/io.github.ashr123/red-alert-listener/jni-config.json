@@ -1,0 +1,11 @@
+[
+  {
+    "name": "com.sun.media.sound.JSSecurityManager",
+    "methods": [
+      {
+        "name": "loadProperties",
+        "parameterTypes": []
+      }
+    ]
+  }
+]
