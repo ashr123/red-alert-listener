@@ -5,24 +5,21 @@ on:
       - v*
 jobs:
   build:
-    name: Target ${{ matrix.os }}-${{ matrix.architecture }}
-    runs-on: ${{ matrix.os }}-${{ matrix.architecture }}
+    name: Target ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
-          - os: macos
-            architecture: latest
-#          - os: windows
-#            architecture: aarch64
-          - os: windows
-            architecture: amd64
-
-          - os: ubuntu
-            architecture: 24.04-arm
-          - os: ubuntu
-            architecture: latest
-#          - os: ubuntu-latest
-#            architecture: riscv64
+          - runner: macos-latest
+            os: macos
+          - runner: windows-latest
+            os: windows
+          - runner: windows-11-arm
+            os: windows
+          - runner: ubuntu-latest
+            os: ubuntu
+          - runner: ubuntu-24.04-arm
+            os: ubuntu
     steps:
       - uses: actions/checkout@v6.0.2
 
@@ -49,13 +46,13 @@ jobs:
             else
               ext=""
             fi
-            mv "$file" "red-alert-listener-${{ matrix.os }}-${{ matrix.architecture }}${ext}"
+            mv "$file" "red-alert-listener-${{ matrix.os }}${ext}"
           fi
 
       - name: Upload binary
         uses: actions/upload-artifact@v6.0.0
         with:
-          name: red-alert-listener-${{ matrix.os }}-${{ matrix.architecture }}
+          name: red-alert-listener-${{ matrix.os }}
           path: red-alert-listener*
           compression-level: 9
 
