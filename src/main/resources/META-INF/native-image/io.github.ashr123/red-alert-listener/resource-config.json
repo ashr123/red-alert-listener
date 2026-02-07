@@ -1,9 +1,9 @@
 {
-  "resources": [
-    {
-      "includes": [
-        "sounds/.*"
-      ]
-    }
-  ]
+  "resources": {
+    "includes": [
+      {
+        "pattern": "sounds/.*"
+      }
+    ]
+  }
 }
