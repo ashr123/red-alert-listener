@@ -58,7 +58,7 @@ jobs:
           fi
 
       - name: Upload binary
-        uses: actions/upload-artifact@v6.0.0
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: red-alert-listener-${{ matrix.name }}
           path: red-alert-listener*
@@ -71,7 +71,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: actions/download-artifact@v7.0.0
+      - uses: actions/download-artifact@v8.0.0
         name: Downloading artifacts
 
       - name: Display structure of downloaded files
