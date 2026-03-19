@@ -329,7 +329,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		);
 	}
 
-	private Map<Integer, ? extends Map<String, AlertTranslations>> loadAlertsTranslation(Set<String> ignoredTitlesForAlert) {
+	private Map<Integer, ? extends Map<String, AlertTranslations>> loadAlertsTranslation(/*Set<String> ignoredTitlesForAlert*/) {
 		final Map<Integer, ? extends Map<String, AlertTranslations>> alertsTranslations = getResource(
 				"alerts translations",
 				HttpRequest.newBuilder(ALERTS_TRANSLATION_URI)
@@ -353,17 +353,17 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						.sum()
 		);
 
-		final Set<String> nonExistentTitles = ignoredTitlesForAlert.parallelStream().unordered()
-				.filter(Predicate.not(alertsTranslations.values()
-						.parallelStream().unordered()
-						.map(Map::keySet)
-						.map(Collection::parallelStream)
-						.flatMap(Stream::unordered)
-						.collect(Collectors.toSet())
-						::contains))
-				.collect(Collectors.toSet());
-		if (!nonExistentTitles.isEmpty())
-			LOGGER.warn("Ignored titles for alert that don't exist: {}", nonExistentTitles);
+//		final Set<String> nonExistentTitles = ignoredTitlesForAlert.parallelStream().unordered()
+//				.filter(Predicate.not(alertsTranslations.values()
+//						.parallelStream().unordered()
+//						.map(Map::keySet)
+//						.map(Collection::parallelStream)
+//						.flatMap(Stream::unordered)
+//						.collect(Collectors.toSet())
+//						::contains))
+//				.collect(Collectors.toSet());
+//		if (!nonExistentTitles.isEmpty())
+//			LOGGER.warn("Ignored titles for alert that don't exist: {}", nonExistentTitles);
 
 		return alertsTranslations;
 	}
@@ -643,32 +643,32 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			);
 			loadConfiguration(clipManager);
 
-			final Set<String> ignoredTitlesForAlert = Set.of(
-					"ניתן לצאת מהמרחב המוגן",
-					"ניתן לצאת מהמרחב המוגן אך יש להישאר בקרבתו", // ??
-					"סיום שהייה בסמיכות למרחב המוגן",
-					"חדירת מחבלים -  החשש הוסר",
-					"הסתיים אירוע חדירת מחבלים - ניתן לצאת מהבתים",
-					"חומרים מסוכנים - האירוע הסתיים",
-					"אירוע חומרים מסוכנים - הסכנה באזורכם חלפה",
-					"חדירת כלי טיס עוין - האירוע הסתיים",
-					"סכנת פיצוץ והדף חזק - ניתן לצאת מהמרחב המוגן",
-					"ירי רקטות וטילים -  האירוע הסתיים",
-					"אירוע בקריה למחקר גרעיני בנגב  – ניתן לצאת ממבנים",
-					"אירוע במרכז למחקר גרעיני בשורק  – ניתן לצאת ממבנים",
-					"אירוע בקריה למחקר גרעיני - ניתן לחזור לבתים",
-					"התרעה על רעידת אדמה - ניתן לחזור לשגרה",
-					"בעקבות רעידת האדמה - הנחיות לחזרה למבנים", // ??
-					"הנחיות בעקבות רעידת האדמה", // ??
-					"האירוע הסתיים",
-					"שיבושים בצופרי פיקוד העורף",
-					"מערך הצופרים חזר לפעול",
-					"התרעה על צונמי  - ניתן לחזור לשגרה"
-			);
+//			final Set<String> ignoredTitlesForAlert = Set.of(
+//					"ניתן לצאת מהמרחב המוגן",
+//					"ניתן לצאת מהמרחב המוגן אך יש להישאר בקרבתו", // ??
+//					"סיום שהייה בסמיכות למרחב המוגן",
+//					"חדירת מחבלים -  החשש הוסר",
+//					"הסתיים אירוע חדירת מחבלים - ניתן לצאת מהבתים",
+//					"חומרים מסוכנים - האירוע הסתיים",
+//					"אירוע חומרים מסוכנים - הסכנה באזורכם חלפה",
+//					"חדירת כלי טיס עוין - האירוע הסתיים",
+//					"סכנת פיצוץ והדף חזק - ניתן לצאת מהמרחב המוגן",
+//					"ירי רקטות וטילים -  האירוע הסתיים",
+//					"אירוע בקריה למחקר גרעיני בנגב  – ניתן לצאת ממבנים",
+//					"אירוע במרכז למחקר גרעיני בשורק  – ניתן לצאת ממבנים",
+//					"אירוע בקריה למחקר גרעיני - ניתן לחזור לבתים",
+//					"התרעה על רעידת אדמה - ניתן לחזור לשגרה",
+//					"בעקבות רעידת האדמה - הנחיות לחזרה למבנים", // ??
+//					"הנחיות בעקבות רעידת האדמה", // ??
+//					"האירוע הסתיים",
+//					"שיבושים בצופרי פיקוד העורף",
+//					"מערך הצופרים חזר לפעול",
+//					"התרעה על צונמי  - ניתן לחזור לשגרה"
+//			);
 
 			final var ref = new Object() {
 				private Instant currAlertsLastModified = Instant.MIN;
-				private Map<Integer, ? extends Map<String /*hebTitle*/, AlertTranslations>> alertsTranslations = loadAlertsTranslation(ignoredTitlesForAlert);
+				private Map<Integer, ? extends Map<String /*hebTitle*/, AlertTranslations>> alertsTranslations = loadAlertsTranslation(/*ignoredTitlesForAlert*/);
 			};
 
 			final Map<Integer, Map<String /*title*/, Set<String>>> prevData = new ConcurrentHashMap<>(ref.alertsTranslations.size());
@@ -721,7 +721,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																		null;
 																if (alertTranslations == null) {
 																	LOGGER.warn("Couldn't find translation for cat: {} ({}), trying again...", redAlertEvent.cat(), redAlertEvent.title());
-																	alertTranslations = Option.of((ref.alertsTranslations = loadAlertsTranslation(ignoredTitlesForAlert))
+																	alertTranslations = Option.of((ref.alertsTranslations = loadAlertsTranslation(/*ignoredTitlesForAlert*/))
 																			.get(redAlertEvent.cat())) instanceof Some(Map<String, AlertTranslations> map) ?
 																			map.get(redAlertEvent.title()) :
 																			null;
@@ -806,7 +806,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																		.parallelStream().unordered()
 																		.map(AreaTranslationProtectionTime::protectionTime)
 																		.min(Comparator.naturalOrder())) instanceof Some(Duration minProtectionTime)) {
-																	if (configuration.isMakeSound() && alertTranslations != null && !ignoredTitlesForAlert.contains(redAlertEvent.title())) {
+																	if (configuration.isMakeSound() && alertTranslations != null /*&& !ignoredTitlesForAlert.contains(redAlertEvent.title())*/) {
 																		clipManager.playClip(redAlertEvent.cat(), alertTranslations.catId(), configuration.languageCode(), minProtectionTime);
 																	}
 																	output.append(areaAndTranslatedDistrictsToString("ALERT ALERT ALERT", districtsForAlert, redAlertEvent.cat()));
