@@ -97,11 +97,9 @@ public class ClipManager implements AutoCloseable {
 
 	@Override
 	public void close() {
-		try (alarmClip) {
-		}
-		try (updateClip) {
-		}
-		try (flashClip) {
+		try (alarmClip;
+			 updateClip;
+			 flashClip) {
 		}
 		for (Clip clip : soundClips.values()) {
 			try (clip) {
