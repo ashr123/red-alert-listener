@@ -58,7 +58,6 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			)
 //			.disable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
 			.build();
-
 	private static final Logger LOGGER = LogManager.getLogger();
 	private static final TypeReference<List<District>> DISTRICTS_TYPE_REFERENCE = new TypeReference<>() {
 	};
@@ -84,16 +83,17 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 //	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
 //			.followRedirects(HttpClient.Redirect.NORMAL) //?
 //			.build();
-
-//	static {
+	//	static {
 //		Runtime.getRuntime().addShutdownHook(new Thread(HTTP_CLIENT::close));
 //	}
 	private static final Duration DISTRICTS_UPDATE_CONSTANT = ChronoUnit.HOURS.getDuration();
-//	private static final Pattern
+	//	private static final Pattern
 //			VAR_ALL_DISTRICTS = Pattern.compile("^.*=\\s*", Pattern.MULTILINE),
 //			BOM = Pattern.compile("﻿");
 //	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
 	private static final URI ALERTS_TRANSLATION_URI = URI.create("https://www.oref.org.il/alerts/alertsTranslation.json");
+
+
 	@CommandLine.Option(names = {"-c", "--configuration-file"},
 			paramLabel = "configuration file",
 			defaultValue = "red-alert-listener.conf.json",
@@ -130,7 +130,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				\t• Enter "h" to display this help message.""");
 	}
 
-	private static void sleep() {
+	private static void sleepASecond() {
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException interruptedException) {
@@ -283,7 +283,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					return Collections.emptyMap();
 				});
 				if (result.getResult().isEmpty()) {
-					sleep();
+					sleepASecond();
 					continue;
 				}
 				LOGGER.info(
@@ -298,7 +298,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			} catch (Exception e) {
 				LOGGER.error("Failed to get alerts translation for: {}. Trying again...", e.toString());
 			}
-			sleep();
+			sleepASecond();
 		}
 		return Collections.emptyMap();
 	}
@@ -329,7 +329,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		);
 	}
 
-	private Map<Integer, ? extends Map<String, AlertTranslations>> loadAlertsTranslation(Set<String> ignoredTitlesForAlert) {
+	private Map<Integer, ? extends Map<String, AlertTranslations>> loadAlertsTranslation(/*Set<String> ignoredTitlesForAlert*/) {
 		final Map<Integer, ? extends Map<String, AlertTranslations>> alertsTranslations = getResource(
 				"alerts translations",
 				HttpRequest.newBuilder(ALERTS_TRANSLATION_URI)
@@ -353,17 +353,17 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						.sum()
 		);
 
-		final Set<String> nonExistentTitles = ignoredTitlesForAlert.parallelStream().unordered()
-				.filter(Predicate.not(alertsTranslations.values()
-						.parallelStream().unordered()
-						.map(Map::keySet)
-						.map(Collection::parallelStream)
-						.flatMap(Stream::unordered)
-						.collect(Collectors.toSet())
-						::contains))
-				.collect(Collectors.toSet());
-		if (!nonExistentTitles.isEmpty())
-			LOGGER.warn("Ignored titles for alert that don't exist: {}", nonExistentTitles);
+//		final Set<String> nonExistentTitles = ignoredTitlesForAlert.parallelStream().unordered()
+//				.filter(Predicate.not(alertsTranslations.values()
+//						.parallelStream().unordered()
+//						.map(Map::keySet)
+//						.map(Collection::parallelStream)
+//						.flatMap(Stream::unordered)
+//						.collect(Collectors.toSet())
+//						::contains))
+//				.collect(Collectors.toSet());
+//		if (!nonExistentTitles.isEmpty())
+//			LOGGER.warn("Ignored titles for alert that don't exist: {}", nonExistentTitles);
 
 		return alertsTranslations;
 	}
@@ -609,20 +609,22 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						case "q", "quit", "exit" -> isContinue = false;
 						case "t", "test", "test-sound" -> {
 							System.err.println("Testing sound...");
-							clipManager.playDefaultClip();
+							clipManager.playAlarmClip();
 						}
 						case "c", "clear" -> System.err.println("\033[H\033[2JListening...");
-						case "r", "refresh", "refresh-districts" -> Thread.startVirtualThread(() -> ScopedValue.where(HTTP_CLIENT_SCOPED_VALUE, httpClient)
-								.run(this::refreshDistrictsTranslation));
+						case "r", "refresh", "refresh-districts" ->
+								Thread.startVirtualThread(() -> ScopedValue.where(HTTP_CLIENT_SCOPED_VALUE, httpClient)
+										.run(this::refreshDistrictsTranslation));
 						case "h", "help" -> printHelpMsg();
-						case "l", "load-configuration" -> Thread.startVirtualThread(() -> ScopedValue.where(HTTP_CLIENT_SCOPED_VALUE, httpClient)
-								.run(() -> {
-									try {
-										loadConfiguration(clipManager);
-									} catch (JacksonException e) {
-										LOGGER.error("Configuration error: {}", e.toString());
-									}
-								}));
+						case "l", "load-configuration" ->
+								Thread.startVirtualThread(() -> ScopedValue.where(HTTP_CLIENT_SCOPED_VALUE, httpClient)
+										.run(() -> {
+											try {
+												loadConfiguration(clipManager);
+											} catch (JacksonException e) {
+												LOGGER.error("Configuration error: {}", e.toString());
+											}
+										}));
 						default -> {
 							System.err.println("Unrecognized command!");
 							printHelpMsg();
@@ -641,27 +643,32 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			);
 			loadConfiguration(clipManager);
 
-			final Set<String> ignoredTitlesForAlert = Set.of(
-					"ניתן לצאת מהמרחב המוגן",
-					"ניתן לצאת מהמרחב המוגן אך יש להישאר בקרבתו", // ??
-					"סיום שהייה בסמיכות למרחב המוגן",
-					"חדירת מחבלים -  החשש הוסר",
-					"הסתיים אירוע חדירת מחבלים - ניתן לצאת מהבתים",
-					"חומרים מסוכנים - האירוע הסתיים",
-					"אירוע חומרים מסוכנים - הסכנה באזורכם חלפה",
-					"חדירת כלי טיס עוין - האירוע הסתיים",
-					"סכנת פיצוץ והדף חזק - ניתן לצאת מהמרחב המוגן",
-					"ירי רקטות וטילים -  האירוע הסתיים",
-					"אירוע בקריה למחקר גרעיני בנגב  – ניתן לצאת ממבנים",
-					"אירוע במרכז למחקר גרעיני בשורק  – ניתן לצאת ממבנים",
-					"התרעה על רעידת אדמה - ניתן לחזור לשגרה",
-					"בעקבות רעידת האדמה - הנחיות לחזרה למבנים", // ??
-					"הנחיות בעקבות רעידת האדמה" // ??
-			);
+//			final Set<String> ignoredTitlesForAlert = Set.of(
+//					"ניתן לצאת מהמרחב המוגן",
+//					"ניתן לצאת מהמרחב המוגן אך יש להישאר בקרבתו", // ??
+//					"סיום שהייה בסמיכות למרחב המוגן",
+//					"חדירת מחבלים -  החשש הוסר",
+//					"הסתיים אירוע חדירת מחבלים - ניתן לצאת מהבתים",
+//					"חומרים מסוכנים - האירוע הסתיים",
+//					"אירוע חומרים מסוכנים - הסכנה באזורכם חלפה",
+//					"חדירת כלי טיס עוין - האירוע הסתיים",
+//					"סכנת פיצוץ והדף חזק - ניתן לצאת מהמרחב המוגן",
+//					"ירי רקטות וטילים -  האירוע הסתיים",
+//					"אירוע בקריה למחקר גרעיני בנגב  – ניתן לצאת ממבנים",
+//					"אירוע במרכז למחקר גרעיני בשורק  – ניתן לצאת ממבנים",
+//					"אירוע בקריה למחקר גרעיני - ניתן לחזור לבתים",
+//					"התרעה על רעידת אדמה - ניתן לחזור לשגרה",
+//					"בעקבות רעידת האדמה - הנחיות לחזרה למבנים", // ??
+//					"הנחיות בעקבות רעידת האדמה", // ??
+//					"האירוע הסתיים",
+//					"שיבושים בצופרי פיקוד העורף",
+//					"מערך הצופרים חזר לפעול",
+//					"התרעה על צונמי  - ניתן לחזור לשגרה"
+//			);
 
 			final var ref = new Object() {
 				private Instant currAlertsLastModified = Instant.MIN;
-				private Map<Integer, ? extends Map<String /*hebTitle*/, AlertTranslations>> alertsTranslations = loadAlertsTranslation(ignoredTitlesForAlert);
+				private Map<Integer, ? extends Map<String /*hebTitle*/, AlertTranslations>> alertsTranslations = loadAlertsTranslation(/*ignoredTitlesForAlert*/);
 			};
 
 			final Map<Integer, Map<String /*title*/, Set<String>>> prevData = new ConcurrentHashMap<>(ref.alertsTranslations.size());
@@ -686,7 +693,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					try (InputStream inputStream = httpResponse.body()) {
 						if (httpResponse.statusCode() < 200 || 300 <= httpResponse.statusCode()) {
 							LOGGER.error("Connection response status code: {}", httpResponse.statusCode());
-							sleep();
+							sleepASecond();
 							continue;
 						}
 						switch (OptionLong.of(httpResponse.headers().firstValueAsLong("Content-Length"))) {
@@ -714,7 +721,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																		null;
 																if (alertTranslations == null) {
 																	LOGGER.warn("Couldn't find translation for cat: {} ({}), trying again...", redAlertEvent.cat(), redAlertEvent.title());
-																	alertTranslations = Option.of((ref.alertsTranslations = loadAlertsTranslation(ignoredTitlesForAlert))
+																	alertTranslations = Option.of((ref.alertsTranslations = loadAlertsTranslation(/*ignoredTitlesForAlert*/))
 																			.get(redAlertEvent.cat())) instanceof Some(Map<String, AlertTranslations> map) ?
 																			map.get(redAlertEvent.title()) :
 																			null;
@@ -799,8 +806,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																		.parallelStream().unordered()
 																		.map(AreaTranslationProtectionTime::protectionTime)
 																		.min(Comparator.naturalOrder())) instanceof Some(Duration minProtectionTime)) {
-																	if (configuration.isMakeSound() && !ignoredTitlesForAlert.contains(redAlertEvent.title())) {
-																		clipManager.playClip(redAlertEvent.cat(), configuration.languageCode(), minProtectionTime);
+																	if (configuration.isMakeSound() && alertTranslations != null /*&& !ignoredTitlesForAlert.contains(redAlertEvent.title())*/) {
+																		clipManager.playClip(redAlertEvent.cat(), alertTranslations.catId(), configuration.languageCode(), minProtectionTime);
 																	}
 																	output.append(areaAndTranslatedDistrictsToString("ALERT ALERT ALERT", districtsForAlert, redAlertEvent.cat()));
 																}
@@ -833,6 +840,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							case NoneLong _ -> LOGGER.error("Couldn't get content length");
 						}
 					}
+					sleepASecond();
 				} catch (JacksonException e) {
 					LOGGER.error("JSON parsing error: {}", e.toString());
 				} catch (IOException e) {
@@ -841,7 +849,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 						LOGGER.trace("Got GOAWAY: {}", e.toString());
 					else {
 						LOGGER.debug("Got exception: {}", e.toString());
-						sleep();
+						sleepASecond();
 					}
 				}
 		} catch (Throwable e) {

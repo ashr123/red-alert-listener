@@ -24,9 +24,21 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
 
+      - name: Extract Java version from pom.xml
+        id: extract-java-version
+        shell: python
+        run: |
+          import xml.etree.ElementTree as ET, os
+          root = ET.parse('pom.xml').getroot()
+          ns = root.tag.split('}')[0][1:] if '}' in root.tag else ''
+          pfx = f'{{{ns}}}' if ns else ''
+          release = root.find(f'.//{pfx}release').text
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f'JAVA_VERSION={release}\n')
+
       - uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '25'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           native-image-job-reports: 'true'
