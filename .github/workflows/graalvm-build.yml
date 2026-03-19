@@ -24,9 +24,18 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
 
+      - name: Install xmllint
+        run: sudo apt update && sudo apt install -y libxml2-utils
+
+      - name: Extract Java version from pom.xml
+        id: extract-java-version
+        run: |
+          JAVA_VERSION=$(xmllint --xpath "//*[local-name()='release']/text()" pom.xml)
+          echo "JAVA_VERSION=$JAVA_VERSION" >> $GITHUB_ENV
+
       - uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '25'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           native-image-job-reports: 'true'
