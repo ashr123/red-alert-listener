@@ -57,7 +57,7 @@ public class ClipManager implements AutoCloseable {
 		if (alertCategory == 10 || alertCategory == 110) {
 			final Clip clip = catId == 14 ? flashClip : updateClip;
 			clip.setFramePosition(0);
-			updateClip.start();
+			clip.start();
 		}
 		else {
 			@SuppressWarnings("resource")
