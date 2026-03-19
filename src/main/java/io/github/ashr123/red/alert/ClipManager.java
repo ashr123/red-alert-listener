@@ -86,13 +86,13 @@ public class ClipManager implements AutoCloseable {
 	public void prepareForOtherLanguage() {
 		soundClips.values()
 				.stream()
-				.filter(Predicate.not(clip -> alarmClip.equals(clip) || updateClip.equals(clip) || flashClip.equals(clip)))
+				.filter(Predicate.not(alarmClip::equals))
 				.forEach(clip -> {
 					try (clip) {
 					}
 				});
 		soundClips.values()
-				.removeIf(Predicate.not(clip -> alarmClip.equals(clip) || updateClip.equals(clip) || flashClip.equals(clip))); // TODO think about what if clips not identical between languages
+				.removeIf(Predicate.not(alarmClip::equals)); // TODO think about what if clips not identical between languages
 	}
 
 	@Override
