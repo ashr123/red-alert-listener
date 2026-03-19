@@ -26,29 +26,27 @@
 
    Or in Java terms:
    ```java
-   import com.fasterxml.jackson.core.type.TypeReference;
-   import com.fasterxml.jackson.databind.DeserializationContext;
-   import com.fasterxml.jackson.databind.KeyDeserializer;
-   import com.fasterxml.jackson.databind.json.JsonMapper;
-   import com.fasterxml.jackson.databind.util.StdConverter;
-
-   import java.io.IOException;
-   import java.time.Duration;
-
+   import tools.jackson.core.type.TypeReference;
+   import tools.jackson.databind.DeserializationContext;
+   import tools.jackson.databind.KeyDeserializer;
+   import tools.jackson.databind.json.JsonMapper;
+   import tools.jackson.databind.module.SimpleModule;
+   
    static class DurationFromSecondsKeyDeserializer extends KeyDeserializer {
        @Override
        public Duration deserializeKey(String key, DeserializationContext ctxt) {
            return Duration.ofSeconds(Long.parseLong(key));
        }
    }
-
-   public static void main(String... args) throws IOException {
+   
+   public static void main(String... args) {
        final Map<String /*translated area name*/,
                Map<Duration /*duration in seconds to arrive to protected place*/,
                        Map<String /*district name in Hebrew*/,
-                               String /*district translation*/>>> data = new JsonMapper()
-               .registerModule(new SimpleModule()
+                               String /*district translation*/>>> data = JsonMapper.builder()
+               .addModule(new SimpleModule()
                        .addKeyDeserializer(Duration.class, new DurationFromSecondsKeyDeserializer()))
+               .build()
                .readValue(
                        new File("districts-en.json"),
                        new TypeReference<>() {
