@@ -3,9 +3,8 @@ package io.github.ashr123.red.alert;
 import java.time.Duration;
 import java.util.Map;
 
-/**
- * @see <a href=https://www.oref.org.il/Shared/ClientScripts/WarningMessages/WarningMessages.js>https://www.oref.org.il/Shared/ClientScripts/WarningMessages/WarningMessages.js</a>
- */
+/// Related resource:
+/// https://www.oref.org.il/Shared/ClientScripts/WarningMessages/WarningMessages.js
 @SuppressWarnings("unused")
 public enum LanguageCode {
 	HE(
@@ -61,13 +60,9 @@ public enum LanguageCode {
 			)
 	);
 	private final Map<String, String> testDistrictTranslations;
-	/**
-	 * Search for {@code seconds:}
-	 */
+	/// Search for `seconds:`.
 	private final String secondsTranslation;
-	/**
-	 * Search for {@code var tl}
-	 */
+	/// Search for `var tl`.
 	private final Map<Duration, String> timeTranslations;
 
 	LanguageCode(Map<String, String> testDistrictTranslations,

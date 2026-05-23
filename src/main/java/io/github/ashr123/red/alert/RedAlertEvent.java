@@ -4,9 +4,7 @@ import tools.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.List;
 
-/**
- * @param data Should be interned by {@link District#hebrewLabel()}
- */
+/// @param data should be interned by [District#hebrewLabel()]
 public record RedAlertEvent(int cat,
 							List<String> data,
 							@JsonDeserialize(converter = StringInternDeserializer.class)

@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.pattern.NamedInstantPattern;
 import picocli.CommandLine;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
@@ -64,7 +65,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	private static final TypeReference<List<AlertTranslations>> ALERTS_TRANSLATION_TYPE_REFERENCE = new TypeReference<>() {
 	};
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(
-					"yyyy-MM-dd HH:mm:ss,SSS",
+					NamedInstantPattern.DEFAULT.getPattern(),
 					Locale.getDefault(Locale.Category.FORMAT)
 			)
 			.withZone(ZoneId.systemDefault());
@@ -103,9 +104,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	private volatile long configurationLastModified = 1;
 	private volatile List<String> districtsNotFound = Collections.emptyList();
 	private volatile boolean isContinue = true;
-	/**
-	 * Will be updated once a day from IDF's Home Front Command's server.
-	 */
+	/// Will be updated once a day from IDF's Home Front Command server.
 	private volatile Map<String, AreaTranslationProtectionTime> districts;
 	private volatile HttpRequest httpRequest;
 	private volatile LocalDateTime districtsLastUpdate;
@@ -178,8 +177,29 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		return value2;
 	}
 
+	/// Configures the HTTP client to use `HTTP_3` when that version is available at runtime.
+	///
+	/// If `HTTP_3` is unavailable, this returns the original [HttpClient.Builder]
+	/// without modification.
+	///
+	/// @param httpClientBuilder the HTTP client builder to configure
+	/// @return the configured builder, or the original builder when `HTTP_3` is unsupported
+	/// @implNote This avoids a direct reference to `HttpClient.Version.HTTP_3`, so the
+	/// project can still compile with `--release 25` and use HTTP/3 when running on Java 26
+	/// or newer.
+	/// @deprecated this is only temporary until new language features will be released and the minimum Java version
+	///  will be changed
+	@Deprecated(forRemoval = true)
+	private static HttpClient.Builder configureHttpClientVersion(HttpClient.Builder httpClientBuilder) {
+		try {
+			return httpClientBuilder.version(HttpClient.Version.valueOf("HTTP_3"));
+		} catch (IllegalArgumentException exception) {
+			return httpClientBuilder;
+		}
+	}
+
 	static void main(String... args) {
-		try (HttpClient httpClient = HttpClient.newBuilder()
+		try (HttpClient httpClient = configureHttpClientVersion(HttpClient.newBuilder())
 				.followRedirects(HttpClient.Redirect.NORMAL) //?
 				.build()) {
 			ScopedValue.where(HTTP_CLIENT_SCOPED_VALUE, httpClient)
@@ -303,12 +323,11 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		return Collections.emptyMap();
 	}
 
-	/**
-	 * @see <a href=https://www.oref.org.il/districts/districts_heb.json>districts_heb.json</a>
-	 * @see <a href=https://www.oref.org.il/districts/districts_eng.json>districts_eng.json</a>
-	 * @see <a href=https://www.oref.org.il/districts/districts_rus.json>districts_rus.json</a>
-	 * @see <a href=https://www.oref.org.il/districts/districts_arb.json>districts_arb.json</a>
-	 */
+	/// Related resources:
+	/// - [districts_heb.json](https://www.oref.org.il/districts/districts_heb.json)
+	/// - [districts_eng.json](https://www.oref.org.il/districts/districts_eng.json)
+	/// - [districts_rus.json](https://www.oref.org.il/districts/districts_rus.json)
+	/// - [districts_arb.json](https://www.oref.org.il/districts/districts_arb.json)
 	private <T> Map<String, T> loadRemoteDistricts(LanguageCode languageCode,
 												   Duration timeout,
 												   Function<District, T> districtMapper) {
@@ -642,29 +661,6 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					TimeUnit.DAYS
 			);
 			loadConfiguration(clipManager);
-
-//			final Set<String> ignoredTitlesForAlert = Set.of(
-//					"ניתן לצאת מהמרחב המוגן",
-//					"ניתן לצאת מהמרחב המוגן אך יש להישאר בקרבתו", // ??
-//					"סיום שהייה בסמיכות למרחב המוגן",
-//					"חדירת מחבלים -  החשש הוסר",
-//					"הסתיים אירוע חדירת מחבלים - ניתן לצאת מהבתים",
-//					"חומרים מסוכנים - האירוע הסתיים",
-//					"אירוע חומרים מסוכנים - הסכנה באזורכם חלפה",
-//					"חדירת כלי טיס עוין - האירוע הסתיים",
-//					"סכנת פיצוץ והדף חזק - ניתן לצאת מהמרחב המוגן",
-//					"ירי רקטות וטילים -  האירוע הסתיים",
-//					"אירוע בקריה למחקר גרעיני בנגב  – ניתן לצאת ממבנים",
-//					"אירוע במרכז למחקר גרעיני בשורק  – ניתן לצאת ממבנים",
-//					"אירוע בקריה למחקר גרעיני - ניתן לחזור לבתים",
-//					"התרעה על רעידת אדמה - ניתן לחזור לשגרה",
-//					"בעקבות רעידת האדמה - הנחיות לחזרה למבנים", // ??
-//					"הנחיות בעקבות רעידת האדמה", // ??
-//					"האירוע הסתיים",
-//					"שיבושים בצופרי פיקוד העורף",
-//					"מערך הצופרים חזר לפעול",
-//					"התרעה על צונמי  - ניתן לחזור לשגרה"
-//			);
 
 			final var ref = new Object() {
 				private Instant currAlertsLastModified = Instant.MIN;

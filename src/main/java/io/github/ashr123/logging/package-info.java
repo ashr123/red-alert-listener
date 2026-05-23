@@ -1,4 +1,3 @@
-/**
- * This package contains classes and interfaces related to logging functionality, it's only temporary till Log4J3 will be released.
- */
+/// This package contains classes and interfaces related to logging functionality.
+@Deprecated(forRemoval = true)
 package io.github.ashr123.logging;

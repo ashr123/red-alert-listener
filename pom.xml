@@ -6,7 +6,7 @@
 
 	<groupId>io.github.ashr123</groupId>
 	<artifactId>red-alert-listener</artifactId>
-	<version>5.6.2</version>
+	<version>5.6.6</version>
 
 	<name>Red Alert Listener</name>
 	<description>A stand-alone terminal app that can get "red alert" events from IDF's Home Front Command</description>
@@ -122,6 +122,8 @@
 					</annotationProcessorPaths>
 					<compilerArgs>
 						<arg>-Aproject=${project.groupId}/${project.artifactId}</arg>
+						<arg>-Alog4j.graalvm.groupId=${project.groupId}</arg>
+						<arg>-Alog4j.graalvm.artifactId=${project.artifactId}</arg>
 					</compilerArgs>
 				</configuration>
 			</plugin>

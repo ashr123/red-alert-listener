@@ -200,16 +200,12 @@ public class Json3Configuration extends AbstractConfiguration implements Reconfi
 		return getClass().getSimpleName() + "[location=" + getConfigurationSource() + "]";
 	}
 
-	/**
-	 * The error that occurred.
-	 */
+	/// The error that occurred.
 	private enum ErrorType {
 		CLASS_NOT_FOUND
 	}
 
-	/**
-	 * Status for recording errors.
-	 */
+	/// Status for recording errors.
 	private record Status(String name, JsonNode node, ErrorType errorType) {
 	}
 }

@@ -12,9 +12,7 @@ import org.apache.logging.log4j.core.util.Loader;
 @Order(8)
 public class Json3ConfigurationFactory extends ConfigurationFactory {
 
-	/**
-	 * The file extensions supported by this factory.
-	 */
+	/// The file extensions supported by this factory.
 	private static final String[] SUFFIXES = {".json", ".jsn"};
 
 	private static final String[] DEPENDENCIES = {
