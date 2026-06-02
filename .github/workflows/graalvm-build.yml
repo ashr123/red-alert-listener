@@ -22,7 +22,7 @@ jobs:
           - runner: ubuntu-24.04-arm
             name: ubuntu-aarch64
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
 
       - name: Extract Java version from pom.xml
         id: extract-java-version
@@ -82,7 +82,7 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
       - uses: actions/download-artifact@v8.0.1
         name: Downloading artifacts
 
