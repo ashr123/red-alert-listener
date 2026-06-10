@@ -35,6 +35,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -101,7 +102,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			description = "Enter custom path to configuration file.")
 	private File configurationFile;
 	private volatile Configuration configuration = DEFAULT_CONFIGURATION;
-	private volatile long configurationLastModified = 1;
+	private long configurationLastModified = 1;
 	private volatile List<String> districtsNotFound = Collections.emptyList();
 	private volatile boolean isContinue = true;
 	/// Will be updated once a day from IDF's Home Front Command server.
@@ -177,13 +178,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		return value2;
 	}
 
-	/// Configures the HTTP client to use `HTTP_3` when that version is available at runtime.
+	/// Configures the HTTP client to use `HttpClient.Version.HTTP_3` when that version is available **at runtime**.
 	///
-	/// If `HTTP_3` is unavailable, this returns the original [HttpClient.Builder]
+	/// If `HttpClient.Version.HTTP_3` is unavailable, this returns the original [HttpClient.Builder]
 	/// without modification.
 	///
 	/// @param httpClientBuilder the HTTP client builder to configure
-	/// @return the configured builder, or the original builder when `HTTP_3` is unsupported
+	/// @return the configured builder, or the original builder when `HttpClient.Version.HTTP_3` is unsupported
 	/// @implNote This avoids a direct reference to `HttpClient.Version.HTTP_3`, so the
 	/// project can still compile with `--release 25` and use HTTP/3 when running on Java 26
 	/// or newer.
@@ -193,7 +194,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 	private static HttpClient.Builder configureHttpClientVersion(HttpClient.Builder httpClientBuilder) {
 		try {
 			return httpClientBuilder.version(HttpClient.Version.valueOf("HTTP_3"));
-		} catch (IllegalArgumentException exception) {
+		} catch (IllegalArgumentException _) {
 			return httpClientBuilder;
 		}
 	}
@@ -273,11 +274,11 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				));
 	}
 
-	private <T, K, V> Map<K, V> getResource(String headline,
-											HttpRequest.Builder httpRequestBuilder,
-											Function<InputStream, ? extends Collection<T>> jsonMapper,
-											Function<Stream<T>, Map<K, V>> streamMapper,
-											ToIntFunction<Map<?, V>> sizeFunction) {
+	private <R> R getResource(String headline,
+							  HttpRequest.Builder httpRequestBuilder,
+							  Function<InputStream, R> bodyMapper,
+							  ToIntFunction<R> sizeFunction,
+							  Supplier<R> emptyResourceSupplier) {
 		LOGGER.info("Getting {} from IDF's Home Front Command's server...", headline);
 		final HttpRequest httpRequest = httpRequestBuilder.header("Accept", "application/json")
 				.header("Accept-Encoding", "gzip")
@@ -285,27 +286,21 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				.build();
 		while (isContinue) {
 			try {
-				final Result<Map<K, V>> result = TimeMeasurement.measureAndExecuteCallable(() -> {
+				final Result<R> result = TimeMeasurement.measureAndExecuteCallable(() -> {
 					final HttpResponse<InputStream> httpResponse = HTTP_CLIENT_SCOPED_VALUE.get().send(
 							httpRequest,
 							HttpResponse.BodyHandlers.ofInputStream()
 					);
 					try (InputStream inputStream = httpResponse.body()) {
-						if (200 <= httpResponse.statusCode() && httpResponse.statusCode() < 300)
-							try (InputStream body = "gzip".equalsIgnoreCase(httpResponse.headers().firstValue("Content-Encoding").orElse("")) ?
-									new GZIPInputStream(inputStream) :
-									inputStream) {
-								return streamMapper.apply(jsonMapper.apply(body)
-										.parallelStream().unordered());
-							}
+						if (httpResponse.statusCode() < 200 || 300 <= httpResponse.statusCode())
+							throw new IOException("Got bad response status code: " + httpResponse.statusCode());
+						try (InputStream body = "gzip".equalsIgnoreCase(httpResponse.headers().firstValue("Content-Encoding").orElse("")) ?
+								new GZIPInputStream(inputStream) :
+								inputStream) {
+							return bodyMapper.apply(body);
+						}
 					}
-					LOGGER.error("Got bad response status code: {}", httpResponse.statusCode());
-					return Collections.emptyMap();
 				});
-				if (result.getResult().isEmpty()) {
-					sleepASecond();
-					continue;
-				}
 				LOGGER.info(
 						"Done (took {} milliseconds, got {} {})",
 						result.getTimeTaken(),
@@ -314,13 +309,13 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				);
 				return result.getResult();
 			} catch (JacksonException e) {
-				LOGGER.error("JSON parsing error: {}", e.toString());
+				LOGGER.error("JSON parsing error while getting {}: {}", headline, e.toString());
 			} catch (Exception e) {
-				LOGGER.error("Failed to get alerts translation for: {}. Trying again...", e.toString());
+				LOGGER.error("Failed to get {}: {}. Trying again...", headline, e.toString());
 			}
 			sleepASecond();
 		}
-		return Collections.emptyMap();
+		return emptyResourceSupplier.get();
 	}
 
 	/// Related resources:
@@ -336,28 +331,31 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				HttpRequest.newBuilder(URI.create("https://alerts-history.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase(Locale.ROOT)))
 						.timeout(timeout),
 				body -> JSON_MAPPER.readValue(
-						/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
-						DISTRICTS_TYPE_REFERENCE
-				),
-				districtStream -> districtStream.collect(Collectors.toConcurrentMap(
-						District::hebrewLabel,
-						districtMapper,
-						Listener::merge
-				)),
-				Map::size
+								/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
+								DISTRICTS_TYPE_REFERENCE
+						)
+						.parallelStream().unordered()
+						.collect(Collectors.toConcurrentMap(
+								District::hebrewLabel,
+								districtMapper,
+								Listener::merge
+						)),
+				Map::size,
+				Collections::emptyMap
 		);
 	}
 
-	private Map<Integer, ? extends Map<String, AlertTranslations>> loadAlertsTranslation(/*Set<String> ignoredTitlesForAlert*/) {
-		final Map<Integer, ? extends Map<String, AlertTranslations>> alertsTranslations = getResource(
+	private Map<Integer, ? extends Map<String, AlertTranslations>> loadAlertsTranslation() {
+		return getResource(
 				"alerts translations",
 				HttpRequest.newBuilder(ALERTS_TRANSLATION_URI)
 						.timeout(configuration.timeout()),
 				body -> JSON_MAPPER.readValue(
-						/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
-						ALERTS_TRANSLATION_TYPE_REFERENCE
-				),
-				alertTranslationStream -> alertTranslationStream.filter(alertTranslations -> alertTranslations.matrixCatId() != 0)
+								/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
+								ALERTS_TRANSLATION_TYPE_REFERENCE
+						)
+						.parallelStream().unordered()
+						.filter(alertTranslations -> alertTranslations.matrixCatId() != 0)
 						.collect(Collectors.groupingByConcurrent(
 								AlertTranslations::matrixCatId,
 								Collectors.toConcurrentMap(
@@ -369,22 +367,9 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 				map -> map.values()
 						.parallelStream().unordered()
 						.mapToInt(Map::size)
-						.sum()
+						.sum(),
+				Collections::emptyMap
 		);
-
-//		final Set<String> nonExistentTitles = ignoredTitlesForAlert.parallelStream().unordered()
-//				.filter(Predicate.not(alertsTranslations.values()
-//						.parallelStream().unordered()
-//						.map(Map::keySet)
-//						.map(Collection::parallelStream)
-//						.flatMap(Stream::unordered)
-//						.collect(Collectors.toSet())
-//						::contains))
-//				.collect(Collectors.toSet());
-//		if (!nonExistentTitles.isEmpty())
-//			LOGGER.warn("Ignored titles for alert that don't exist: {}", nonExistentTitles);
-
-		return alertsTranslations;
 	}
 
 	private <D> Map<String, D> startSubcommandInputThread(LanguageCode languageCode,
@@ -664,7 +649,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 
 			final var ref = new Object() {
 				private Instant currAlertsLastModified = Instant.MIN;
-				private Map<Integer, ? extends Map<String /*hebTitle*/, AlertTranslations>> alertsTranslations = loadAlertsTranslation(/*ignoredTitlesForAlert*/);
+				private Map<Integer, ? extends Map<String /*hebTitle*/, AlertTranslations>> alertsTranslations = loadAlertsTranslation();
 			};
 
 			final Map<Integer, Map<String /*title*/, Set<String>>> prevData = new ConcurrentHashMap<>(ref.alertsTranslations.size());
@@ -717,7 +702,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																		null;
 																if (alertTranslations == null) {
 																	LOGGER.warn("Couldn't find translation for cat: {} ({}), trying again...", redAlertEvent.cat(), redAlertEvent.title());
-																	alertTranslations = Option.of((ref.alertsTranslations = loadAlertsTranslation(/*ignoredTitlesForAlert*/))
+																	alertTranslations = Option.of((ref.alertsTranslations = loadAlertsTranslation())
 																			.get(redAlertEvent.cat())) instanceof Some(Map<String, AlertTranslations> map) ?
 																			map.get(redAlertEvent.title()) :
 																			null;

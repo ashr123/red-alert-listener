@@ -26,6 +26,12 @@
   },
   "Beit She'an Valley" : {
     "60" : {
+      "מנחמיה" : "Menahemia",
+      "רשפים (אזור התרעה ישן)" : "Reshafim (Previous alert area)",
+      "שלוחות (אזור התרעה ישן)" : "Shluchot (Previous alert area)",
+      "שלפים (אזור התרעה ישן)" : "Shlafim (Previous alert area)"
+    },
+    "90" : {
       "בית אלפא וחפציבה" : "Beit Alfa and Heftziba",
       "בית השיטה" : "Beit HaShita",
       "בית יוסף" : "Beit Yossef",
@@ -40,7 +46,6 @@
       "כפר רופין" : "Kfar Ruppin",
       "מולדת" : "Moledet",
       "מירב" : "Merav",
-      "מנחמיה" : "Menahemia",
       "מסילות" : "Messilot",
       "מעוז חיים" : "Maoz Haim",
       "מעלה גלבוע" : "Ma'aleh Gilboa",
@@ -50,13 +55,10 @@
       "עין הנצי''ב" : "Ein HaNatziv",
       "רוויה" : "Revaya",
       "רחוב" : "Rechov",
-      "רשפים (אזור התרעה ישן)" : "Reshafim (Previous alert area)",
       "רשפים, שלוחות, שלפים" : "Reshafim, Shluchot, Shlafim",
       "שדה אליהו" : "Sdeh Eliyahu",
       "שדה נחום" : "Sdeh Nachum",
       "שדי תרומות" : "Sdei Trumot",
-      "שלוחות (אזור התרעה ישן)" : "Shluchot (Previous alert area)",
-      "שלפים (אזור התרעה ישן)" : "Shlafim (Previous alert area)",
       "תל תאומים" : "Tel Teomim"
     }
   },
@@ -586,8 +588,15 @@
   "Haifa" : {
     "60" : {
       "אום אלג'נם (אזור התרעה ישן)" : "Umm al-Ghanam (Previous alert area)",
-      "החותרים" : "HaHotrim",
       "ח'וואלד (אזור התרעה ישן)" : "Khawaled (Previous alert area)",
+      "כעביה (אזור התרעה ישן)" : "Ka'abiyye (Previous alert area)",
+      "כפר טבאש (אזור התרעה ישן)" : "Kafr Tabbash (Previous alert area)",
+      "עין חרוד (אזור התרעה ישן)" : "Ein Harod (Previous alert area)",
+      "שבלי (אזור התרעה ישן)" : "Shibli (Previous alert area)",
+      "תל יוסף (אזור התרעה ישן)" : "Tel Yossef (Previous alert area)"
+    },
+    "90" : {
+      "החותרים" : "HaHotrim",
       "חיפה - בת גלים ק.אליעזר" : "Haifa - Bat Galim, Kiryat Eliezer",
       "חיפה - כרמל, הדר ועיר תחתית" : "Haifa - Carmel, Hadar and Downtown Lower City",
       "חיפה - מערב" : "Haifa - West",
@@ -595,13 +604,8 @@
       "חיפה - נווה שאנן ורמות כרמל" : "Haifa - Ramot HaCarmel and Neveh Sha'anan",
       "חיפה - קריית חיים ושמואל" : "Haifa - Kiryat Haim & Kiryat Shmuel",
       "טירת כרמל" : "Tirat Carmel",
-      "כעביה (אזור התרעה ישן)" : "Ka'abiyye (Previous alert area)",
       "כפר גלים" : "Kfar Galim",
-      "כפר טבאש (אזור התרעה ישן)" : "Kafr Tabbash (Previous alert area)",
-      "נשר" : "Nesher",
-      "עין חרוד (אזור התרעה ישן)" : "Ein Harod (Previous alert area)",
-      "שבלי (אזור התרעה ישן)" : "Shibli (Previous alert area)",
-      "תל יוסף (אזור התרעה ישן)" : "Tel Yossef (Previous alert area)"
+      "נשר" : "Nesher"
     }
   },
   "Hefer" : {
@@ -690,7 +694,7 @@
     }
   },
   "Hof HaCarmel" : {
-    "60" : {
+    "90" : {
       "אזור תעשייה ניר עציון" : "Nir Etzion Industrial Area",
       "בית צבי" : "Beit Zvi",
       "בת שלמה" : "Bat Shlomo",
@@ -754,7 +758,7 @@
     }
   },
   "Krayot" : {
-    "60" : {
+    "90" : {
       "אורנים" : "Oranim",
       "אושה" : "Usha",
       "אזור תעשייה קריית ביאליק" : "Kiryat Bialik Industrial Zone",
@@ -879,11 +883,9 @@
       "אזור תעשייה קדמת גליל" : "Kidmat Galil Industrial Zone",
       "אזור תעשייה תרדיון" : "Teradion Industrial Zone",
       "אחיהוד" : "Achihud",
-      "אילניה" : "Ilania",
       "אלומות" : "Alumot",
       "אעבלין" : "Ibillin",
       "אפיקים" : "Afikim",
-      "אפק" : "Afek",
       "ארבל" : "Arbel",
       "אשבל" : "Eshbal",
       "אשדות יעקב" : "Ashdot Yaacov",
@@ -894,8 +896,6 @@
       "בית זרע" : "Beit Zera",
       "בית ירח" : "Beit Yerah",
       "בית סוהר צלמון" : "Zalmon Prison",
-      "בית קשת" : "Beit Keshet",
-      "בית רימון" : "Beit Rimon",
       "גבעת אבני" : "Giv'at Avni",
       "גינוסר" : "Ginosar",
       "דגניה א" : "Degania Alef",
@@ -920,7 +920,6 @@
       "יעד" : "Ya'ad",
       "כאבול" : "Kabul",
       "כאוכב אבו אלהיג'א" : "Kaukab Abu al-Hija",
-      "כדורי" : "Kadoorie",
       "כינרת מושבה" : "Moshavat Kinneret",
       "כינרת קבוצה" : "Kvutzat Kinneret",
       "כלנית" : "Kalanit",
@@ -930,7 +929,6 @@
       "כפר כמא" : "Kfar Kama",
       "כפר מנדא" : "Kfar Manda",
       "כפר נהר הירדן" : "Kfar Nehar HaYarden",
-      "כפר קיש" : "Kfar Kish",
       "לביא" : "Lavi",
       "לבנים" : "Livnim",
       "לוטם וחמדון" : "Lotem and Hamdon",
@@ -960,18 +958,23 @@
       "רביד" : "Ravid",
       "רקפת" : "Rakefet",
       "שדה אילן" : "Sdeh Ilan",
-      "שדמות דבורה" : "Shadmot Dvora",
       "שורשים" : "Shorashim",
       "שכניה" : "Shekhanya",
       "שעב" : "Sha'ab",
       "שפרעם" : "Shfaram",
       "שרונה" : "Sharona"
+    },
+    "90" : {
+      "אילניה" : "Ilania",
+      "אפק" : "Afek",
+      "בית קשת" : "Beit Keshet",
+      "בית רימון" : "Beit Rimon",
+      "כדורי" : "Kadoorie",
+      "כפר קיש" : "Kfar Kish",
+      "שדמות דבורה" : "Shadmot Dvora"
     }
   },
   "Menashe" : {
-    "60" : {
-      "תחנת רכבת כפר יהושוע" : "Kfar Yehoshua Train Station"
-    },
     "90" : {
       "אביאל" : "Aviel",
       "אור עקיבא" : "Or Akiva",
@@ -1025,6 +1028,7 @@
       "שדה יצחק" : "Sdeh Itzhak",
       "שדות ים" : "Sdot Yam",
       "שער מנשה" : "Sha'ar Menashe",
+      "תחנת רכבת כפר יהושוע" : "Kfar Yehoshua Train Station",
       "תלמי אלעזר" : "Talmei Elazar"
     }
   },
@@ -1256,12 +1260,18 @@
   },
   "Tavor" : {
     "60" : {
+      "אלון הגליל" : "Alon HaGalil",
+      "הרדוף" : "Harduf",
+      "חנתון" : "Hanaton",
+      "סואעד חמירה" : "Sawad Humeria",
+      "עדי" : "Adi"
+    },
+    "90" : {
       "אזור תעשייה אלון התבור" : "Alon HaTavor Industrial Zone",
       "אזור תעשייה מבואות הגלבוע" : "Mevuot HaGilboa Industrial Zone",
       "אזור תעשייה ציפורית" : "Tziporit Industrial Zone",
       "אחוזת ברק" : "Ahuzat Barak",
       "אכסאל" : "Iksal",
-      "אלון הגליל" : "Alon HaGalil",
       "אלוני אבא" : "Alonei Abba",
       "אלונים" : "Alonim",
       "בית לחם הגלילית" : "Bethlehem of Galilee",
@@ -1279,10 +1289,8 @@
       "הושעיה" : "Hoshaya",
       "היוגב" : "HaYogev",
       "הסוללים" : "HaSollelim",
-      "הרדוף" : "Harduf",
       "זרזיר" : "Zarzir",
       "חג'אג'רה" : "Hajajre",
-      "חנתון" : "Hanaton",
       "טמרה בגלבוע" : "Tamra (Gilboa)",
       "יזרעאל" : "Yizre'el",
       "יפיע" : "Yafia",
@@ -1315,10 +1323,8 @@
       "נורית" : "Nurit",
       "נין" : "Nin",
       "נצרת" : "Nazareth",
-      "סואעד חמירה" : "Sawad Humeria",
       "סולם" : "Sulam",
       "סנדלה" : "Sandala",
-      "עדי" : "Adi",
       "עוזייר, רומאנה" : "Uzeir, Romana",
       "עילוט" : "Ilut",
       "עין דור" : "Ein Dor",
@@ -1431,11 +1437,13 @@
       "תובל" : "Tuval"
     },
     "60" : {
-      "אזור תעשייה שער נעמן" : "Sha'ar Na'aman Industrial Zone",
       "כחל" : "Kahal",
       "כפר מסריק" : "Kfar Masaryk",
       "עין המפרץ" : "Ein HaMifratz",
       "קדרים" : "Kadarim"
+    },
+    "90" : {
+      "אזור תעשייה שער נעמן" : "Sha'ar Na'aman Industrial Zone"
     }
   },
   "Wadi Ara" : {
@@ -1565,7 +1573,7 @@
     }
   },
   "Yearot HaCarmel" : {
-    "60" : {
+    "90" : {
       "בית אורן" : "Beit Oren",
       "גבעת וולפסון" : "Givat Wolfson",
       "דלית אל כרמל" : "Daliyat al-Karmel",
