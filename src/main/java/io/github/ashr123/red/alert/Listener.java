@@ -70,6 +70,8 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 					Locale.getDefault(Locale.Category.FORMAT)
 			)
 			.withZone(ZoneId.systemDefault());
+	/// The upstream WAF rejects Java's default User-Agent with HTTP 403; revisit if its rules change.
+	private static final String USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36";
 	private static final Configuration DEFAULT_CONFIGURATION = new Configuration(
 			false,
 			false,
@@ -77,7 +79,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 			true,
 			false,
 			Duration.ofSeconds(10),
-			LanguageCode.HE,
+			LanguageCode.HEB,
 			Level.INFO,
 			Collections.emptySet()
 	);
@@ -94,7 +96,6 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 //			BOM = Pattern.compile("﻿");
 //	private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
 	private static final URI ALERTS_TRANSLATION_URI = URI.create("https://www.oref.org.il/alerts/alertsTranslation.json");
-
 
 	@CommandLine.Option(names = {"-c", "--configuration-file"},
 			paramLabel = "configuration file",
@@ -281,6 +282,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 							  Supplier<R> emptyResourceSupplier) {
 		LOGGER.info("Getting {} from IDF's Home Front Command's server...", headline);
 		final HttpRequest httpRequest = httpRequestBuilder.header("Accept", "application/json")
+				.header("User-Agent", USER_AGENT)
 				.header("Accept-Encoding", "gzip")
 				.header("Cache-Control", "no-store")
 				.build();
@@ -328,7 +330,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 												   Function<District, T> districtMapper) {
 		return getResource(
 				"districts",
-				HttpRequest.newBuilder(URI.create("https://alerts-history.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=" + languageCode.name().toLowerCase(Locale.ROOT)))
+				HttpRequest.newBuilder(URI.create("https://www.oref.org.il/districts/districts_" + languageCode.name().toLowerCase(Locale.ROOT) + ".json"))
 						.timeout(timeout),
 				body -> JSON_MAPPER.readValue(
 								/*VAR_ALL_DISTRICTS.matcher(httpResponse.*/body/*()).replaceFirst("")*/,
@@ -568,6 +570,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 		if (httpRequest == null || !oldTimeout.equals(configuration.timeout()))
 			httpRequest = HttpRequest.newBuilder(URI.create("https://www.oref.org.il/warningMessages/alert/Alerts.json"))
 					.header("Accept", "application/json")
+					.header("User-Agent", USER_AGENT)
 					.header("Accept-Encoding", "gzip")
 					.header("Cache-Control", "no-store")
 //					.header("X-Requested-With", "XMLHttpRequest")
@@ -718,7 +721,7 @@ public class Listener implements Runnable, CommandLine.IVersionProvider {
 																//TODO rethink of what defines a drill alert
 																if (redAlertEvent.data()
 																		.parallelStream().unordered()
-																		.allMatch(LanguageCode.HE::containsTestKey)) {
+																		.allMatch(LanguageCode.HEB::containsTestKey)) {
 																	if (configuration.isShowTestAlerts())
 																		printAlert(
 																				contentLength,

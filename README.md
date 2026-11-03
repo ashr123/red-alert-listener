@@ -11,11 +11,11 @@
 
 1. Display alerts as the Home Front Command produces them.
 2. Make alert sound if the event contains areas of interest defined in [red-alert-listener.conf.json](red-alert-listener.conf.json).
-3. Supports all official languages:
-	- Hebrew (code `HE`)
-	- English (code `EN`)
-	- Russian (code `RU`)
-	- Arabic (code `AR`)
+3. Supports all official languages (use the three-letter language codes in configuration files and CLI options):
+	- Hebrew (code `HEB`)
+	- English (code `ENG`)
+	- Russian (code `RUS`)
+	- Arabic (code `ARB`)
 4. `districts.json` (like [districts-en.json](districts-en.json "districts") example) created from `get-remote-districts-as-json-to-file` command is of the following shape (in TypeScript terms):
    ```ts
    const data: Record<string /*translated area name*/,

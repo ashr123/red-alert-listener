@@ -7,7 +7,7 @@ import java.util.Map;
 /// https://www.oref.org.il/Shared/ClientScripts/WarningMessages/WarningMessages.js
 @SuppressWarnings("unused")
 public enum LanguageCode {
-	HE(
+	HEB(
 			Map.ofEntries(
 					Map.entry("בדיקה", "בדיקה"),
 					Map.entry("בדיקה מחזורית", "בדיקה מחזורית")
@@ -20,7 +20,7 @@ public enum LanguageCode {
 					Map.entry(CommonProtectionTime.THREE_MINUTES.getDuration(), "3 דקות")
 			)
 	),
-	EN(
+	ENG(
 			Map.ofEntries(
 					Map.entry("בדיקה", "Test"),
 					Map.entry("בדיקה מחזורית", "Periodic Test")
@@ -33,7 +33,7 @@ public enum LanguageCode {
 					Map.entry(CommonProtectionTime.THREE_MINUTES.getDuration(), "3 minutes")
 			)
 	),
-	AR(
+	ARB(
 			Map.ofEntries(
 					Map.entry("בדיקה", "فحص"),
 					Map.entry("בדיקה מחזורית", "فحص الدوري")
@@ -46,7 +46,7 @@ public enum LanguageCode {
 					Map.entry(CommonProtectionTime.THREE_MINUTES.getDuration(), "3 دقائق")
 			)
 	),
-	RU(
+	RUS(
 			Map.ofEntries(
 					Map.entry("בדיקה", "Проверка"),
 					Map.entry("בדיקה מחזורית", "Периодическая Проверка")

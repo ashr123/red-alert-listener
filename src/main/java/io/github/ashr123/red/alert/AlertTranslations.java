@@ -27,19 +27,19 @@ public record AlertTranslations(@JsonDeserialize(converter = AlertDescriptionDes
 								String updateType) {
 	public String getAlertTitle(LanguageCode languageCode) {
 		return switch (languageCode) {
-			case HE -> hebTitle;
-			case EN -> engTitle;
-			case RU -> rusTitle;
-			case AR -> arbTitle;
+			case HEB -> hebTitle;
+			case ENG -> engTitle;
+			case RUS -> rusTitle;
+			case ARB -> arbTitle;
 		};
 	}
 
 	public String getAlertText(LanguageCode languageCode) {
 		return switch (languageCode) {
-			case HE -> heb;
-			case EN -> eng;
-			case RU -> rus;
-			case AR -> arb;
+			case HEB -> heb;
+			case ENG -> eng;
+			case RUS -> rus;
+			case ARB -> arb;
 		};
 	}
 

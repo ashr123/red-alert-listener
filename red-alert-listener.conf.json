@@ -5,7 +5,7 @@
   "isDisplayUntranslatedDistricts": true,
   "isShowTestAlerts": false,
   "timeout": "PT10S",
-  "languageCode": "HE",
+  "languageCode": "HEB",
   "logLevel": "INFO",
   "districtsOfInterest": [
 	"נהריה",
